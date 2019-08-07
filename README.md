@@ -1,4 +1,4 @@
-# element_human-action-recognition
+# element_human-action-intention-recognition
 
 ## Responsible
 |                Kourosh Darvish                              |
@@ -11,11 +11,18 @@ The effectiveness of the human action recognition (high precision, recall, accur
 HAIR can be performed by using following sensory data comming from the human:
 
 -  human limb and joint kinematic and dynamic or a mixture of them (technologies: data coming from the mocap, RGBd data, raw imu werables sensors, shoes,  etc)
-- human gaze (technologies)
-- human physiological measures, heart rate, ecg data ()
+- Eye tracking (technologies: Scleral search coil method, Infrared occulography (IROG), Electro-occulography (EOG), Video Occulography (VOG))
+- human physiological measures such as heart rate, EEG, ECG, EMG, blood pressure, or skin conductance.
+
 
 ## Objectives
 
+## Applications
+
+- Retargeting of human motion to robot motion
+- Human-Robot Collaboration 
+- Joint-action scenarios
+- Human Ergonomy predicion (in the context of human-robot collaboration)
 
 
 ## Outcomes
