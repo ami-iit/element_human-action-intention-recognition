@@ -7,9 +7,8 @@ import matplotlib.pyplot as plt
 
 class Data:
     def __init__(self):
-        random.seed(0)
         return
-    def generate_sequence_data(self, m =1000, seq_length=100):
+    def generate_sequence_data(self, m =1000, seq_length=100, seed_number=0):
         """
         Generate data for test
 
@@ -26,6 +25,7 @@ class Data:
         batch_t = []
         a = 1.0
         b = 2.0
+        random.seed(seed_number)
         for _ in range(m):
             rand = random.random() * 2 * math.pi
             #print('rand', rand)
@@ -63,12 +63,13 @@ class Data:
         return
 
 
-    def plot_data(self, batch_t, batch_x, explenation): #, batch_x, batch_y
+    def plot_data(self, batch_t=[], batch_x=[], explenation=[], Tx=0): #, batch_x, batch_y
         # batch_x= list(range(1 , 5))
         print(np.size(batch_x, 0))
         print(np.size(batch_x, 1))
-        seq_length = np.size(batch_x , 1)
-        #timeSteps = list(range(1 , seq_length+1))
+        seq_length = np.size(batch_x, 1)
+        if batch_t==[]:
+            batch_t = list(range(1, Tx+1))
         plt.figure()
         for i in range(np.size(batch_x , 0)):
             plt.plot(batch_t[i], batch_x[i])

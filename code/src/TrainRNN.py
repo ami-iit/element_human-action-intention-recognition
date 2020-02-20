@@ -5,11 +5,13 @@ from tensorflow.keras.layers import Dense, Activation, Dropout, Input, LSTM, Res
 from keras.initializers import glorot_uniform
 from keras.utils import to_categorical
 from tensorflow.keras.optimizers import Adam
-from keras import backend as K
+from tensorflow.keras import backend as K
+from tensorflow.keras.models import load_model
+from tensorflow.keras.utils import plot_model
 
 
 class TrainRNN:
-    def __init__(self, n_a, n_y, n_x, Tx, m):
+    def __init__(self, n_a, n_y, n_x, Tx, m, Ty):
         # print the tensorflow version
         print(tf.__version__)
         # hidden state dimensions of each RNN/LSTM cell
@@ -20,6 +22,7 @@ class TrainRNN:
         self.n_x = n_x
         # time series (sequence) length, the time horizon of prediction
         self.Tx = Tx
+        self.Ty= Ty
         # number of training set
         self.m = m
 
@@ -35,7 +38,7 @@ class TrainRNN:
         ## utilities
         self.reshapor = Reshape((1, self.n_x))
         self.LSTM_cell = LSTM(self.n_a, return_state=True)
-        self.densor = Dense(self.n_y, activation='softmax')
+        self.densor = Dense(self.n_y) #, activation='softmax'
 
     def create_model(self):
         """
@@ -97,3 +100,101 @@ class TrainRNN:
 
     def visualize(self):
         return
+
+    def save_model(self, model, file_path='models', file_name='myModel'):
+        model.save('{}/{}.h5'.format(file_path, file_name))  # creates a HDF5 file 'my_model.h5'
+        plot_model(model, to_file='model.png')
+
+        return
+    def delete_model(self, model):
+        del model  # deletes the existing model
+        return
+
+    def load_model(self, file_path='models', file_name='myModel'):
+        model = load_model('{}/{}.h5'.format(file_path, file_name))
+        return model
+
+    def visualize_model(self, model, file_path='models', file_name='myModel'):
+        plot_model(model, to_file='{}/{}.png'.format(file_path, file_name))
+        return
+
+    #######################
+    #######################
+    def inference_model(self):
+        """
+        Uses the trained "LSTM_cell" and "densor" from model() to generate a sequence of values.
+
+        Arguments:
+        LSTM_cell -- the trained "LSTM_cell" from model(), Keras layer object
+        densor -- the trained "densor" from model(), Keras layer object
+        n_values -- integer, number of unique values
+        n_a -- number of units in the LSTM_cell
+        Ty -- integer, number of time steps to generate
+
+        Returns:
+        inference_model -- Keras model instance
+        """
+
+        # Define the input of your model with a shape
+        x0 = Input(shape=(1, self.n_x))
+
+        #  initial hidden state for the decoder LSTM
+        a0 = Input(shape=(self.n_a,), name='a0')
+        c0 = Input(shape=(self.n_a,), name='c0')
+        a = a0
+        c = c0
+        x = Lambda(lambda z: z)(x0)
+
+        ### START CODE HERE ###
+        # Step 1: Create an empty list of "outputs" to later store your predicted values (≈1 line)
+        outputs = []
+
+        # Step 2: Loop over Ty and generate a value at every time step
+        for t in range(self.Ty):
+            print('time: ', t)
+            x = self.reshapor(x)
+            # Step 2.A: Perform one step of LSTM_cell (≈1 line)
+            a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
+
+            # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
+            out = self.densor(a)
+
+            # Step 2.C: Append the prediction "out" to "outputs". out.shape = (None, 78) (≈1 line)
+            outputs = outputs + [out]
+
+            # Step 2.D:
+            # Select the next value according to "out",
+            # Set "x" to be the one-hot representation of the selected value
+            # See instructions above.
+            x = Lambda(lambda z: z)(out)
+
+        # Step 3: Create model instance with the correct "inputs" and "outputs" (≈1 line)
+        inference_model = Model(inputs=[x0, a0, c0], outputs=outputs)
+        return inference_model
+
+    def predict_motion(self, inference_model, x_initializer, a_initializer, c_initializer):
+        """
+        Predicts the next value of values using the inference model.
+
+        Arguments:
+        inference_model -- Keras model instance for inference time
+        x_initializer -- numpy array of shape (1, 1, 78), one-hot vector initializing the values generation
+        a_initializer -- numpy array of shape (1, n_a), initializing the hidden state of the LSTM_cell
+        c_initializer -- numpy array of shape (1, n_a), initializing the cell state of the LSTM_cel
+
+        Returns:
+        results -- numpy-array of shape (Ty, 78), matrix of one-hot vectors representing the values generated
+        indices -- numpy-array of shape (Ty, 1), matrix of indices representing the values generated
+        """
+
+        ### START CODE HERE ###
+        # Step 1: Use your inference model to predict an output sequence given x_initializer, a_initializer and c_initializer.
+        pred = inference_model.predict([x_initializer, a_initializer, c_initializer])
+
+        return pred
+
+    def predict_motion_new(self, model, x_initializer, a_initializer, c_initializer):
+        x_initializer = self.reshapor(x_initializer)
+        pred = model.predict([x_initializer, a_initializer, c_initializer])
+        return pred
+
