@@ -87,12 +87,13 @@ class TrainRNN:
         opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
         return opt
 
-    def compile_model(self, model, opt):
-        model.compile(optimizer=opt, loss='mean_squared_error', metrics=['accuracy'])
+    def compile_model(self, model, opt, loss_function, model_metrics):
+        model.compile(optimizer=opt, loss=loss_function, metrics=model_metrics)
         return model
 
-    def fit_model(self, model, X, Y, a0, c0, epochs=100):
-        history = model.fit([X, a0, c0], list(Y), epochs=epochs)
+    def fit_model(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs=100):
+        #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
+        history = model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)))
         return model, history
 
     def load_data(self, path):
@@ -197,4 +198,3 @@ class TrainRNN:
         x_initializer = self.reshapor(x_initializer)
         pred = model.predict([x_initializer, a_initializer, c_initializer])
         return pred
-

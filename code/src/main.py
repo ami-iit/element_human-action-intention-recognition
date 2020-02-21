@@ -17,35 +17,47 @@ if __name__ == '__main__':
     seq_length = 50
     Tx = seq_length-1
     Ty = Tx
-    n_a = 10
+    n_a = 20
     n_y = 2
     n_x = 2
-    m = 30
+    m = 500
+    m_val=50;
     epochs = 2000
     model_name = 'myModel'
     models_path = 'models'
-    doTraining= True
+    doTraining = True
     seed_number = 0
+    ## use these for regression problem
+    loss_function = 'mean_squared_error'
+    model_metrics = ['mse', 'mae', 'mape']
+    ## for classification problem use other methods
 
 #################################
 ### STEP: DATA
 #################################
     data = Data()
-    batch_t, batch_data = data.generate_sequence_data(m=m, seq_length=seq_length,  seed_number=seed_number) # here m is the number of data sets
+    ## Training set
+    batch_t_train, batch_data_train = data.generate_sequence_data(m=m, seq_length=seq_length, seed_number=seed_number) # here m is the number of data sets
     # print(batch_x[0].shape)
     # print(batch_x[0])
-    batch_x, batch_y = data.prepare_data(batch_data)
-    print('batch_data shape', batch_data.shape)
-    print('x shape: ', batch_x.shape)
-    print('y shape: ', batch_y.shape)
+    batch_x_train, batch_y_train = data.prepare_data(batch_data_train)
+    print('batch_data_training shape', batch_data_train.shape)
+    print('x_train shape: ', batch_x_train.shape)
+    print('y_train shape: ', batch_y_train.shape)
     # print('batch_data:', batch_data)
     # print('batch_x:', batch_x)
     # print('batch_y:', batch_y)
 
-    data.plot_data(batch_t, batch_data, 'x')
+    data.plot_data(batch_t_train, batch_data_train, 'x:train')
     # data.plot_data(batch_t, batch_dx, 'dx')
 
-    # batch_y = batch_x([])
+    ## validation set
+    batch_t_val, batch_data_val = data.generate_sequence_data(m=m_val, seq_length=seq_length, seed_number=seed_number + 1)
+    batch_x_val, batch_y_val = data.prepare_data(batch_data_val)
+    print('batch_data_val shape', batch_data_val.shape)
+    print('x_val shape: ', batch_x_val.shape)
+    print('y_val shape: ', batch_y_val.shape)
+    data.plot_data(batch_t_val, batch_data_val, 'x:val')
 #################################
 ### TRAINING RNN
 #################################
@@ -55,11 +67,14 @@ if __name__ == '__main__':
         model = rnn.create_model()
         # model.summary()
         optimizer = rnn.create_optimizer()
-        model = rnn.compile_model(model, optimizer)
+        model = rnn.compile_model(model, optimizer, loss_function, model_metrics)
 
         a0 = np.zeros((m, n_a))
         c0 = np.zeros((m, n_a))
-        model, history = rnn.fit_model(model, batch_x, batch_y, a0, c0, epochs)
+        a0val = np.zeros((m_val, n_a))
+        c0val = np.zeros((m_val, n_a))
+
+        model, history = rnn.fit_model( model=model, Xtrain=batch_x_train, Ytrain=batch_y_train, a0=a0, c0=c0, Xval=[batch_x_val, a0val, c0val], Yval=batch_y_val, epochs=epochs)
         rnn.save_model(model, models_path, model_name)
         # model=rnn.load_model(models_path, model_name)
         rnn.visualize_model(model, models_path, model_name)
@@ -67,27 +82,29 @@ if __name__ == '__main__':
         print(history.history.keys())
 
         # summarize history for accuracy
-        plt.figure()
-        plt.plot(history.history['dense_accuracy'])
-        # plt.plot(history.history['val_accuracy'])
-        plt.title('model accuracy')
-        plt.ylabel('accuracy')
-        plt.xlabel('epoch')
-        plt.legend(['dense_accuracy'], loc='upper left')
-        plt.show()
+        # plt.figure()
+        # plt.plot(history.history['dense_accuracy'])
+        # # plt.plot(history.history['val_accuracy'])
+        # plt.title('model accuracy')
+        # plt.ylabel('accuracy')
+        # plt.xlabel('epoch')
+        # plt.legend(['dense_accuracy'], loc='upper left')
+        # plt.show()
         # summarize history for loss
         plt.figure()
         plt.plot(history.history['loss'])
-        plt.plot(history.history['dense_loss'])
-        plt.title('model loss')
+        plt.plot(history.history['val_loss'])
+        plt.title('model train & validation loss')
         plt.ylabel('loss')
         plt.xlabel('epoch')
-        plt.legend(['loss', 'dense-loss'], loc='upper left')
+        plt.legend(['loss', 'val_loss'], loc='upper right')
         plt.show()
     else:
         pass
         # model = rnn.load_model(models_path, model_name)
 
+############
+### PREDICTION
 ############
 
     inference_model = rnn.inference_model()
@@ -123,8 +140,6 @@ if __name__ == '__main__':
     print('batch_t[2:] ', (batch_t[:, 2:]).shape, batch_t[2:])
     data.plot_data(batch_t[:,1:], prediction, 'prediction', Tx)
     data.plot_data(batch_t[:,1:], y_test,         'y',          Tx)
-
-
 
 #    m = 60
 #    a0 = np.zeros((m, n_a))
