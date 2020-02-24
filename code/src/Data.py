@@ -29,19 +29,31 @@ class Data:
         for _ in range(m):
             rand = random.random() * 2 * math.pi
             #print('rand', rand)
-            timeSteps = np.linspace(0.0 * math.pi + rand, 3.0 * math.pi + rand, seq_length );
-            x1 = np.sin(timeSteps)
-            x2 = np.cos(timeSteps)
 
-            dx1 = np.cos(timeSteps)
-            dx2 = -np.sin(timeSteps)
+
+            ## sine/cosine funcitons
+            # timeSteps = np.linspace(0.0 * math.pi + rand, 3.0 * math.pi + rand, seq_length)
+            # x1 = np.sin(timeSteps)
+            # x2 = np.cos(timeSteps)
+            #
+            # dx1 = np.cos(timeSteps)
+            # dx2 = -np.sin(timeSteps)
+            #
+            # x = (a + 0.1 * rand) * x1 + (b + 0.1 * rand) * x2
+            # dx = (a + 0.1 * rand) * dx1 + (b + 0.1 * rand) * dx2
+            #
+            # linear data
+            timeSteps = np.linspace(0.0, 10.0, seq_length)
+            x = (2 + 0.1*rand) * timeSteps
+            dx = (2 + 0.1*rand) * (timeSteps*0.0 +1)
+
             # print('x1:', x1)
             # print('x2:', x2)
             # print('x1+x2', x1+x2)
 
             # batch_x.append(x_)
             batch_t.append(timeSteps)
-            batch_x.append(np.array([(a + 0.1 * rand) * x1+ (b + 0.1 * rand) * x2, (a + 0.1 * rand) * dx1 + (b + 0.1 * rand) * dx2]).T )
+            batch_x.append(np.array([x, dx]).T)
             # batch_dx.append((a + 0.1 * rand) * dx1 + (b + 0.1 * rand) * dx2)
         batch_x = np.array(batch_x)
         batch_dx = np.array(batch_dx)
@@ -51,7 +63,7 @@ class Data:
 
     def prepare_data(self , batch_data):
         seq_length=np.size(batch_data, 1)
-        print('seq_length:',seq_length)
+        print('seq_length:', seq_length)
         batch_x = batch_data[:, range(0, seq_length - 1), :]
         batch_y = batch_data[:, range(1, seq_length), :]
         # batch_y = np.reshape(batch_y, (np.size(batch_y, 1), np.size(batch_y, 0), np.size(batch_y, 2)))

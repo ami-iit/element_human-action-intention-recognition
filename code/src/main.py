@@ -3,7 +3,7 @@ from __future__ import print_function
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from TrainRNN import TrainRNN
+from TrainRNN import TrainRNN, PlotLosses
 from Data import Data
 import array as arr
 
@@ -14,22 +14,22 @@ if __name__ == '__main__':
 #################################
 ### STEP: Define Hyper-parameters
 #################################
-    seq_length = 50
+    seq_length = 10
     Tx = seq_length-1
     Ty = Tx
-    n_a = 20
+    n_a = 10
     n_y = 2
     n_x = 2
-    m = 500
-    m_val=50;
-    epochs = 2000
+    m = 50
+    m_val=5;
+    epochs = 1000
     model_name = 'myModel'
     models_path = 'models'
     doTraining = True
     seed_number = 0
     ## use these for regression problem
     loss_function = 'mean_squared_error'
-    model_metrics = ['mse', 'mae', 'mape']
+    model_metrics = ['mse']
     ## for classification problem use other methods
 
 #################################
@@ -61,6 +61,7 @@ if __name__ == '__main__':
 #################################
 ### TRAINING RNN
 #################################
+    plot_losses=PlotLosses()
     rnn = TrainRNN(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, m=m, Ty=Ty)
     if doTraining == True:
 
@@ -74,7 +75,7 @@ if __name__ == '__main__':
         a0val = np.zeros((m_val, n_a))
         c0val = np.zeros((m_val, n_a))
 
-        model, history = rnn.fit_model( model=model, Xtrain=batch_x_train, Ytrain=batch_y_train, a0=a0, c0=c0, Xval=[batch_x_val, a0val, c0val], Yval=batch_y_val, epochs=epochs)
+        model, history = rnn.fit_model( model=model, Xtrain=batch_x_train, Ytrain=batch_y_train, a0=a0, c0=c0, Xval=[batch_x_val, a0val, c0val], Yval=batch_y_val, epochs=epochs, plot_loss_value=plot_losses)
         rnn.save_model(model, models_path, model_name)
         # model=rnn.load_model(models_path, model_name)
         rnn.visualize_model(model, models_path, model_name)

@@ -8,6 +8,8 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import plot_model
+import matplotlib.pyplot as plt
+
 
 
 class TrainRNN:
@@ -91,9 +93,9 @@ class TrainRNN:
         model.compile(optimizer=opt, loss=loss_function, metrics=model_metrics)
         return model
 
-    def fit_model(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs=100):
+    def fit_model(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs, plot_loss_value):
         #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
-        history = model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)))
+        history = model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)), verbose=1)# callbacks=[plot_loss_value]
         return model, history
 
     def load_data(self, path):
@@ -198,3 +200,74 @@ class TrainRNN:
         x_initializer = self.reshapor(x_initializer)
         pred = model.predict([x_initializer, a_initializer, c_initializer])
         return pred
+
+
+class PlotLosses(tf.keras.callbacks.Callback):
+    def on_train_begin(self, logs={}):
+        self.i = 0
+        self.x = []
+        self.losses = []
+        self.val_losses = []
+
+        self.fig = plt.figure()
+
+        self.logs = []
+
+    def on_epoch_end(self, epoch, logs={}):
+        self.logs.append(logs)
+        self.x.append(self.i)
+        self.losses.append(logs.get('loss'))
+        self.val_losses.append(logs.get('val_loss'))
+        self.i += 1
+
+        plt.clf()
+        plt.plot(self.x, self.losses, label="loss")
+        plt.plot(self.x, self.val_losses, label="val_loss")
+        plt.legend()
+        plt.show();
+
+class TrainRNN2():
+    def __init__(self, n_a, n_y, n_x, Tx, m, Ty):
+        # print the tensorflow version
+        print(tf.__version__)
+        print('TrainRNN2: ', TrainRNN2)
+        # hidden state dimensions of each RNN/LSTM cell
+        self.n_a = n_a
+        # output dimensions of each output layer
+        self.n_y = n_y
+        # input dimensions of input layer
+        self.n_x = n_x
+        # time series (sequence) length, the time horizon of prediction
+        self.Tx = Tx
+        self.Ty= Ty
+        # number of training set
+        self.m = m
+
+        # TODO: Training
+
+        # self.learning_rate = 0.0025
+        # self.lambda_loss_amount = 0.0015
+        # self.training_iters = training_data_count * 300  # Loop 300 times on the dataset
+        # self.batch_size = 1500
+        # self.display_iter = 30000  # To show test set accuracy during training
+        # self.time = 0.0
+
+        ## utilities
+        self.reshapor = Reshape((1, self.n_x))
+        self.LSTM_cell = LSTM(self.n_a, return_state=True)
+        self.densor = Dense(self.n_y) #, activation='softmax'
+
+    def create_model(self):
+        model = Sequential()
+        model.add(LSTM(10, input_shape=(1, 1)))
+        model.add(Dense(1, activation='linear'))
+        return model
+
+    def compile_model(self, model, opt, loss_function, model_metrics):
+        model.compile(optimizer=opt, loss=loss_function, metrics=model_metrics)
+        return model
+
+    def fit_model(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs, plot_loss_value):
+        #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
+        history = model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)), verbose=1)# callbacks=[plot_loss_value]
+        return model, history
