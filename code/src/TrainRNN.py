@@ -9,6 +9,8 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import plot_model
 import matplotlib.pyplot as plt
+from tensorflow.keras.models import Sequential
+
 
 
 
@@ -71,7 +73,7 @@ class TrainRNN:
         for t in range(self.Tx):
             # Step 2.A: select the "t"th time step vector from X.
             x = Lambda(lambda X: X[:, t, :])(X)
-            # Step 2.B: Use reshapor to reshape x to be (1, n_y) (≈1 line)
+            # Step 2.B: Use reshapor to reshape x to be (1, n_x)
             x = self.reshapor(x)
             # Step 2.C: Perform one step of the LSTM_cell
             a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
@@ -98,6 +100,11 @@ class TrainRNN:
         history = model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)), verbose=1)# callbacks=[plot_loss_value]
         return model, history
 
+    def fit_model2(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs, plot_loss_value):
+        #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
+        history = model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)), verbose=1)# callbacks=[plot_loss_value]
+        return model, history
+
     def load_data(self, path):
         return
 
@@ -118,7 +125,10 @@ class TrainRNN:
         return model
 
     def visualize_model(self, model, file_path='models', file_name='myModel'):
-        plot_model(model, to_file='{}/{}.png'.format(file_path, file_name))
+        plot_model(model, to_file='{}/{}.png'.format(file_path, file_name), show_shapes=True)
+        return
+    def generate_empty_model (self):
+        model = Sequential()
         return
 
     #######################

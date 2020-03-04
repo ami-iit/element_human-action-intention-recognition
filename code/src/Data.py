@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 class Data:
     def __init__(self):
         return
-    def generate_sequence_data(self, m =1000, seq_length=100, seed_number=0):
+    def generate_sequence_data(self, m =1000, seq_length=100, seed_number=0, data_type='linear'):
         """
         Generate data for test
 
@@ -30,30 +30,31 @@ class Data:
             rand = random.random() * 2 * math.pi
             #print('rand', rand)
 
-
             ## sine/cosine funcitons
-            # timeSteps = np.linspace(0.0 * math.pi + rand, 3.0 * math.pi + rand, seq_length)
-            # x1 = np.sin(timeSteps)
-            # x2 = np.cos(timeSteps)
-            #
-            # dx1 = np.cos(timeSteps)
-            # dx2 = -np.sin(timeSteps)
-            #
-            # x = (a + 0.1 * rand) * x1 + (b + 0.1 * rand) * x2
-            # dx = (a + 0.1 * rand) * dx1 + (b + 0.1 * rand) * dx2
-            #
+            if data_type == 'sin':
+                timeSteps = np.linspace(0.0 * math.pi + rand, 3.0 * math.pi + rand, seq_length)
+                x1 = np.sin(timeSteps)
+                x2 = np.cos(timeSteps)
+
+                dx1 = np.cos(timeSteps)
+                dx2 = -np.sin(timeSteps)
+
+                x = (a + 0.1 * rand) * x1 + (b + 0.1 * rand) * x2
+                dx = (a + 0.1 * rand) * dx1 + (b + 0.1 * rand) * dx2
+
             # linear data
-            timeSteps = np.linspace(0.0, 10.0, seq_length)
-            x = (2 + 0.1*rand) * timeSteps
-            dx = (2 + 0.1*rand) * (timeSteps*0.0 +1)
+            elif data_type == 'linear':
+                timeSteps = np.linspace(0.0, 10.0, seq_length)
+                x = (2 + 0.1*rand) * timeSteps
+                dx = (2 + 0.1*rand) * (timeSteps*0.0 +1)
 
-            # print('x1:', x1)
-            # print('x2:', x2)
-            # print('x1+x2', x1+x2)
+                # print('x1:', x1)
+                # print('x2:', x2)
+                # print('x1+x2', x1+x2)
 
-            # batch_x.append(x_)
+                # batch_x.append(x_)
             batch_t.append(timeSteps)
-            batch_x.append(np.array([x, dx]).T)
+            batch_x.append(np.array([x, dx]).T)# [x, dx]
             # batch_dx.append((a + 0.1 * rand) * dx1 + (b + 0.1 * rand) * dx2)
         batch_x = np.array(batch_x)
         batch_dx = np.array(batch_dx)
@@ -64,14 +65,17 @@ class Data:
     def prepare_data(self , batch_data):
         seq_length=np.size(batch_data, 1)
         print('seq_length:', seq_length)
-        batch_x = batch_data[:, range(0, seq_length - 1), :]
+        Tx = 1
+        # batch_x = batch_data[:, range(0,  seq_length- 1), :]
+        batch_x = batch_data[:, 0, :]
+        batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(batch_data, 2)))
         batch_y = batch_data[:, range(1, seq_length), :]
         # batch_y = np.reshape(batch_y, (np.size(batch_y, 1), np.size(batch_y, 0), np.size(batch_y, 2)))
         batch_y = np.swapaxes(batch_y, 0, 1)
 
         return batch_x, batch_y
 
-    def load_model(self):
+    def load_data(self):
         return
 
 
@@ -81,7 +85,7 @@ class Data:
         print(np.size(batch_x, 1))
         seq_length = np.size(batch_x, 1)
         if batch_t==[]:
-            batch_t = list(range(1, Tx+1))
+            batch_t = list(range(1, np.size(batch_x, 1)))
         plt.figure()
         for i in range(np.size(batch_x , 0)):
             plt.plot(batch_t[i], batch_x[i])
