@@ -8,7 +8,6 @@ from Data import Data
 import array as arr
 
 
-
 if __name__ == '__main__':
 
 #################################
@@ -20,8 +19,9 @@ if __name__ == '__main__':
     n_a = 32
     n_y = 2
     n_x = 2
-    m = 500
-    m_val = 50
+    m = 200
+    m_val = 20
+    m_test = 3
     epochs = 50
     training_model_name = 'train_myModel'
     inference_model_name = 'inference_myModel'
@@ -65,7 +65,7 @@ if __name__ == '__main__':
 ### TRAINING RNN
 #################################
 
-    plot_losses=PlotLosses()
+    plot_losses = PlotLosses()
     rnn = TrainRNN(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, m=m, Ty=Ty)
     # model = rnn.generate_empty_model()
     if doTraining == True:
@@ -119,38 +119,44 @@ if __name__ == '__main__':
     rnn.visualize_model(model, models_path, inference_model_name)
 
     x_initializer = np.zeros((1, 1, n_x))
-    batch_t, batch_data_test = data.generate_sequence_data(m=1, seq_length=seq_length, seed_number=5, data_type=data_type)  # here m is the number of data sets
+    batch_t_test, batch_data_test = data.generate_sequence_data(m=m_test, seq_length=seq_length, seed_number=5, data_type=data_type)  # here m is the number of data sets
     batch_x_test, batch_y_test = data.prepare_data(batch_data_test)
-    x_test = np.reshape(batch_x_test[0, 0, :], (1, 1, n_x))
-    a_initializer = np.zeros((1, n_a))
-    c_initializer = np.zeros((1, n_a))
+    # x_test = np.reshape(batch_x_test[0, 0, :], (1, 1, n_x))
 
-    print('x_test: ', type(x_test), x_test.shape, x_test )
-    print('x_initializer: ', type(x_initializer), x_initializer.shape, x_initializer)
+    # batch_x_test, batch_y_test = data.prepare_data(batch_data_test)
+    a_initializer = np.zeros((m_test, n_a))
+    c_initializer = np.zeros((m_test, n_a))
 
-    prediction = rnn.predict_motion(inference_model, x_test, a_initializer, c_initializer)
+    # print('x_test: ', type(x_test), x_test.shape, x_test )
+    # print('x_initializer: ', type(x_initializer), x_initializer.shape, x_initializer)
+
+    prediction = rnn.compute_prediction(inference_model, batch_x_test, a_initializer, c_initializer)
+    rmse_test = rnn.evaluate_prediction(batch_y_test, np.array(prediction))
+    print('RMSE of the test: ', rmse_test)
 
     # prediction = rnn.predict_motion_new(model, x_test, a_initializer, c_initializer)
 
     print('prediction type: ', type(prediction))
     prediction = np.array(prediction)
-    prediction= np.reshape(prediction,(1, Ty, n_y))
-    # batch_y_test = np.swapaxes(batch_y_test[:, 0, :], 0, 0)
+    prediction_reshaped = np.swapaxes(prediction, 0, 1)
+    batch_y_test_reshaped = np.swapaxes(batch_y_test, 0, 1)
 
-    batch_t=np.array(batch_t)
+# batch_y_test = np.swapaxes(batch_y_test[:, 0, :], 0, 0)
 
-    print('prediction shape: ', type(prediction), prediction.shape)
-    print('prediction : ', prediction)
+    batch_t_test = np.array(batch_t_test)
+
+    print('prediction shape: ', type(prediction_reshaped), prediction_reshaped.shape)
+    # print('prediction : ', prediction_reshaped)
     y_test = np.reshape(batch_y_test[:, 0, :], (1, Ty, n_y))
     print('y shape: ', type(y_test), y_test.shape)
-    print('y : ', y_test)
-    print('batch_t ',     (batch_t).shape, batch_t)
-    print('batch_t[1:] ', (batch_t[:, 1:]).shape, batch_t[1:])
-    print('batch_t[2:] ', (batch_t[:, 2:]).shape, batch_t[2:])
-    data.plot_data(batch_t[:,1:], prediction, 'prediction', Tx)
-    data.plot_data(batch_t[:,1:], y_test,         'y',          Tx)
+    # print('y : ', y_test)
+    # print('batch_t ',     (batch_t_test).shape, batch_t_test)
+    # print('batch_t[1:] ', (batch_t_test[:, 1:]).shape, batch_t_test[1:])
+    # print('batch_t[2:] ', (batch_t_test[:, 2:]).shape, batch_t_test[2:])
+    data.plot_data(batch_t_test[:, 1:], prediction_reshaped, 'prediction', Tx)
+    data.plot_data(batch_t_test[:, 1:], y_test,         'y',      Tx)
+    data.plot_test_prediction_data(batch_t_test[:,1:], batch_y_test_reshaped, prediction_reshaped, 'test (line) prediction (dashed lines) ', Tx)
 
 #    m = 60
 #    a0 = np.zeros((m, n_a))
 #    c0 = np.zeros((m, n_a))
-

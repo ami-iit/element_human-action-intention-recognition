@@ -10,6 +10,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import plot_model
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
+import numpy as np
 
 
 
@@ -97,7 +98,8 @@ class TrainRNN:
 
     def fit_model(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs, plot_loss_value):
         #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
-        history = model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)), verbose=1)# callbacks=[plot_loss_value]
+        history = model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)),
+                            verbose=1, callbacks=[plot_loss_value])
         return model, history
 
     def fit_model2(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs, plot_loss_value):
@@ -185,7 +187,7 @@ class TrainRNN:
         inference_model = Model(inputs=[x0, a0, c0], outputs=outputs)
         return inference_model
 
-    def predict_motion(self, inference_model, x_initializer, a_initializer, c_initializer):
+    def compute_prediction(self, inference_model, x_initializer, a_initializer, c_initializer):
         """
         Predicts the next value of values using the inference model.
 
@@ -206,35 +208,91 @@ class TrainRNN:
 
         return pred
 
+    def evaluate_prediction(self, y_test, y_prediction):
+        # y_test, y_prediction (Ty, m, n)
+        evaluation=0.0
+        Ty = np.size(y_test, 0)
+        m = np.size(y_test, 1)
+        for i in range(Ty):
+            for j in range(m):
+                err_t_m = y_test[i, j, :] - y_prediction[i, j, :]
+                evaluation = evaluation + np.sqrt(np.dot(err_t_m, err_t_m))
+        evaluation = (1.0/Ty) * (1.0/m) * evaluation
+        return evaluation
+
+
     def predict_motion_new(self, model, x_initializer, a_initializer, c_initializer):
         x_initializer = self.reshapor(x_initializer)
         pred = model.predict([x_initializer, a_initializer, c_initializer])
         return pred
 
+#
+# class PlotLosses(tf.keras.callbacks.Callback):
+#     def on_train_begin(self, logs={}):
+#         self.i = 0
+#         self.x = []
+#         self.losses = []
+#         self.val_losses = []
+#
+#         self.fig = plt.figure()
+#
+#         self.logs = []
+#
+#     def on_epoch_end(self, epoch, logs={}):
+#         self.logs.append(logs)
+#         self.x.append(self.i)
+#         self.losses.append(logs.get('loss'))
+#         self.val_losses.append(logs.get('val_loss'))
+#         self.i += 1
+#
+#         plt.clf()
+#         plt.plot(self.x, self.losses, label="loss")
+#         plt.plot(self.x, self.val_losses, label="val_loss")
+#         plt.legend()
+#         plt.show()
+
+
+def translate_metric(x):
+    translations = {'acc': "Accuracy", 'loss': "Log-loss (cost function)"}
+    if x in translations:
+        return translations[x]
+    else:
+        return x
+
 
 class PlotLosses(tf.keras.callbacks.Callback):
+    def __init__(self, figsize=None):
+        super(PlotLosses, self).__init__()
+        self.figsize = figsize
+
     def on_train_begin(self, logs={}):
-        self.i = 0
-        self.x = []
-        self.losses = []
-        self.val_losses = []
 
-        self.fig = plt.figure()
-
+        self.base_metrics = [metric for metric in self.params['metrics'] if not metric.startswith('val_')]
         self.logs = []
 
     def on_epoch_end(self, epoch, logs={}):
         self.logs.append(logs)
-        self.x.append(self.i)
-        self.losses.append(logs.get('loss'))
-        self.val_losses.append(logs.get('val_loss'))
-        self.i += 1
 
-        plt.clf()
-        plt.plot(self.x, self.losses, label="loss")
-        plt.plot(self.x, self.val_losses, label="val_loss")
-        plt.legend()
-        plt.show();
+        # clear_output(wait=True)
+        plt.clf(wait=True)
+        plt.figure(figsize=self.figsize)
+
+        for metric_id, metric in enumerate(self.base_metrics):
+            plt.subplot(1, len(self.base_metrics), metric_id + 1)
+
+            plt.plot(range(1, len(self.logs) + 1),
+                     [log[metric] for log in self.logs],
+                     label="training")
+            if self.params['do_validation']:
+                plt.plot(range(1, len(self.logs) + 1),
+                         [log['val_' + metric] for log in self.logs],
+                         label="validation")
+            plt.title(translate_metric(metric))
+            plt.xlabel('epoch')
+            plt.legend(loc='center right')
+
+        # plt.tight_layout()
+        plt.show(block=True)
 
 class TrainRNN2():
     def __init__(self, n_a, n_y, n_x, Tx, m, Ty):

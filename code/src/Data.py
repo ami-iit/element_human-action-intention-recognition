@@ -79,7 +79,7 @@ class Data:
         return
 
 
-    def plot_data(self, batch_t=[], batch_x=[], explenation=[], Tx=0): #, batch_x, batch_y
+    def plot_data(self, batch_t=[], batch_x=[], explanation=[], Tx=0): #, batch_x, batch_y
         # batch_x= list(range(1 , 5))
         print(np.size(batch_x, 0))
         print(np.size(batch_x, 1))
@@ -89,7 +89,25 @@ class Data:
         plt.figure()
         for i in range(np.size(batch_x , 0)):
             plt.plot(batch_t[i], batch_x[i])
-        plt.title('time- {}'.format(explenation))
-        plt.ylabel('{}'.format(explenation))
+        plt.title('time- {}'.format(explanation))
+        plt.ylabel('{}'.format(explanation))
         plt.xlabel('time')
         plt.show()
+
+    def plot_test_prediction_data(self, batch_t=[], batch_y_test=[], batch_x_prediction=[], explanation=[], Tx=0): #, batch_x, batch_y
+        # batch_x= list(range(1 , 5))
+        print(np.size(batch_y_test, 0))
+        print(np.size(batch_y_test, 1))
+        n_outputs=np.size(batch_y_test, 2)
+        seq_length = np.size(batch_y_test, 1)
+        if batch_t==[]:
+            batch_t = list(range(1, np.size(batch_y_test, 1)))
+        for j in range(n_outputs):
+            plt.figure()
+            plt.title('time- {}'.format(explanation))
+            for i in range(np.size(batch_y_test, 0)):
+                plt.plot(batch_t[i], batch_y_test[i, :, :])
+                plt.plot(batch_t[i], batch_x_prediction[i, :, :], '--')
+            plt.ylabel('output {}'.format(str(j)))
+            plt.xlabel('time')
+            plt.show()
