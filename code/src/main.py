@@ -3,10 +3,9 @@ from __future__ import print_function
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from TrainRNN import TrainRNN, PlotLosses
+from RnnKeras import RnnKeras, PlotLosses
 from Data import Data
 import array as arr
-
 
 if __name__ == '__main__':
 
@@ -21,9 +20,9 @@ if __name__ == '__main__':
     n_x = 2
     m = 200
     m_val = 20
-    m_test = 3
+    m_test = 1
     epochs = 50
-    training_model_name = 'train_myModel'
+    training_model_name = 'train_myModelNew'
     inference_model_name = 'inference_myModel'
     models_path = 'models'
     doTraining = True
@@ -66,12 +65,11 @@ if __name__ == '__main__':
 #################################
 
     plot_losses = PlotLosses()
-    rnn = TrainRNN(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, m=m, Ty=Ty)
-    # model = rnn.generate_empty_model()
+    rnn = RnnKeras(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, m=m, Ty=Ty)
     if doTraining == True:
 
         # model = rnn.create_model()
-        model = rnn.inference_model()
+        model = rnn.create_model()
         # model.summary()
         optimizer = rnn.create_optimizer()
         model = rnn.compile_model(model, optimizer, loss_function, model_metrics)
@@ -81,7 +79,7 @@ if __name__ == '__main__':
         a0val = np.zeros((m_val, n_a))
         c0val = np.zeros((m_val, n_a))
 
-        model, history = rnn.fit_model( model=model, Xtrain=batch_x_train, Ytrain=batch_y_train, a0=a0, c0=c0, Xval=[batch_x_val, a0val, c0val], Yval=batch_y_val, epochs=epochs, plot_loss_value=plot_losses)
+        model, history = rnn.fit_model(model=model, Xtrain=batch_x_train, Ytrain=batch_y_train, a0=a0, c0=c0, Xval=[batch_x_val, a0val, c0val], Yval=batch_y_val, epochs=epochs, plot_loss_value_obj=plot_losses)
         rnn.save_model(model, models_path, training_model_name)
         rnn.visualize_model(model, models_path, training_model_name)
         # list all data in history
@@ -114,9 +112,9 @@ if __name__ == '__main__':
 ############
 
     inference_model = model
-    # inference_model = rnn.inference_model()
+    # inference_model = rnn.create_model()
     inference_model.summary()
-    rnn.visualize_model(model, models_path, inference_model_name)
+    # rnn.visualize_model(model, models_path, inference_model_name)
 
     x_initializer = np.zeros((1, 1, n_x))
     batch_t_test, batch_data_test = data.generate_sequence_data(m=m_test, seq_length=seq_length, seed_number=5, data_type=data_type)  # here m is the number of data sets

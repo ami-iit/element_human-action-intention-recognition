@@ -106,8 +106,8 @@ class Data:
             plt.figure()
             plt.title('time- {}'.format(explanation))
             for i in range(np.size(batch_y_test, 0)):
-                plt.plot(batch_t[i], batch_y_test[i, :, :])
-                plt.plot(batch_t[i], batch_x_prediction[i, :, :], '--')
+                plt.plot(batch_t[i], batch_y_test[i, :, j])
+                plt.plot(batch_t[i], batch_x_prediction[i, :, j], '--')
             plt.ylabel('output {}'.format(str(j)))
             plt.xlabel('time')
             plt.show()
