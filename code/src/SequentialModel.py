@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+import numpy as np
 
 
 class SequentialModel(ABC):
-    def __init__(self, n_a, n_y, n_x, Tx, m, Ty):
+    def __init__(self, n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test):
         super().__init__()
         # hidden state dimensions of each RNN/LSTM cell
         self.n_a = n_a
@@ -10,15 +11,27 @@ class SequentialModel(ABC):
         self.n_y = n_y
         # input dimensions of input layer
         self.n_x = n_x
-        # time series (sequence) length, the time horizon of prediction
+        # input time series (sequence) length
         self.Tx = Tx
+        # output time series length (the horizon of prediction)
         self.Ty = Ty
         # number of training set
-        self.m = m
+        self.m_train = m_train
+        # number of validation set
+        self.m_val = m_val
+        # number of test set
+        self.m_test = m_test
         # RNN model
         self.model = None
         # RNN optimizer
         self.opt = None
+
+        self.a0_train = np.zeros((m_train, n_a))
+        self.c0_train = np.zeros((m_train, n_a))
+        self.a0_val = np.zeros((m_val, n_a))
+        self.c0_val = np.zeros((m_val, n_a))
+        self.a0_test = np.zeros((m_test, n_a))
+        self.c0_test = np.zeros((m_test, n_a))
 
     @abstractmethod
     def create_model(self):
@@ -33,7 +46,7 @@ class SequentialModel(ABC):
         pass
 
     @abstractmethod
-    def fit_model(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs, plot_loss_value_obj):
+    def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity):
         pass
 
     @abstractmethod
@@ -49,7 +62,7 @@ class SequentialModel(ABC):
         pass
 
     @abstractmethod
-    def compute_prediction(self, inference_model, x_initializer, a_initializer, c_initializer):
+    def compute_prediction(self, inference_model, x_test):
         pass
 
     @abstractmethod

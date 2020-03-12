@@ -15,7 +15,7 @@ import numpy as np
 
 
 class RnnKeras(SequentialModel):
-    def __init__(self, n_a, n_y, n_x, Tx, m, Ty):
+    def __init__(self, n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test):
         # # print the tensorflow version
         # print(tf.__version__)
         # # hidden state dimensions of each RNN/LSTM cell
@@ -29,7 +29,7 @@ class RnnKeras(SequentialModel):
         # self.Ty= Ty
         # # number of training set
         # self.m = m
-        super().__init__(n_a, n_y, n_x, Tx, m, Ty)
+        super().__init__(n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test)
 
         # TODO: Training
         # self.learning_rate = 0.0025
@@ -44,61 +44,24 @@ class RnnKeras(SequentialModel):
         self.LSTM_cell = LSTM(self.n_a, return_state=True)
         self.densor = Dense(self.n_y) #, activation='softmax'
 
-    # def create_model(self):
-    #     """
-    #     Implement the model
-    #
-    #     Arguments:
-    #     Tx -- length of the sequence in a corpus
-    #     n_a -- the number of activations used in our model
-    #     n_values -- number of unique values in the music data
-    #
-    #     Returns:
-    #     model -- a keras instance model with n_a activations
-    #     """
-    #
-    #     # Define the input layer and specify the shape
-    #     X = Input(shape=(self.Tx, self.n_x))
-    #
-    #     # Define the initial hidden state a0 and initial cell state c0
-    #     # using `Input`, batch_size will be given later, while feeding the input values
-    #     a0 = Input(shape=(self.n_a,), name='a0')
-    #     c0 = Input(shape=(self.n_a,), name='c0')
-    #     a = a0
-    #     c = c0
-    #     # Step 1: Create empty list to append the outputs while you iterate (≈1 line)
-    #     outputs = []
-    #
-    #     # Step 2: Loop
-    #     for t in range(self.Tx):
-    #         # Step 2.A: select the "t"th time step vector from X.
-    #         x = Lambda(lambda X: X[:, t, :])(X)
-    #         # Step 2.B: Use reshapor to reshape x to be (1, n_x)
-    #         x = self.reshapor(x)
-    #         # Step 2.C: Perform one step of the LSTM_cell
-    #         a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
-    #         # Step 2.D: Apply densor to the hidden state output of LSTM_Cell
-    #         out = self.densor(a)
-    #         # Step 2.E: add the output to "outputs"
-    #         outputs = outputs + [out]
-    #         # outputs=(ouputs+out)
-    #
-    #     # Step 3: Create model instance
-    #     model = Model(inputs=[X, a0, c0], outputs=outputs)
-    #     return model
-
     def create_optimizer(self):
-        slef.opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
+        self.opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
         return
 
     def compile_model(self, loss_function, model_metrics):
         self.model.compile(optimizer=self.opt, loss=loss_function, metrics=model_metrics)
         return
 
-    def fit_model(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs, plot_loss_value_obj):
+    def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity):
         #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
-        history = self.model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)),
-                            verbose=1)#, callbacks=[plot_loss_value_obj]
+        if verbosity:
+            history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
+                                 validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)), verbose=verbosity)#, callbacks=[plot_loss_value_obj]
+            # TODO: fix the callback plot problem
+        else:
+            history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
+                                     validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
+                                     verbose=verbosity)
         return history
 
     def load_data(self, path):
@@ -174,25 +137,17 @@ class RnnKeras(SequentialModel):
         self.model = Model(inputs=[x0, a0, c0], outputs=outputs)
         return
 
-    def compute_prediction(self, x_initializer, a_initializer, c_initializer):
+    def compute_prediction(self, x_test):
         """
         Predicts the next value of values using the inference model.
 
         Arguments:
         inference_model -- Keras model instance for inference time
-        x_initializer -- numpy array of shape (1, 1, 78), one-hot vector initializing the values generation
-        a_initializer -- numpy array of shape (1, n_a), initializing the hidden state of the LSTM_cell
-        c_initializer -- numpy array of shape (1, n_a), initializing the cell state of the LSTM_cel
-
         Returns:
         results -- numpy-array of shape (Ty, 78), matrix of one-hot vectors representing the values generated
         indices -- numpy-array of shape (Ty, 1), matrix of indices representing the values generated
         """
-
-        ### START CODE HERE ###
-        # Step 1: Use your inference model to predict an output sequence given x_initializer, a_initializer and c_initializer.
-        prediction = self.model.predict([x_initializer, a_initializer, c_initializer])
-
+        prediction = self.model.predict([x_test, self.a0_test, self.c0_test])
         return prediction
 
     def evaluate_prediction(self, y_test, y_prediction):
