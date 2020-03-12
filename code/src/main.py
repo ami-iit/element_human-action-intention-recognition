@@ -25,7 +25,7 @@ if __name__ == '__main__':
     training_model_name = 'train_myModelNew'
     inference_model_name = 'inference_myModel'
     models_path = 'models'
-    doTraining = True
+    doTraining = False
     seed_number = 0
     ## use these for regression problem
     loss_function = 'mean_squared_error'
@@ -69,19 +69,19 @@ if __name__ == '__main__':
     if doTraining == True:
 
         # model = rnn.create_model()
-        model = rnn.create_model()
+        rnn.create_model()
         # model.summary()
-        optimizer = rnn.create_optimizer()
-        model = rnn.compile_model(model, optimizer, loss_function, model_metrics)
+        rnn.create_optimizer()
+        rnn.compile_model(loss_function, model_metrics)
 
         a0 = np.zeros((m, n_a))
         c0 = np.zeros((m, n_a))
         a0val = np.zeros((m_val, n_a))
         c0val = np.zeros((m_val, n_a))
 
-        model, history = rnn.fit_model(model=model, Xtrain=batch_x_train, Ytrain=batch_y_train, a0=a0, c0=c0, Xval=[batch_x_val, a0val, c0val], Yval=batch_y_val, epochs=epochs, plot_loss_value_obj=plot_losses)
-        rnn.save_model(model, models_path, training_model_name)
-        rnn.visualize_model(model, models_path, training_model_name)
+        history = rnn.fit_model(Xtrain=batch_x_train, Ytrain=batch_y_train, a0=a0, c0=c0, Xval=[batch_x_val, a0val, c0val], Yval=batch_y_val, epochs=epochs, plot_loss_value_obj=plot_losses)
+        rnn.save_model(models_path, training_model_name)
+        rnn.visualize_model(models_path, training_model_name)
         # list all data in history
         print(history.history.keys())
 
@@ -105,15 +105,16 @@ if __name__ == '__main__':
         plt.show()
     else:
         # pass
-        model = rnn.load_model(models_path, training_model_name)
+        rnn.load_model(models_path, training_model_name)
 
 ############
 ### PREDICTION
 ############
 
-    inference_model = model
+    # inference_model = model
     # inference_model = rnn.create_model()
-    inference_model.summary()
+    # inference_model.summary()
+    rnn.provide_model_summary()
     # rnn.visualize_model(model, models_path, inference_model_name)
 
     x_initializer = np.zeros((1, 1, n_x))
@@ -128,7 +129,7 @@ if __name__ == '__main__':
     # print('x_test: ', type(x_test), x_test.shape, x_test )
     # print('x_initializer: ', type(x_initializer), x_initializer.shape, x_initializer)
 
-    prediction = rnn.compute_prediction(inference_model, batch_x_test, a_initializer, c_initializer)
+    prediction = rnn.compute_prediction(batch_x_test, a_initializer, c_initializer)
     rmse_test = rnn.evaluate_prediction(batch_y_test, np.array(prediction))
     print('RMSE of the test: ', rmse_test)
 

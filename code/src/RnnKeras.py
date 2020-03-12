@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
 import numpy as np
 
+
 class RnnKeras(SequentialModel):
     def __init__(self, n_a, n_y, n_x, Tx, m, Ty):
         # # print the tensorflow version
@@ -87,37 +88,37 @@ class RnnKeras(SequentialModel):
     #     return model
 
     def create_optimizer(self):
-        opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
-        return opt
+        slef.opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
+        return
 
-    def compile_model(self, model, opt_obj, loss_function, model_metrics):
-        model.compile(optimizer=opt_obj, loss=loss_function, metrics=model_metrics)
-        return model
+    def compile_model(self, loss_function, model_metrics):
+        self.model.compile(optimizer=self.opt, loss=loss_function, metrics=model_metrics)
+        return
 
     def fit_model(self, model, Xtrain, Ytrain, a0, c0, Xval, Yval, epochs, plot_loss_value_obj):
         #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
-        history = model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)),
+        history = self.model.fit([Xtrain, a0, c0], list(Ytrain), epochs=epochs, validation_data=(Xval, list(Yval)),
                             verbose=1)#, callbacks=[plot_loss_value_obj]
-        return model, history
+        return history
 
     def load_data(self, path):
         return
 
-    def save_model(self, model, file_path='', file_name='myModel'):
-        model.save('{}/{}.h5'.format(file_path, file_name))  # creates a HDF5 file 'my_model.h5'
+    def save_model(self, file_path='', file_name='myModel'):
+        self.model.save('{}/{}.h5'.format(file_path, file_name))  # creates a HDF5 file 'my_model.h5'
         return
 
-    def visualize_model(self, model, file_path='', file_name='myModel'):
-        plot_model(model, to_file='{}/{}.png'.format(file_path, file_name), show_shapes=True)
+    def visualize_model(self, file_path='', file_name='myModel'):
+        plot_model(self.model, to_file='{}/{}.png'.format(file_path, file_name), show_shapes=True)
         return
 
-    def delete_model(self, model):
-        del model  # deletes the existing model
+    def delete_model(self):
+        del self.model  # deletes the existing model
         return
 
     def load_model(self, file_path='', file_name='myModel'):
-        model = load_model('{}/{}.h5'.format(file_path, file_name))
-        return model
+        self.model = load_model('{}/{}.h5'.format(file_path, file_name))
+        return
 
     #######################
     #######################
@@ -170,10 +171,10 @@ class RnnKeras(SequentialModel):
             x = Lambda(lambda z: z)(out)
 
         # Step 3: Create model instance with the correct "inputs" and "outputs" (≈1 line)
-        inference_model = Model(inputs=[x0, a0, c0], outputs=outputs)
-        return inference_model
+        self.model = Model(inputs=[x0, a0, c0], outputs=outputs)
+        return
 
-    def compute_prediction(self, inference_model, x_initializer, a_initializer, c_initializer):
+    def compute_prediction(self, x_initializer, a_initializer, c_initializer):
         """
         Predicts the next value of values using the inference model.
 
@@ -190,13 +191,13 @@ class RnnKeras(SequentialModel):
 
         ### START CODE HERE ###
         # Step 1: Use your inference model to predict an output sequence given x_initializer, a_initializer and c_initializer.
-        pred = inference_model.predict([x_initializer, a_initializer, c_initializer])
+        prediction = self.model.predict([x_initializer, a_initializer, c_initializer])
 
-        return pred
+        return prediction
 
     def evaluate_prediction(self, y_test, y_prediction):
         # y_test, y_prediction (Ty, m, n)
-        evaluation=0.0
+        evaluation = 0.0
         Ty = np.size(y_test, 0)
         m = np.size(y_test, 1)
         for i in range(Ty):
@@ -205,6 +206,11 @@ class RnnKeras(SequentialModel):
                 evaluation = evaluation + np.sqrt(np.dot(err_t_m, err_t_m))
         evaluation = (1.0/Ty) * (1.0/m) * evaluation
         return evaluation
+
+    def provide_model_summary(self):
+        self.model.summary()
+        return
+
 
 
     # def predict_motion_new(self, model, x_initializer, a_initializer, c_initializer):

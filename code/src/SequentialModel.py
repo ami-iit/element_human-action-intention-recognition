@@ -15,6 +15,10 @@ class SequentialModel(ABC):
         self.Ty = Ty
         # number of training set
         self.m = m
+        # RNN model
+        self.model = None
+        # RNN optimizer
+        self.opt = None
 
     @abstractmethod
     def create_model(self):
@@ -52,3 +56,5 @@ class SequentialModel(ABC):
     def evaluate_prediction(self, y_test, y_prediction):
         pass
 
+    def return_model(self):
+        return self.model
