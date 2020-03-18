@@ -12,16 +12,16 @@ if __name__ == '__main__':
 #################################
 ### STEP: Define Hyper-parameters
 #################################
-    seq_length = 100
+    seq_length =100 #20 100
     Tx = seq_length-1
     Ty = Tx
-    n_a = 32
+    n_a = 32 # 5 32
     n_y = 2
     n_x = 2
-    m_train = 200
-    m_val = 20
-    m_test = 5
-    epochs = 50
+    m_train = 200 # 40 200
+    m_val = 20 #2 20
+    m_test = 5 #1 5
+    epochs = 50 #20 50
     training_model_name = 'train_myModelNew'
     inference_model_name = 'inference_myModel'
     models_path = 'models'
@@ -118,5 +118,6 @@ if __name__ == '__main__':
 
     if verbosity:
         y_test = np.reshape(batch_y_test[:, 0, :], (1, Ty, n_y))
+        prediction_reshaped = np.swapaxes(prediction, 0, 1)
         data.plot_data(batch_t_test[:, 1:], prediction_reshaped, 'prediction', Tx)
         data.plot_data(batch_t_test[:, 1:], y_test,         'y',      Tx)

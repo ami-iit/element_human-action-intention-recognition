@@ -56,12 +56,12 @@ class RnnKeras(SequentialModel):
         #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
         if verbosity:
             history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
-                                 validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)), verbose=verbosity)#, callbacks=[plot_loss_value_obj]
+                                 validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)), verbose=verbosity, callbacks=[plot_loss_value_obj])
             # TODO: fix the callback plot problem
         else:
             history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
                                      validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
-                                     verbose=verbosity)
+                                     verbose=verbosity, callbacks=[plot_loss_value_obj])
         return history
 
     def load_data(self, path):
@@ -219,24 +219,22 @@ class PlotLosses(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs={}):
         self.logs.append(logs)
-
-        # clear_output(wait=True)
         plt.clf()
-        plt.figure(figsize=self.figsize)
-
         for metric_id, metric in enumerate(self.base_metrics):
-            plt.subplot(1, len(self.base_metrics), metric_id + 1)
+            if metric == 'loss':
+                # plt.subplot(1, len(self.base_metrics), metric_id + 1)
 
-            plt.plot(range(1, len(self.logs) + 1),
-                     [log[metric] for log in self.logs],
-                     label="training")
-            if self.params['do_validation']:
                 plt.plot(range(1, len(self.logs) + 1),
-                         [log['val_' + metric] for log in self.logs],
-                         label="validation")
-            plt.title(translate_metric(metric))
-            plt.xlabel('epoch')
-            plt.legend(loc='center right')
+                         [log[metric] for log in self.logs],
+                         label="training")
+                if self.params['do_validation']:
+                    plt.plot(range(1, len(self.logs) + 1),
+                             [log['val_' + metric] for log in self.logs], '--',
+                             label="validation")
+                plt.title(translate_metric(metric))
+                plt.xlabel('epoch')
+                plt.legend(loc='center right')
 
-        # plt.tight_layout()
-        plt.show(block=True)
+        plt.pause(0.05)
+        plt.tight_layout()
+        plt.show()
