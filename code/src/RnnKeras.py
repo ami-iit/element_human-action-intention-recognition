@@ -208,9 +208,11 @@ def translate_metric(x):
 
 
 class PlotLosses(tf.keras.callbacks.Callback):
-    def __init__(self, figsize=None):
+    def __init__(self, figsize=None, file_path='', file_name='myModel'):
         super(PlotLosses, self).__init__()
         self.figsize = figsize
+        self.file_path = file_path
+        self.file_name = file_name
 
     def on_train_begin(self, logs={}):
 
@@ -219,10 +221,12 @@ class PlotLosses(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs={}):
         self.logs.append(logs)
+        # save the model
+        self.save_model(epoch, val_loss=logs['val_loss'])
+
         plt.clf()
         for metric_id, metric in enumerate(self.base_metrics):
             if metric == 'loss':
-                # plt.subplot(1, len(self.base_metrics), metric_id + 1)
 
                 plt.plot(range(1, len(self.logs) + 1),
                          [log[metric] for log in self.logs],
@@ -238,3 +242,8 @@ class PlotLosses(tf.keras.callbacks.Callback):
         plt.pause(0.05)
         plt.tight_layout()
         plt.show()
+
+    def save_model(self, epoch, val_loss):
+        # creates a HDF5 file 'my_model_epchNumber_valLoss.h5'
+        self.model.save('{}/{}_{}_{}.h5'.format(self.file_path, self.file_name, epoch, val_loss))
+        return

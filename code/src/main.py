@@ -5,10 +5,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 from RnnKeras import RnnKeras, PlotLosses
 from Data import Data
+import datetime
 import array as arr
 
 if __name__ == '__main__':
 
+    now = datetime.datetime.now()
+    year, month, day, hour, minute, second = now.year, now.month, now.day, now.hour, now.minute, now.second
+    time_now_string = '_{}_{}_{}_{}_{}_{}'.format(year, month, day, hour, minute, second)
 #################################
 ### STEP: Define Hyper-parameters
 #################################
@@ -22,9 +26,8 @@ if __name__ == '__main__':
     m_val = 20 #2 20
     m_test = 5 #1 5
     epochs = 50 #20 50
-    training_model_name = 'train_myModelNew'
-    inference_model_name = 'inference_myModel'
-    models_path = 'models'
+    model_name = 'model'
+    models_path = 'models' + time_now_string
     doTraining = True
     seed_number = 0
     ## use these for regression problem
@@ -74,7 +77,7 @@ if __name__ == '__main__':
 ### STEP: TRAINING RNN
 #################################
 
-    plot_losses = PlotLosses()
+    plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
     rnn = RnnKeras(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, Ty=Ty, m_train=m_train, m_val=m_val, m_test=m_test)
 
     if doTraining:
@@ -83,10 +86,10 @@ if __name__ == '__main__':
         rnn.compile_model(loss_function, model_metrics)
         history = rnn.fit_model(x_train=batch_x_train, y_train=batch_y_train, x_val=batch_x_val, y_val=batch_y_val,
                                 epochs=epochs, plot_loss_value_obj=plot_losses, verbosity=verbosity)
-        rnn.save_model(models_path, training_model_name)
-        rnn.visualize_model(models_path, training_model_name)
+        rnn.save_model(models_path, model_name)
+        rnn.visualize_model(models_path, model_name)
     else:
-        rnn.load_model(models_path, training_model_name)
+        rnn.load_model(models_path, model_name)
 
     if verbosity:
         rnn.provide_model_summary()
