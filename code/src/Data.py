@@ -73,12 +73,14 @@ class Data:
         # batch_y = np.reshape(batch_y, (np.size(batch_y, 1), np.size(batch_y, 0), np.size(batch_y, 2)))
         batch_y = np.swapaxes(batch_y, 0, 1)
 
+        # batch_x shape: (batch_size, Tx, nx)
+        # batch_y shape: (batch_size, ny, Ty)
         return batch_x, batch_y
 
     def load_data(self):
         return
 
-    def plot_data(self, batch_t=[], batch_x=[], explanation=[], Tx=0):  # , batch_x, batch_y
+    def plot_data(self, batch_t=[], batch_x=[], explanation=[]):  # , batch_x, batch_y
         # batch_x= list(range(1 , 5))
         print(np.size(batch_x, 0))
         print(np.size(batch_x, 1))

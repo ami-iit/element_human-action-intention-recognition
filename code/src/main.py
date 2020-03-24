@@ -17,8 +17,8 @@ if __name__ == '__main__':
 ### STEP: Define Hyper-parameters
 #################################
     seq_length =100 #20 100
-    Tx = seq_length-1
-    Ty = Tx
+    Tx = 1
+    Ty = seq_length-1
     n_a = 32 # 5 32
     n_y = 2
     n_x = 2
@@ -122,5 +122,5 @@ if __name__ == '__main__':
     if verbosity:
         y_test = np.reshape(batch_y_test[:, 0, :], (1, Ty, n_y))
         prediction_reshaped = np.swapaxes(prediction, 0, 1)
-        data.plot_data(batch_t_test[:, 1:], prediction_reshaped, 'prediction', Tx)
-        data.plot_data(batch_t_test[:, 1:], y_test,         'y',      Tx)
+        data.plot_data(batch_t_test[:, 1:], prediction_reshaped, 'prediction')
+        data.plot_data(batch_t_test[:, 1:], y_test,         'y')
