@@ -62,14 +62,11 @@ class Data:
         # shape: (batch_size, seq_length, output_dim)
         return batch_t, batch_x
 
-    def prepare_data(self, batch_data):
-        seq_length = np.size(batch_data, 1)
-        print('seq_length:', seq_length)
-        Tx = 1
-        # batch_x = batch_data[:, range(0,  seq_length- 1), :]
-        batch_x = batch_data[:, 0, :]
-        batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(batch_data, 2)))
-        batch_y = batch_data[:, range(1, seq_length), :]
+    def prepare_data(self, batch_data, Tx, Ty, Tx0= 0, Ty0=1):
+
+        batch_x = batch_data[:, range(Tx0,  Tx0+Tx), :]
+        # batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(batch_data, 2)))
+        batch_y = batch_data[:, range(Ty0, Ty0+Ty), :]
         # batch_y = np.reshape(batch_y, (np.size(batch_y, 1), np.size(batch_y, 0), np.size(batch_y, 2)))
         batch_y = np.swapaxes(batch_y, 0, 1)
 
@@ -105,7 +102,7 @@ class Data:
         :return: return void
         """
         # batch_x= list(range(1 , 5))
-        # swap the axis to have the shape ( m_test x Ty x n_y)
+        # swap the axis to have the shape ( m_test , Ty , n_y)
         batch_y_prediction_reshaped = np.swapaxes(batch_y_prediction, 0, 1)
         batch_y_test_reshaped = np.swapaxes(batch_y_test, 0, 1)
 
@@ -118,7 +115,7 @@ class Data:
             batch_t_test = list(range(1, np.size(batch_y_test_reshaped, 1)))
         else:
             # cut to have (m x Ty) shape
-            batch_t_test = batch_t[:, 1:]
+            batch_t_test = batch_t
 
         for j in range(n_outputs):
             plt.figure()

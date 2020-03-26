@@ -14,46 +14,48 @@ if __name__ == '__main__':
     year, month, day, hour, minute, second = now.year, now.month, now.day, now.hour, now.minute, now.second
     time_now_string = '_{}_{}_{}_{}_{}_{}'.format(year, month, day, hour, minute, second)
 #################################
-### STEP: Define Hyper-parameters
+#   STEP: Define Hyper-parameters
 #################################
-    seq_length =100 #20 100
-    Tx = 1
-    Ty = seq_length-1
-    n_a = 32 # 5 32
+    seq_length = 30  # 20 100
+    Tx = 7
+    Tx0 = 0  # this is used to prepare the data, not a part of rnn
+    Ty = 10
+    Ty0 = 7  # this is used to prepare the data, not a part of rnn
+    n_a = 6  # 5 32
     n_y = 2
     n_x = 2
-    m_train = 200 # 40 200
-    m_val = 20 #2 20
-    m_test = 5 #1 5
-    epochs = 50 #20 50
+    m_train = 40  # 40 200
+    m_val = 3  # 2 20
+    m_test = 1  # 1 5
+    epochs = 20  # 20 50
     model_name = 'model'
-    models_path = 'models' + time_now_string
+    models_path = 'models/models' + time_now_string
     doTraining = True
     seed_number = 0
-    ## use these for regression problem
+    # use these for regression problem
     loss_function = 'mean_squared_error'
     model_metrics = ['mse']
-    data_type ='sin'
+    data_type = 'sin'
     verbosity = False
-    ## for classification problem use other methods
+    # for classification problem use other methods
 
 #################################
-### STEP: DATA
+#   STEP: DATA
 #################################
     data = Data()
     # ---> Generate Data
     # Training set
     batch_t_train, batch_data_train = data.generate_sequence_data(m=m_train, seq_length=seq_length,
                                                                   seed_number=seed_number, data_type=data_type)
-    batch_x_train, batch_y_train = data.prepare_data(batch_data_train)
+    batch_x_train, batch_y_train = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0)
     # validation set
     batch_t_val, batch_data_val = data.generate_sequence_data(m=m_val, seq_length=seq_length,
                                                               seed_number=seed_number + 1, data_type=data_type)
-    batch_x_val, batch_y_val = data.prepare_data(batch_data_val)
+    batch_x_val, batch_y_val = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0)
     # Test Set
     batch_t_test, batch_data_test = data.generate_sequence_data(m=m_test, seq_length=seq_length,
                                                                 seed_number=seed_number+2, data_type=data_type)
-    batch_x_test, batch_y_test = data.prepare_data(batch_data_test)
+    batch_x_test, batch_y_test = data.prepare_data(batch_data_test, Tx, Ty, Tx0, Ty0)
 
     # --> Print & Plot Data
     if verbosity:
@@ -74,7 +76,7 @@ if __name__ == '__main__':
         data.plot_data(batch_t_test, batch_data_test, 'x:test')
 
 #################################
-### STEP: TRAINING RNN
+#   STEP: TRAINING RNN
 #################################
 
     plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
@@ -105,10 +107,11 @@ if __name__ == '__main__':
         plt.show()
 
 #################################
-### STEP: PREDICTION
+#   STEP: PREDICTION
 #################################
 
     prediction = rnn.compute_prediction(batch_x_test)
+    prediction = np.reshape(prediction, (Ty, m_test, n_y))  # in case  prediction does not have correct shaping
     rmse_test = rnn.evaluate_prediction(batch_y_test, np.array(prediction))
     print('RMSE of the test: ', rmse_test)
 
@@ -116,7 +119,7 @@ if __name__ == '__main__':
     prediction = np.array(prediction)
     batch_t_test = np.array(batch_t_test)
 
-    data.plot_test_prediction_data(batch_t_test, batch_y_test, prediction,
+    data.plot_test_prediction_data(batch_t_test[:, Ty0:Ty0+Ty], batch_y_test, prediction,
                                    'test (line), prediction (dashed lines)')
 
     if verbosity:

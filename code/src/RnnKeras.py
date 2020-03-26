@@ -12,6 +12,8 @@ from tensorflow.keras.utils import plot_model
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
 import numpy as np
+from pathlib import Path
+
 
 
 class RnnKeras(SequentialModel):
@@ -54,20 +56,16 @@ class RnnKeras(SequentialModel):
 
     def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity):
         #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
-        if verbosity:
-            history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
-                                 validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)), verbose=verbosity, callbacks=[plot_loss_value_obj])
-            # TODO: fix the callback plot problem
-        else:
-            history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
-                                     validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
-                                     verbose=verbosity, callbacks=[plot_loss_value_obj])
+        history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
+                                validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
+                                verbose=verbosity, callbacks=[plot_loss_value_obj])
         return history
 
     def load_data(self, path):
         return
 
     def save_model(self, file_path='', file_name='myModel'):
+        Path(file_path).mkdir(parents=True, exist_ok=True)
         self.model.save('{}/{}.h5'.format(file_path, file_name))  # creates a HDF5 file 'my_model.h5'
         return
 
@@ -114,7 +112,7 @@ class RnnKeras(SequentialModel):
         outputs = []
 
         if self.Tx == 1:
-            print('One-to-one (Tx=Ty=1), One-to-many (Tx=1, Ty>1)')
+            print('One-to-one (Tx=Ty=1) or One-to-many (Tx=1, Ty>1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
             x = Lambda(lambda z: z)(X)
             # One-to-one (Tx=Ty=1), One-to-many (Tx=1, Ty>1)
             # Step 2: Loop over Ty and generate a value at every time step
@@ -137,7 +135,7 @@ class RnnKeras(SequentialModel):
 
         else:
             if self.Ty == 1:
-                print('Many-to-one  (Tx>1, Ty=1)')
+                print('Many-to-one  (Tx>1, Ty=1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
                 # Many-to-one  (Tx>1, Ty=1)
                 for t in range(self.Tx):
                     x = Lambda(lambda z: z[:, t, :])(X)
@@ -152,7 +150,7 @@ class RnnKeras(SequentialModel):
                 outputs = outputs + [out]
 
             elif self.Tx == self.Ty:
-                print('Many-to-many (Tx=Ty>1)')
+                print('Many-to-many (Tx=Ty>1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
                 # Many-to-many (Tx=Ty>1)
                 # Step 2: Loop over Ty and generate a value at every time step
                 for t in range(self.Ty):
@@ -168,23 +166,28 @@ class RnnKeras(SequentialModel):
                     outputs = outputs + [out]
 
             else:
-                print('Many-to-many (Tx!=Ty>1)')
+                print('Many-to-many (Tx!=Ty>1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
                 # Many-to-many (Tx!=Ty>1)
-                for t in range(self.Tx):
-                    x = Lambda(lambda z: z[:, t, :])(X)
+                for tx in range(self.Tx):
+                    x = Lambda(lambda z: z[:, tx, :])(X)
                     x = self.reshapor(x)
-                    # Step 2: Perform one step of LSTM_cell (≈1 line)
+                    # Step 2: Perform one step of LSTM_cell
                     a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
 
-                for t in range(self.Ty):
+                out = self.densor(a)
+                x = Lambda(lambda z: z)(out)
+                for ty in range(self.Ty):
+                    x = self.reshapor(x)
                     # Step 3: Perform one step of LSTM_cell (≈1 line)
-                    a, _, c = self.LSTM_cell(initial_state=[a, c])
+                    a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
 
                     # Step 3: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
                     out = self.densor(a)
 
                     # Step 4: Append the prediction "out" to "outputs". out.shape = (None, 78) (≈1 line)
                     outputs = outputs + [out]
+
+                    x = Lambda(lambda z: z)(out)
 
         # Step 3: Create model instance with the correct "inputs" and "outputs" (≈1 line)
         self.model = Model(inputs=[X, a0, c0], outputs=outputs)
@@ -220,7 +223,6 @@ class RnnKeras(SequentialModel):
     def provide_model_summary(self):
         self.model.summary()
         return
-
 
 
     # def predict_motion_new(self, model, x_initializer, a_initializer, c_initializer):
@@ -277,7 +279,8 @@ class PlotLosses(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
         self.logs.append(logs)
         # save the model
-        self.save_model(epoch, val_loss=logs['val_loss'])
+        # print(logs)
+        # self.save_model(epoch, val_loss=logs['val_loss'])
 
         plt.clf()
         for metric_id, metric in enumerate(self.base_metrics):
@@ -300,5 +303,6 @@ class PlotLosses(tf.keras.callbacks.Callback):
 
     def save_model(self, epoch, val_loss):
         # creates a HDF5 file 'my_model_epchNumber_valLoss.h5'
+        Path(self.file_path).mkdir(parents=True, exist_ok=True)
         self.model.save('{}/{}_{}_{}.h5'.format(self.file_path, self.file_name, epoch, val_loss))
         return
