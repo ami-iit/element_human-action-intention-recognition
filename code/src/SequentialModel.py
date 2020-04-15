@@ -62,7 +62,7 @@ class SequentialModel(ABC):
         pass
 
     @abstractmethod
-    def compute_prediction(self, inference_model, x_test):
+    def compute_prediction(self, x_test, data_type):
         pass
 
     @abstractmethod

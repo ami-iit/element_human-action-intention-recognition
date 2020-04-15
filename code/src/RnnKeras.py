@@ -15,7 +15,6 @@ import numpy as np
 from pathlib import Path
 
 
-
 class RnnKeras(SequentialModel):
     def __init__(self, n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test):
         # # print the tensorflow version
@@ -44,7 +43,7 @@ class RnnKeras(SequentialModel):
         ## utilities
         self.reshapor = Reshape((1, self.n_x))
         self.LSTM_cell = LSTM(self.n_a, return_state=True)
-        self.densor = Dense(self.n_y) #, activation='softmax'
+        self.densor = Dense(self.n_y)  # , activation='softmax'
 
     def create_optimizer(self):
         self.opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
@@ -57,8 +56,8 @@ class RnnKeras(SequentialModel):
     def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity):
         #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
         history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
-                                validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
-                                verbose=verbosity, callbacks=[plot_loss_value_obj])
+                                 validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
+                                 verbose=True, callbacks=[plot_loss_value_obj])
         return history
 
     def load_data(self, path):
@@ -195,7 +194,7 @@ class RnnKeras(SequentialModel):
         print('RNNKeras::create_model() finished')
         return
 
-    def compute_prediction(self, x_test):
+    def compute_prediction(self, x, data_type='test'):
         """
         Predicts the next value of values using the inference model.
 
@@ -205,7 +204,15 @@ class RnnKeras(SequentialModel):
         results -- numpy-array of shape (Ty, 78), matrix of one-hot vectors representing the values generated
         indices -- numpy-array of shape (Ty, 1), matrix of indices representing the values generated
         """
-        prediction = self.model.predict([x_test, self.a0_test, self.c0_test])
+        if data_type == 'test':
+            prediction = self.model.predict([x, self.a0_test, self.c0_test])
+        elif data_type == 'validation':
+            prediction = self.model.predict([x, self.a0_val, self.c0_val])
+        elif data_type == 'training':
+            prediction = self.model.predict([x, self.a0_train, self.c0_train])
+        else:
+            print("not implemented!")
+
         return prediction
 
     def evaluate_prediction(self, y_test, y_prediction):
@@ -217,18 +224,18 @@ class RnnKeras(SequentialModel):
             for j in range(m):
                 err_t_m = y_test[i, j, :] - y_prediction[i, j, :]
                 evaluation = evaluation + np.sqrt(np.dot(err_t_m, err_t_m))
-        evaluation = (1.0/Ty) * (1.0/m) * evaluation
+        evaluation = (1.0 / Ty) * (1.0 / m) * evaluation
         return evaluation
 
     def provide_model_summary(self):
         self.model.summary()
         return
 
-
     # def predict_motion_new(self, model, x_initializer, a_initializer, c_initializer):
     #     x_initializer = self.reshapor(x_initializer)
     #     pred = model.predict([x_initializer, a_initializer, c_initializer])
     #     return pred
+
 
 #
 # class PlotLosses(tf.keras.callbacks.Callback):
@@ -280,7 +287,7 @@ class PlotLosses(tf.keras.callbacks.Callback):
         self.logs.append(logs)
         # save the model
         # print(logs)
-        # self.save_model(epoch, val_loss=logs['val_loss'])
+        self.save_model(epoch, val_loss=logs['val_loss'])
 
         plt.clf()
         for metric_id, metric in enumerate(self.base_metrics):
@@ -302,7 +309,31 @@ class PlotLosses(tf.keras.callbacks.Callback):
         plt.show()
 
     def save_model(self, epoch, val_loss):
-        # creates a HDF5 file 'my_model_epchNumber_valLoss.h5'
+        # creates a HDF5 file 'my_model_epochNumber_valLoss.h5'
         Path(self.file_path).mkdir(parents=True, exist_ok=True)
         self.model.save('{}/{}_{}_{}.h5'.format(self.file_path, self.file_name, epoch, val_loss))
         return
+
+
+class Uncertainty:
+    def __init__(self):
+        return
+
+    def compute_uncertainty(self, y, y_predict):
+        """
+        :param y:  real output (Ty x m_xx x n_y)
+        :param y_predict: predicted output (Ty x m_xx x n_y)
+        :return: y_uncertainty: uncertainty of the prediction (Ty x m_xx x n_y)
+        """
+        y_uncertainty = []
+        for i in range(0, np.size(y, 0)):
+            temp_uncertainty = []
+            for j in range(0, np.size(y, 1)):
+                temp_uncertainty2 = []
+                for k in range(0, np.size(y,2)):
+                    temp_uncertainty3 = (y[i, j, k] - y_predict[i, j, k]) ** 2
+                    temp_uncertainty2.append(temp_uncertainty3)
+                temp_uncertainty.append(temp_uncertainty2)
+            y_uncertainty.append(temp_uncertainty)
+
+        return np.array(y_uncertainty)

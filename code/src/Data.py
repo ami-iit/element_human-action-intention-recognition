@@ -53,8 +53,62 @@ class Data:
                 # print('x1+x2', x1+x2)
 
                 # batch_x.append(x_)
+            elif data_type=='amplitude-modulation':
+                timeSteps= np.linspace(0.0, np.pi/2.0, seq_length)
+                wm = 5.0
+                wc = 4.0
+                mu = 0.0
+                x = []
+                dx=[]
+                for i in range(0, seq_length):
+                    t = timeSteps[i]
+                    m_t = np.sin(wm * t)
+                    d_m_t = wm * np.cos(wm * t)
+                    f_t = m_t * np.sin(wc * t)
+                    d_f_t = d_m_t * np.sin(wc * t) + m_t* wc* np.cos(wc*t)
+                    sigma = np.sqrt(0.02 + 0.02 * (1 - m_t) ** 2.0)
+                    epsilon = np.random.normal(mu, sigma, 1)
+                    y = f_t + epsilon
+                    dy = d_f_t + epsilon
+                    x.append(y)
+                    dx.append(dy)
+                x = np.array(x)
+                dx = np.array(dx)
+
+                x = x.ravel()
+                dx = dx.ravel()
+
+            elif data_type=='amplitude-modulation-noNoise':
+                timeSteps= np.linspace(0.0, np.pi/2.0, seq_length)
+                wm = 5.0
+                wc = 4.0
+                mu = 0.0
+                x = []
+                dx=[]
+                for i in range(0, seq_length):
+                    t = timeSteps[i]
+                    m_t = np.sin(wm * t)
+                    d_m_t = wm * np.cos(wm * t)
+                    f_t = m_t * np.sin(wc * t)
+                    d_f_t = d_m_t * np.sin(wc * t) + m_t* wc* np.cos(wc*t)
+                    sigma = np.sqrt(0.02 + 0.02 * (1 - m_t) ** 2.0)
+                    epsilon = np.random.normal(mu, sigma, 1)
+                    y = f_t
+                    dy = d_f_t
+                    x.append(y)
+                    dx.append(dy)
+                x = np.array(x)
+                dx = np.array(dx)
+
+                x = x.ravel()
+                dx = dx.ravel()
+
+
             batch_t.append(timeSteps)
+            # if (data_type == 'sin') or (data_type =='linear'):
             batch_x.append(np.array([x, dx]).T)  # [x, dx]
+            # else:
+            #     batch_x.append(np.array([x]).T)  # [x, dx]
             # batch_dx.append((a + 0.1 * rand) * dx1 + (b + 0.1 * rand) * dx2)
         batch_x = np.array(batch_x)
         batch_dx = np.array(batch_dx)
@@ -125,4 +179,22 @@ class Data:
                 plt.plot(batch_t_test[i], batch_y_prediction_reshaped[i, :, j], '--')
             plt.ylabel('output {}'.format(str(j)))
             plt.xlabel('time')
+            plt.show()
+
+    def plot_data_adv(self, data=[], idx_time=0, idx_features=0, idx_no_samples=0 ):  # no_samples= m
+        n_outputs = np.size(data, idx_features)
+        time = list(range(0, np.size(data, idx_time)))
+
+        # data_swapped : [idx_time, idx_no_samples, idx_features]
+        data_swapped = np.swapaxes(data, 0, idx_time)
+        if idx_no_samples == 0:
+            idx_no_samples = idx_time
+        data_swapped = np.swapaxes(data_swapped, 1, idx_no_samples)
+
+        for j in range(n_outputs):
+            plt.figure()
+            for i in range(0, np.size(data_swapped, 1)):
+                plt.plot(time, data_swapped[:, i, j])
+            plt.ylabel('output {}'.format(str(j)))
+            plt.xlabel('time step')
             plt.show()
