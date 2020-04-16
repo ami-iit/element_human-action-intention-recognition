@@ -17,23 +17,24 @@ if __name__ == '__main__':
     #   STEP: Define Hyper-parameters
     #################################
     seq_length = 100  # 20 100
-    Tx = 40
+    Tx = 1
     Tx0 = 0  # this is used to prepare the data, not a part of rnn
-    Ty = 60
-    Ty0 = 40  # this is used to prepare the data, not a part of rnn
+    Ty = 99
+    Ty0 = 1  # this is used to prepare the data, not a part of rnn
     n_a = 32  # 5 32
     n_y = 2
     n_x = 2
     m_train = 200  # 40 200
     m_val = 20  # 2 20
     m_test = 1  # 1 5
-    epochs = 50  # 20 50
+    epochs = 100  # 20 50
     model_name = 'model'
-    # models_path = 'models/models' + time_now_string
+    models_path = 'models/models' + time_now_string
     # models_path = 'models/models_2020_3_26_19_10_54'# sin signal learned
-    models_path = 'models/models_2020_4_14_19_46_56'# amplitude-modulation signal learned
-    doTraining = False
+    # models_path = 'models/models_2020_4_14_19_46_56'  # amplitude-modulation signal learned
+    doTraining = True
     learnUncertainty = True
+    predictFuture = True
     seed_number = 0
     # use these for regression problem
     loss_function = 'mean_squared_error'
@@ -112,18 +113,18 @@ if __name__ == '__main__':
     #################################
     #   STEP: PREDICTION
     #################################
+    if predictFuture:
+        prediction = rnn.compute_prediction(batch_x_test)
+        prediction = np.reshape(prediction, (Ty, m_test, n_y))  # in case  prediction does not have correct shaping
+        rmse_test = rnn.evaluate_prediction(batch_y_test, np.array(prediction))
+        print('RMSE of the test: ', rmse_test)
 
-    prediction = rnn.compute_prediction(batch_x_test)
-    prediction = np.reshape(prediction, (Ty, m_test, n_y))  # in case  prediction does not have correct shaping
-    rmse_test = rnn.evaluate_prediction(batch_y_test, np.array(prediction))
-    print('RMSE of the test: ', rmse_test)
+        # change the type of value from list to array
+        prediction = np.array(prediction)
+        batch_t_test = np.array(batch_t_test)
 
-    # change the type of value from list to array
-    prediction = np.array(prediction)
-    batch_t_test = np.array(batch_t_test)
-
-    data.plot_test_prediction_data(batch_t_test[:, Ty0:Ty0 + Ty], batch_y_test, prediction,
-                                   'test (line), prediction (dashed lines)')
+        data.plot_test_prediction_data(batch_t_test[:, Ty0:Ty0 + Ty], batch_y_test, prediction,
+                                       'test (line), prediction (dashed lines)')
 
     if verbosity:
         y_test = np.reshape(batch_y_test[:, 0, :], (1, Ty, n_y))
@@ -136,43 +137,48 @@ if __name__ == '__main__':
         ##
         # Compute the data sets for uncertainty prediction
         ##
-        batch_t_train_noNoise, batch_data_train_noNoise = data.generate_sequence_data(m=m_train, seq_length=seq_length,
-                                                                      seed_number=seed_number, data_type='amplitude-modulation-noNoise')
-        batch_x_train_noNoise, batch_y_train_noNoise = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0)
-        # validation set
-        batch_t_val_noNoise, batch_data_val_noNoise = data.generate_sequence_data(m=m_val, seq_length=seq_length,
-                                                                  seed_number=seed_number + 1, data_type='amplitude-modulation-noNoise')
-        batch_x_val_noNoise, batch_y_val_noNoise = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0)
-        # Test Set
-        batch_t_test_noNoise, batch_data_test_noNoise = data.generate_sequence_data(m=m_test, seq_length=seq_length,
-                                                                    seed_number=seed_number + 2, data_type='amplitude-modulation-noNoise')
-        batch_x_test_noNoise, batch_y_test_noNoise = data.prepare_data(batch_data_test, Tx, Ty, Tx0, Ty0)
+        # ## perfect output ##
+        # # training set
+        # batch_t_train_noNoise, batch_data_train_noNoise = data.generate_sequence_data(m=m_train, seq_length=seq_length,
+        #                                                                               seed_number=seed_number,
+        #                                                                               data_type='amplitude-modulation-noNoise')
+        # batch_x_train_noNoise, batch_y_train_noNoise = data.prepare_data(batch_data_train_noNoise, Tx, Ty, Tx0, Ty0)
+        # # validation set
+        # batch_t_val_noNoise, batch_data_val_noNoise = data.generate_sequence_data(m=m_val, seq_length=seq_length,
+        #                                                                           seed_number=seed_number + 1,
+        #                                                                           data_type='amplitude-modulation-noNoise')
+        # batch_x_val_noNoise, batch_y_val_noNoise = data.prepare_data(batch_data_val_noNoise, Tx, Ty, Tx0, Ty0)
+        # # Test Set
+        # batch_t_test_noNoise, batch_data_test_noNoise = data.generate_sequence_data(m=m_test, seq_length=seq_length,
+        #                                                                             seed_number=seed_number + 2,
+        #                                                                             data_type='amplitude-modulation-noNoise')
+        # batch_x_test_noNoise, batch_y_test_noNoise = data.prepare_data(batch_data_test_noNoise, Tx, Ty, Tx0, Ty0)
+        #
+        # batch_y_uncertainty_train = uncertainty.compute_uncertainty(batch_y_train, batch_y_train_noNoise)
+        # batch_y_uncertainty_val = uncertainty.compute_uncertainty(batch_y_val, batch_y_val_noNoise)
+        # batch_y_uncertainty_test = uncertainty.compute_uncertainty(batch_y_test, batch_y_test_noNoise)
 
-        batch_y_uncertainty_train = uncertainty.compute_uncertainty(batch_y_train, batch_y_train_noNoise)
-        batch_y_uncertainty_val = uncertainty.compute_uncertainty(batch_y_val, batch_y_val_noNoise)
-        batch_y_uncertainty_test = uncertainty.compute_uncertainty(batch_y_test, batch_y_test_noNoise)
+        # compute uncertainty for training set
+        batch_y_predict_train = rnn.compute_prediction(batch_x_train, 'training')
+        batch_y_predict_train = np.reshape(batch_y_predict_train, (Ty, m_train, n_y))
+        batch_y_uncertainty_train = uncertainty.compute_uncertainty(batch_y_train, batch_y_predict_train)
 
-        # # compute uncertainty for training set
-        # batch_y_predict_train = rnn.compute_prediction(batch_x_train, 'training')
-        # batch_y_predict_train = np.reshape(batch_y_predict_train, (Ty, m_train, n_y))
-        # batch_y_uncertainty_train = uncertainty.compute_uncertainty(batch_y_train, batch_y_predict_train)
-        #
-        #
-        # # compute uncertainty for validation set
-        # batch_y_predict_val = rnn.compute_prediction(batch_x_val, 'validation')
-        # batch_y_predict_val = np.reshape(batch_y_predict_val, (Ty, m_val, n_y))
-        # batch_y_uncertainty_val = uncertainty.compute_uncertainty(batch_y_val, batch_y_predict_val)
-        #
-        # # compute uncertainty for test set
-        # batch_y_predict_test = rnn.compute_prediction(batch_x_test, 'test')
-        # batch_y_predict_test = np.reshape(batch_y_predict_test, (Ty, m_test, n_y))
-        # batch_y_uncertainty_test = uncertainty.compute_uncertainty(batch_y_test, batch_y_predict_test)
+        # compute uncertainty for validation set
+        batch_y_predict_val = rnn.compute_prediction(batch_x_val, 'validation')
+        batch_y_predict_val = np.reshape(batch_y_predict_val, (Ty, m_val, n_y))
+        batch_y_uncertainty_val = uncertainty.compute_uncertainty(batch_y_val, batch_y_predict_val)
+
+        # compute uncertainty for test set
+        batch_y_predict_test = rnn.compute_prediction(batch_x_test, 'test')
+        batch_y_predict_test = np.reshape(batch_y_predict_test, (Ty, m_test, n_y))
+        batch_y_uncertainty_test = uncertainty.compute_uncertainty(batch_y_test, batch_y_predict_test)
 
         n_y_uncertainty = n_y
         # create the data structures
         model_name_uncertainty = 'uncertainty' + model_name
         plot_losses_uncertainty = PlotLosses(file_path=models_path, file_name=model_name)
-        rnn_uncertainty = RnnKeras(n_a=n_a, n_y=n_y_uncertainty, n_x=n_x, Tx=Tx, Ty=Ty, m_train=m_train, m_val=m_val, m_test=m_test)
+        rnn_uncertainty = RnnKeras(n_a=n_a, n_y=n_y_uncertainty, n_x=n_x, Tx=Tx, Ty=Ty, m_train=m_train, m_val=m_val,
+                                   m_test=m_test)
 
         # learn the model
         rnn_uncertainty.create_model()
@@ -187,7 +193,8 @@ if __name__ == '__main__':
 
         # prediction on test set
         prediction_uncertainty = rnn_uncertainty.compute_prediction(batch_x_test)
-        prediction_uncertainty = np.reshape(prediction_uncertainty, (Ty, m_test, n_y_uncertainty))  # in case  prediction does not have correct shaping
+        prediction_uncertainty = np.reshape(prediction_uncertainty, (
+            Ty, m_test, n_y_uncertainty))  # in case  prediction does not have correct shaping
         rmse_test_uncertainty = rnn.evaluate_prediction(batch_y_uncertainty_test, np.array(prediction_uncertainty))
         print('RMSE of the uncertainty test: ', rmse_test_uncertainty)
 

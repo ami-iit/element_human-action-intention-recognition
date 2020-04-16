@@ -32,6 +32,7 @@ class Data:
 
             ## sine/cosine funcitons
             if data_type == 'sin':
+                print('data_type: (1) ', data_type)
                 timeSteps = np.linspace(0.0 * math.pi + rand, 3.0 * math.pi + rand, seq_length)
                 x1 = np.sin(timeSteps)
                 x2 = np.cos(timeSteps)
@@ -44,6 +45,7 @@ class Data:
 
             # linear data
             elif data_type == 'linear':
+                print('data_type: (2) ', data_type)
                 timeSteps = np.linspace(0.0, 10.0, seq_length)
                 x = (2 + 0.1 * rand) * timeSteps
                 dx = (2 + 0.1 * rand) * (timeSteps * 0.0 + 1)
@@ -54,6 +56,7 @@ class Data:
 
                 # batch_x.append(x_)
             elif data_type=='amplitude-modulation':
+                print('data_type: (3) ', data_type)
                 timeSteps= np.linspace(0.0, np.pi/2.0, seq_length)
                 wm = 5.0
                 wc = 4.0
@@ -67,9 +70,11 @@ class Data:
                     f_t = m_t * np.sin(wc * t)
                     d_f_t = d_m_t * np.sin(wc * t) + m_t* wc* np.cos(wc*t)
                     sigma = np.sqrt(0.02 + 0.02 * (1 - m_t) ** 2.0)
+                    sigma2 = np.sqrt((0.02 + 0.02 * (1 - m_t) ** 2.0)/2.0)
                     epsilon = np.random.normal(mu, sigma, 1)
+                    epsilon2 = np.random.normal(mu, sigma2, 1)
                     y = f_t + epsilon
-                    dy = d_f_t + epsilon
+                    dy = d_f_t + epsilon2
                     x.append(y)
                     dx.append(dy)
                 x = np.array(x)
@@ -78,7 +83,8 @@ class Data:
                 x = x.ravel()
                 dx = dx.ravel()
 
-            elif data_type=='amplitude-modulation-noNoise':
+            elif data_type =='amplitude-modulation-noNoise':
+                print('data_type: (4) ', data_type)
                 timeSteps= np.linspace(0.0, np.pi/2.0, seq_length)
                 wm = 5.0
                 wc = 4.0
