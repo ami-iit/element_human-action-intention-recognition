@@ -25,13 +25,23 @@ class SequentialModel(ABC):
         self.model = None
         # RNN optimizer
         self.opt = None
+        # number of layers
+        self.m_layers = len(n_a)
 
-        self.a0_train = np.zeros((m_train, n_a))
-        self.c0_train = np.zeros((m_train, n_a))
-        self.a0_val = np.zeros((m_val, n_a))
-        self.c0_val = np.zeros((m_val, n_a))
-        self.a0_test = np.zeros((m_test, n_a))
-        self.c0_test = np.zeros((m_test, n_a))
+        self.a0_train =[]
+        self.c0_train =[]
+        self.a0_val   =[]
+        self.c0_val   =[]
+        self.a0_test  = []
+        self.c0_test  = []
+
+        for i in range(self.m_layers):
+            self.a0_train.append(np.zeros((m_train, n_a[i])))
+            self.c0_train.append(np.zeros((m_train, n_a[i])))
+            self.a0_val.append(np.zeros((m_val, n_a[i])))
+            self.c0_val.append(np.zeros((m_val, n_a[i])))
+            self.a0_test.append(np.zeros((m_test, n_a[i])))
+            self.c0_test.append(np.zeros((m_test, n_a[i])))
 
     @abstractmethod
     def create_model(self):

@@ -3,6 +3,7 @@ import tensorflow as tf
 from sklearn import metrics
 from tensorflow.keras.models import load_model, Model
 from tensorflow.keras.layers import Dense, Activation, Dropout, Input, LSTM, Reshape, Lambda, RepeatVector
+from tensorflow.keras.layers import Concatenate
 from keras.initializers import glorot_uniform
 from keras.utils import to_categorical
 from tensorflow.keras.optimizers import Adam
@@ -41,8 +42,20 @@ class RnnKeras(SequentialModel):
         # self.time = 0.0
 
         ## utilities
+
+
+        self.lambda_input = Lambda(lambda z: z)
+        self.lambda_layer1 = Lambda( lambda z: z)
+
         self.reshapor = Reshape((1, self.n_x))
-        self.LSTM_cell = LSTM(self.n_a, return_state=True)
+        self.reshapor2 = Reshape((1, self.n_a[0]))
+        # self.LSTM_cell=[]
+        # for i in range(self.m_layers):
+        #     self.LSTM_cell.append(LSTM(self.n_a[i], return_state=True))
+
+        self.LSTM_cell = LSTM(self.n_a[0], return_state=True, name='lstm_{}_'.format(0))
+        self.LSTM_cell1 = LSTM(self.n_a[1], return_state=True, name='lstm_{}_'.format(1))
+
         self.densor = Dense(self.n_y)  # , activation='softmax'
 
     def create_optimizer(self):
@@ -99,12 +112,25 @@ class RnnKeras(SequentialModel):
 
         # Define the input of your model with a shape
         X = Input(shape=(self.Tx, self.n_x))
+        X1= Input(shape=(self.Tx, self.n_a[0]))
 
         #  initial hidden state for the decoder LSTM
-        a0 = Input(shape=(self.n_a,), name='a0')
-        c0 = Input(shape=(self.n_a,), name='c0')
+        # a0=[]
+        # c0=[]
+        # for i in range(self.m_layers):
+        #     a0.append(Input(shape=(self.n_a[i],), name='a0_{}'.format(i)))
+        #     c0.append(Input(shape=(self.n_a[i],), name='c0_{}'.format(i)))
+        a0 = Input(shape=(self.n_a[0],), name='a0_{}'.format(0))
+        c0 = Input(shape=(self.n_a[0],), name='c0_{}'.format(0))
+        a1 = Input(shape=(self.n_a[1],), name='a0_{}'.format(1))
+        c1 = Input(shape=(self.n_a[1],), name='c0_{}'.format(1))
         a = a0
         c = c0
+
+        a2 = a1
+        c2 = c1
+
+
 
         ### START CODE HERE ###
         # Step 1: Create an empty list of "outputs" to later store your predicted values (≈1 line)
@@ -113,15 +139,52 @@ class RnnKeras(SequentialModel):
         if self.Tx == 1:
             print('One-to-one (Tx=Ty=1) or One-to-many (Tx=1, Ty>1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
             x = Lambda(lambda z: z)(X)
+            x1 = Lambda(lambda z: z)(X1)
             # One-to-one (Tx=Ty=1), One-to-many (Tx=1, Ty>1)
             # Step 2: Loop over Ty and generate a value at every time step
             for t in range(self.Ty):
                 x = self.reshapor(x)
-                # Step 2.A: Perform one step of LSTM_cell (≈1 line)
+                x1 = self.reshapor(x1)
+
+                # do the process for each layer
+                # for l in range(self.m_layers):
+                #     # Step 2.A: Perform one step of LSTM_cell (≈1 line)
+                #     if l > 0:
+                #         xx = Lambda(lambda s: s)(a)
+                #         xx = self.reshapor2(xx)
+                #         # a[l], _, c[l] = self.LSTM_cell[l](inputs=xx, initial_state=[a[l], c[l]])
+                #
+                #         a1, _, c1 = self.LSTM_cell1(inputs=x, initial_state=[a, c])
+                #     else:
+                #         #a[l], _, c[l] = self.LSTM_cell[l](inputs=x, initial_state=[a[l], c[l]])
+                #         a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
+
+
+                #######
+                # a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
                 a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
 
+                # xx = Lambda(lambda z: z)(a)
+                xx = self.lambda_layer1(a)
+                xx = self.reshapor2(xx)
+                init_states_layer2 = [a2, c2]
+                # a1, _, c1 = self.LSTM_cell1(inputs=xx, initial_state=[a1, c1])
+                a2, _, c2 = self.LSTM_cell1(xx, initial_state=init_states_layer2) #  a1, _, c1 = self.LSTM_cell1(xx)#
+
+
+                #######
+                # a_prime = a[l]
+                    # c_prime = c[l]
+
+
+                    #a_prime, _, c_prime = self.LSTM_cell[l](inputs=x, initial_state=[a_prime, c_prime])
+                    # a[l] = a_prime
+                    # c[l] = c_prime
                 # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
-                out = self.densor(a)
+                # a[-1] last element of the list
+                # out = self.densor(a[-1])
+                # out = self.densor(a)
+                out = self.densor(a2)
 
                 # Step 2.C: Append the prediction "out" to "outputs". out.shape = (None, 78) (≈1 line)
                 outputs = outputs + [out]
@@ -130,7 +193,8 @@ class RnnKeras(SequentialModel):
                 # Select the next value according to "out",
                 # Set "x" to be the one-hot representation of the selected value
                 # See instructions above.
-                x = Lambda(lambda z: z)(out)
+                # x = Lambda(lambda z: z)(out)
+                x = self.lambda_input(out)
 
         else:
             if self.Ty == 1:
@@ -189,7 +253,12 @@ class RnnKeras(SequentialModel):
                     x = Lambda(lambda z: z)(out)
 
         # Step 3: Create model instance with the correct "inputs" and "outputs" (≈1 line)
-        self.model = Model(inputs=[X, a0, c0], outputs=outputs)
+        # self.model = Model(inputs=[X, a0, c0], outputs=outputs)
+        # a_concat = Concatenate([a0, a1])
+        # c_concat = Concatenate([c0, c1])
+
+        self.model = Model(inputs=[X, a0, a1, c0, c1], outputs=outputs)
+        # self.model = Model(inputs=[X, a_concat, c_concat], outputs=outputs)
 
         print('RNNKeras::create_model() finished')
         return

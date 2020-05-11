@@ -19,9 +19,9 @@ if __name__ == '__main__':
     seq_length = 100  # 20 100
     Tx = 1
     Tx0 = 0  # this is used to prepare the data, not a part of rnn
-    Ty = 99
+    Ty = 4
     Ty0 = 1  # this is used to prepare the data, not a part of rnn
-    n_a = 32  # 5 32
+    n_a = [2, 2]#[3, 2]#[32, 16]  # 5 32
     n_y = 2
     n_x = 2
     m_train = 200  # 40 200
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # models_path = 'models/models_2020_3_26_19_10_54'# sin signal learned
     # models_path = 'models/models_2020_4_14_19_46_56'  # amplitude-modulation signal learned
     doTraining = True
-    learnUncertainty = True
+    learnUncertainty = False
     predictFuture = True
     seed_number = 0
     # use these for regression problem
