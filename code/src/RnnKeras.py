@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
 import numpy as np
 from pathlib import Path
+import copy
 
 
 class RnnKeras(SequentialModel):
@@ -44,11 +45,14 @@ class RnnKeras(SequentialModel):
         ## utilities
 
 
-        self.lambda_input = Lambda(lambda z: z)
-        self.lambda_layer1 = Lambda( lambda z: z)
+        # self.lambda_input = lambda_inputLambda(lambda z: z)
+        self.lambda_layer = []
+        for i in range(self.m_layers):
+            self.lambda_layer.append(Lambda(lambda z: z))
 
-        self.reshapor = Reshape((1, self.n_x))
-        self.reshapor2 = Reshape((1, self.n_a[0]))
+        self.reshapor = [Reshape((1, self.n_x))]
+        for i in range(self.m_layers-1):
+            self.reshapor.append(Reshape((1, self.n_a[i])))
         # self.LSTM_cell=[]
         # for i in range(self.m_layers):
         #     self.LSTM_cell.append(LSTM(self.n_a[i], return_state=True))
@@ -68,8 +72,19 @@ class RnnKeras(SequentialModel):
 
     def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity):
         #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
-        history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
-                                 validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
+        train_inputs = [x_train]
+        val_inputs = [x_val]
+        for i in range(self.m_layers):
+            train_inputs.append(self.a0_train[i])
+            train_inputs.append(self.c0_train[i])
+            val_inputs.append(self.a0_val[i])
+            val_inputs.append(self.c0_val[i])
+
+        # history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
+        #                          validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
+        #                          verbose=True, callbacks=[plot_loss_value_obj])
+        history = self.model.fit(train_inputs, list(y_train), epochs=epochs,
+                                 validation_data=(val_inputs, list(y_val)),
                                  verbose=True, callbacks=[plot_loss_value_obj])
         return history
 
@@ -115,20 +130,25 @@ class RnnKeras(SequentialModel):
         X1= Input(shape=(self.Tx, self.n_a[0]))
 
         #  initial hidden state for the decoder LSTM
-        # a0=[]
-        # c0=[]
-        # for i in range(self.m_layers):
-        #     a0.append(Input(shape=(self.n_a[i],), name='a0_{}'.format(i)))
-        #     c0.append(Input(shape=(self.n_a[i],), name='c0_{}'.format(i)))
-        a0 = Input(shape=(self.n_a[0],), name='a0_{}'.format(0))
-        c0 = Input(shape=(self.n_a[0],), name='c0_{}'.format(0))
-        a1 = Input(shape=(self.n_a[1],), name='a0_{}'.format(1))
-        c1 = Input(shape=(self.n_a[1],), name='c0_{}'.format(1))
-        a = a0
-        c = c0
+        a0=[]
+        c0=[]
+        a=[]
+        c=[]
+        for i in range(self.m_layers):
+            a0.append(Input(shape=(self.n_a[i],), name='a0_{}'.format(i)))
+            c0.append(Input(shape=(self.n_a[i],), name='c0_{}'.format(i)))
+            a.append(a0[i])
+            c.append(c0[i])
+        # a0 = Input(shape=(self.n_a[0],), name='a0_{}'.format(0))
+        # c0 = Input(shape=(self.n_a[0],), name='c0_{}'.format(0))
+        # a1 = Input(shape=(self.n_a[1],), name='a0_{}'.format(1))
+        # c1 = Input(shape=(self.n_a[1],), name='c0_{}'.format(1))
 
-        a2 = a1
-        c2 = c1
+        # a = copy.deepcopy(a0)
+        # c = copy.deepcopy(c0)
+
+        # a2 = a1
+        # c2 = c1
 
 
 
@@ -138,40 +158,40 @@ class RnnKeras(SequentialModel):
 
         if self.Tx == 1:
             print('One-to-one (Tx=Ty=1) or One-to-many (Tx=1, Ty>1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
-            x = Lambda(lambda z: z)(X)
-            x1 = Lambda(lambda z: z)(X1)
+            x = self.lambda_layer[0](X)
+            # x = Lambda(lambda z: z)(X)
+            # x1 = Lambda(lambda z: z)(X1)
             # One-to-one (Tx=Ty=1), One-to-many (Tx=1, Ty>1)
             # Step 2: Loop over Ty and generate a value at every time step
             for t in range(self.Ty):
-                x = self.reshapor(x)
-                x1 = self.reshapor(x1)
+                x = self.reshapor[0](x)
+                # x1 = self.reshapor(x1)
 
                 # do the process for each layer
-                # for l in range(self.m_layers):
-                #     # Step 2.A: Perform one step of LSTM_cell (≈1 line)
-                #     if l > 0:
-                #         xx = Lambda(lambda s: s)(a)
-                #         xx = self.reshapor2(xx)
-                #         # a[l], _, c[l] = self.LSTM_cell[l](inputs=xx, initial_state=[a[l], c[l]])
-                #
-                #         a1, _, c1 = self.LSTM_cell1(inputs=x, initial_state=[a, c])
-                #     else:
-                #         #a[l], _, c[l] = self.LSTM_cell[l](inputs=x, initial_state=[a[l], c[l]])
-                #         a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
+                for l in range(self.m_layers):
+                    # Step 2.A: Perform one step of LSTM_cell (≈1 line)
+                    if l > 0:
+                        input_layer_l = self.lambda_layer[l](a[l-1])
+                        input_layer_l = self.reshapor[l](input_layer_l)
+                        # a[l], _, c[l] = self.LSTM_cell[l](inputs=xx, initial_state=[a[l], c[l]])
+
+                        a[l], _, c[l] = self.LSTM_cell1(inputs=input_layer_l, initial_state=[a[l], c[l]])
+                    else:
+                        # in case l=0
+                        #a[l], _, c[l] = self.LSTM_cell[l](inputs=x, initial_state=[a[l], c[l]])
+                        a[l], _, c[l] = self.LSTM_cell(inputs=x, initial_state=[a[l], c[l]])
 
 
                 #######
+                # # a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
                 # a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
-                a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
-
-                # xx = Lambda(lambda z: z)(a)
-                xx = self.lambda_layer1(a)
-                xx = self.reshapor2(xx)
-                init_states_layer2 = [a2, c2]
-                # a1, _, c1 = self.LSTM_cell1(inputs=xx, initial_state=[a1, c1])
-                a2, _, c2 = self.LSTM_cell1(xx, initial_state=init_states_layer2) #  a1, _, c1 = self.LSTM_cell1(xx)#
-
-
+                #
+                # # xx = Lambda(lambda z: z)(a)
+                # xx = self.lambda_layer1(a)
+                # xx = self.reshapor2(xx)
+                # init_states_layer2 = [a2, c2]
+                # # a1, _, c1 = self.LSTM_cell1(inputs=xx, initial_state=[a1, c1])
+                # a2, _, c2 = self.LSTM_cell1(xx, initial_state=init_states_layer2) #  a1, _, c1 = self.LSTM_cell1(xx)#
                 #######
                 # a_prime = a[l]
                     # c_prime = c[l]
@@ -182,9 +202,9 @@ class RnnKeras(SequentialModel):
                     # c[l] = c_prime
                 # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
                 # a[-1] last element of the list
-                # out = self.densor(a[-1])
+                out = self.densor(a[-1])
                 # out = self.densor(a)
-                out = self.densor(a2)
+                # out = self.densor(a2)
 
                 # Step 2.C: Append the prediction "out" to "outputs". out.shape = (None, 78) (≈1 line)
                 outputs = outputs + [out]
@@ -194,7 +214,7 @@ class RnnKeras(SequentialModel):
                 # Set "x" to be the one-hot representation of the selected value
                 # See instructions above.
                 # x = Lambda(lambda z: z)(out)
-                x = self.lambda_input(out)
+                x = self.lambda_layer[0](out)
 
         else:
             if self.Ty == 1:
@@ -256,8 +276,13 @@ class RnnKeras(SequentialModel):
         # self.model = Model(inputs=[X, a0, c0], outputs=outputs)
         # a_concat = Concatenate([a0, a1])
         # c_concat = Concatenate([c0, c1])
+        inputs = [X]
+        for i in range(self.m_layers):
+            inputs.append(a0[i])
+            inputs.append(c0[i])
 
-        self.model = Model(inputs=[X, a0, a1, c0, c1], outputs=outputs)
+        self.model = Model(inputs=inputs, outputs=outputs)
+        # self.model = Model(inputs=[X, a0, a1, c0, c1], outputs=outputs)
         # self.model = Model(inputs=[X, a_concat, c_concat], outputs=outputs)
 
         print('RNNKeras::create_model() finished')
@@ -273,12 +298,25 @@ class RnnKeras(SequentialModel):
         results -- numpy-array of shape (Ty, 78), matrix of one-hot vectors representing the values generated
         indices -- numpy-array of shape (Ty, 1), matrix of indices representing the values generated
         """
+        inputs = [x]
         if data_type == 'test':
-            prediction = self.model.predict([x, self.a0_test, self.c0_test])
+            for i in range(self.m_layers):
+                inputs.append(self.a0_test[i])
+                inputs.append(self.c0_test[i])
+
+            prediction = self.model.predict(inputs)
         elif data_type == 'validation':
-            prediction = self.model.predict([x, self.a0_val, self.c0_val])
+            for i in range(self.m_layers):
+                inputs.append(self.a0_val[i])
+                inputs.append(self.c0_val[i])
+
+            prediction = self.model.predict(inputs)
         elif data_type == 'training':
-            prediction = self.model.predict([x, self.a0_train, self.c0_train])
+            for i in range(self.m_layers):
+                inputs.append(self.a0_train[i])
+                inputs.append(self.c0_train[i])
+
+            prediction = self.model.predict(inputs)
         else:
             print("not implemented!")
 
