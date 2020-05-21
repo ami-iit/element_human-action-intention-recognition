@@ -245,13 +245,24 @@ class RnnKeras(SequentialModel):
                 # Many-to-many (Tx=Ty>1)
                 # Step 2: Loop over Ty and generate a value at every time step
                 for t in range(self.Ty):
-                    x = Lambda(lambda z: z[:, t, :])(X)
-                    x = self.reshapor(x)
+
+                    for l in range(self.m_layers):
+                        if l > 0:
+                            input_layer_l = self.lambda_layer[l](a[l - 1])
+                            input_layer_l = self.reshapor[l](input_layer_l)
+                            a[l], _, c[l] = self.LSTM_cell1(inputs=input_layer_l, initial_state=[a[l], c[l]])
+                        else:
+                            x = self.lambda_layer[l](X[:, t, :])
+                            x = self.reshapor[l](x)
+                            a[l], _, c[l] = self.LSTM_cell(inputs=x, initial_state=[a[l], c[l]])
+
+                    # x = Lambda(lambda z: z[:, t, :])(X)
+                    # x = self.reshapor(x)
                     # Step 2.A: Perform one step of LSTM_cell (≈1 line)
-                    a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
+                    # a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
 
                     # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
-                    out = self.densor(a)
+                    out = self.densor(a[-1])
 
                     # Step 2.C: Append the prediction "out" to "outputs". out.shape = (None, 78) (≈1 line)
                     outputs = outputs + [out]
