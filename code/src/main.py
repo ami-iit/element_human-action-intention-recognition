@@ -17,17 +17,17 @@ if __name__ == '__main__':
     #   STEP: Define Hyper-parameters
     #################################
     seq_length = 100  # 20 100
-    Tx = 1
+    Tx = 10
     Tx0 = 0  # this is used to prepare the data, not a part of rnn
-    Ty = 99
-    Ty0 = 1  # this is used to prepare the data, not a part of rnn
+    Ty = 1
+    Ty0 = 10  # this is used to prepare the data, not a part of rnn
     n_a = [32, 16]#[3, 2]#[32, 16]  # 5 32
     n_y = 2
     n_x = 2
     m_train = 200  # 40 200
     m_val = 20  # 2 20
     m_test = 1  # 1 5
-    epochs = 100 #100  # 20 50
+    epochs = 20 #100  # 20 50
     model_name = 'model'
     models_path = 'models/models' + time_now_string
     # models_path = 'models/models_2020_3_26_19_10_54'# sin signal learned

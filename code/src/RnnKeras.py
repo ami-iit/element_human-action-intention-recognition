@@ -46,6 +46,7 @@ class RnnKeras(SequentialModel):
 
 
         # self.lambda_input = lambda_inputLambda(lambda z: z)
+        # lambda layer for one-2-many architecture
         self.lambda_layer = []
         for i in range(self.m_layers):
             self.lambda_layer.append(Lambda(lambda z: z))
@@ -130,10 +131,10 @@ class RnnKeras(SequentialModel):
         X1= Input(shape=(self.Tx, self.n_a[0]))
 
         #  initial hidden state for the decoder LSTM
-        a0=[]
-        c0=[]
-        a=[]
-        c=[]
+        a0 = []
+        c0 = []
+        a = []
+        c = []
         for i in range(self.m_layers):
             a0.append(Input(shape=(self.n_a[i],), name='a0_{}'.format(i)))
             c0.append(Input(shape=(self.n_a[i],), name='c0_{}'.format(i)))
@@ -149,8 +150,6 @@ class RnnKeras(SequentialModel):
 
         # a2 = a1
         # c2 = c1
-
-
 
         ### START CODE HERE ###
         # Step 1: Create an empty list of "outputs" to later store your predicted values (≈1 line)
@@ -171,7 +170,7 @@ class RnnKeras(SequentialModel):
                 for l in range(self.m_layers):
                     # Step 2.A: Perform one step of LSTM_cell (≈1 line)
                     if l > 0:
-                        input_layer_l = self.lambda_layer[l](a[l-1])
+                        input_layer_l = self.lambda_layer[l](a[l - 1])
                         input_layer_l = self.reshapor[l](input_layer_l)
                         # a[l], _, c[l] = self.LSTM_cell[l](inputs=xx, initial_state=[a[l], c[l]])
 
@@ -195,7 +194,6 @@ class RnnKeras(SequentialModel):
                 #######
                 # a_prime = a[l]
                     # c_prime = c[l]
-
 
                     #a_prime, _, c_prime = self.LSTM_cell[l](inputs=x, initial_state=[a_prime, c_prime])
                     # a[l] = a_prime
@@ -221,13 +219,23 @@ class RnnKeras(SequentialModel):
                 print('Many-to-one  (Tx>1, Ty=1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
                 # Many-to-one  (Tx>1, Ty=1)
                 for t in range(self.Tx):
-                    x = Lambda(lambda z: z[:, t, :])(X)
-                    x = self.reshapor(x)
+                    # x = Lambda(lambda z: z[:, t, :])(X)
+                    # x = self.reshapor(x)
                     # Step 2.A: Perform one step of LSTM_cell (≈1 line)
-                    a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
+                    # a, _, c = self.LSTM_cell(inputs=x, initial_state=[a, c])
+                    # do the process for each layer
+                    for l in range(self.m_layers):
+                        if l > 0:
+                            input_layer_l = self.lambda_layer[l](a[l - 1])
+                            input_layer_l = self.reshapor[l](input_layer_l)
+                            a[l], _, c[l] = self.LSTM_cell1(inputs=input_layer_l, initial_state=[a[l], c[l]])
+                        else:
+                            x = self.lambda_layer[l](X[:, t, :])
+                            x = self.reshapor[l](x)
+                            a[l], _, c[l] = self.LSTM_cell(inputs=x, initial_state=[a[l], c[l]])
 
                 # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
-                out = self.densor(a)
+                out = self.densor(a[-1])
 
                 # Step 2.C: Append the prediction "out" to "outputs". out.shape = (None, 78) (≈1 line)
                 outputs = outputs + [out]
