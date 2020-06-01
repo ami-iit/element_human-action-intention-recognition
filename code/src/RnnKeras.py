@@ -58,8 +58,10 @@ class RnnKeras(SequentialModel):
         # for i in range(self.m_layers):
         #     self.LSTM_cell.append(LSTM(self.n_a[i], return_state=True))
 
-        self.LSTM_cell = LSTM(self.n_a[0], return_state=True, name='lstm_{}_'.format(0))
-        self.LSTM_cell1 = LSTM(self.n_a[1], return_state=True, name='lstm_{}_'.format(1))
+        self.LSTM_cell = []
+        for i in range(self.m_layers):
+            self.LSTM_cell.append(LSTM(self.n_a[i], return_state=True, name='lstm_{}_'.format(i)))
+        # self.LSTM_cell1 = LSTM(self.n_a[1], return_state=True, name='lstm_{}_'.format(1))
 
         self.densor = Dense(self.n_y)  # , activation='softmax'
 
@@ -158,10 +160,10 @@ class RnnKeras(SequentialModel):
                     if l > 0:
                         input_layer_l = self.lambda_layer[l](a[l - 1])
                         input_layer_l = self.reshapor[l](input_layer_l)
-                        a[l], _, c[l] = self.LSTM_cell1(inputs=input_layer_l, initial_state=[a[l], c[l]])
+                        a[l], _, c[l] = self.LSTM_cell[l](inputs=input_layer_l, initial_state=[a[l], c[l]])
                     else:
                         # in case l=0
-                        a[l], _, c[l] = self.LSTM_cell(inputs=x, initial_state=[a[l], c[l]])
+                        a[l], _, c[l] = self.LSTM_cell[l](inputs=x, initial_state=[a[l], c[l]])
 
                 # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
                 # a[-1] last element of the list
@@ -183,11 +185,11 @@ class RnnKeras(SequentialModel):
                         if l > 0:
                             input_layer_l = self.lambda_layer[l](a[l - 1])
                             input_layer_l = self.reshapor[l](input_layer_l)
-                            a[l], _, c[l] = self.LSTM_cell1(inputs=input_layer_l, initial_state=[a[l], c[l]])
+                            a[l], _, c[l] = self.LSTM_cell[l](inputs=input_layer_l, initial_state=[a[l], c[l]])
                         else:
                             x = self.lambda_layer[l](X[:, t, :])
                             x = self.reshapor[l](x)
-                            a[l], _, c[l] = self.LSTM_cell(inputs=x, initial_state=[a[l], c[l]])
+                            a[l], _, c[l] = self.LSTM_cell[l](inputs=x, initial_state=[a[l], c[l]])
 
                 # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
                 out = self.densor(a[-1])
@@ -205,11 +207,11 @@ class RnnKeras(SequentialModel):
                         if l > 0:
                             input_layer_l = self.lambda_layer[l](a[l - 1])
                             input_layer_l = self.reshapor[l](input_layer_l)
-                            a[l], _, c[l] = self.LSTM_cell1(inputs=input_layer_l, initial_state=[a[l], c[l]])
+                            a[l], _, c[l] = self.LSTM_cell[l](inputs=input_layer_l, initial_state=[a[l], c[l]])
                         else:
                             x = self.lambda_layer[l](X[:, t, :])
                             x = self.reshapor[l](x)
-                            a[l], _, c[l] = self.LSTM_cell(inputs=x, initial_state=[a[l], c[l]])
+                            a[l], _, c[l] = self.LSTM_cell[l](inputs=x, initial_state=[a[l], c[l]])
 
                     # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
                     out = self.densor(a[-1])
@@ -221,27 +223,28 @@ class RnnKeras(SequentialModel):
                 print('Many-to-many (Tx!=Ty>1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
                 # Many-to-many (Tx!=Ty>1)
                 for tx in range(self.Tx):
-                    for l in range(self.m_layers):
-                        if l > 0:
-                            input_layer_l = self.lambda_layer[l](a[l - 1])
-                            input_layer_l = self.reshapor[l](input_layer_l)
-                            a[l], _, c[l] = self.LSTM_cell1(inputs=input_layer_l, initial_state=[a[l], c[l]])
+                    for lx in range(self.m_layers):
+                        if lx > 0:
+                            input_layer_l = self.lambda_layer[lx](a[lx - 1])
+                            input_layer_l = self.reshapor[lx](input_layer_l)
+                            a[lx], _, c[lx] = self.LSTM_cell[lx](inputs=input_layer_l, initial_state=[a[lx], c[lx]])
                         else:
-                            x = self.lambda_layer[l](X[:, tx, :])
-                            x = self.reshapor[l](x)
-                            a[l], _, c[l] = self.LSTM_cell(inputs=x, initial_state=[a[l], c[l]])
+                            x = self.lambda_layer[lx](X[:, tx, :])
+                            x = self.reshapor[lx](x)
+                            a[lx], _, c[lx] = self.LSTM_cell[lx](inputs=x, initial_state=[a[lx], c[lx]])
 
                 out = self.densor(a[-1])
                 # x = Lambda(lambda z: z)(out)
                 x = self.lambda_layer[0](out)
                 for ty in range(self.Ty):
-                    if l > 0:
-                        input_layer_l = self.lambda_layer[l](a[l - 1])
-                        input_layer_l = self.reshapor[l](input_layer_l)
-                        a[l], _, c[l] = self.LSTM_cell1(inputs=input_layer_l, initial_state=[a[l], c[l]])
-                    else:
-                        x = self.reshapor[l](x)
-                        a[l], _, c[l] = self.LSTM_cell(inputs=x, initial_state=[a[l], c[l]])
+                    for ly in range(self.m_layers):
+                        if ly > 0:
+                            input_layer_l = self.lambda_layer[ly](a[ly - 1])
+                            input_layer_l = self.reshapor[ly](input_layer_l)
+                            a[ly], _, c[ly] = self.LSTM_cell[ly](inputs=input_layer_l, initial_state=[a[ly], c[ly]])
+                        else:
+                            x = self.reshapor[ly](x)
+                            a[ly], _, c[ly] = self.LSTM_cell[ly](inputs=x, initial_state=[a[ly], c[ly]])
 
                     # Step 3: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
                     out = self.densor(a[-1])

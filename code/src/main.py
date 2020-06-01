@@ -17,11 +17,11 @@ if __name__ == '__main__':
     #   STEP: Define Hyper-parameters
     #################################
     seq_length = 100  # 20 100
-    Tx = 20
+    Tx = 15
     Tx0 = 0  # this is used to prepare the data, not a part of rnn
-    Ty = 80
-    Ty0 = 20  # this is used to prepare the data, not a part of rnn
-    n_a = [32, 16]#[3, 2]#[32, 16]  # 5 32
+    Ty = 1
+    Ty0 = 15  # this is used to prepare the data, not a part of rnn
+    n_a = [32, 16, 8, 4]#[3, 2]#[32, 16]  # 5 32
     n_y = 2
     n_x = 2
     m_train = 200  # 40 200
