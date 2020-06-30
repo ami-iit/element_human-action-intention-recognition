@@ -2,11 +2,18 @@ import numpy as np
 import math
 import random
 import matplotlib.pyplot as plt
+import os
+import io
+
+
 
 
 class Data:
     def __init__(self):
+        self.data_raw = []
         return
+
+
 
     def generate_sequence_data(self, m=1000, seq_length=100, seed_number=0, data_type='linear'):
         """
@@ -62,7 +69,7 @@ class Data:
                 wc = 4.0
                 mu = 0.0
                 x = []
-                dx=[]
+                dx = []
                 for i in range(0, seq_length):
                     t = timeSteps[i]
                     m_t = np.sin(wm * t)
@@ -204,3 +211,61 @@ class Data:
             plt.ylabel('output {}'.format(str(j)))
             plt.xlabel('time step')
             plt.show()
+
+    '''
+        For the given path, get the List of all files in the directory tree
+        source: https://thispointer.com/python-how-to-get-list-of-files-in-directory-and-sub-directories/ 
+    '''
+    def getListOfFiles(self, dirName):
+        # create a list of file and sub directories
+        # names in the given directory
+        listOfFile = os.listdir(dirName)
+        allFiles = list()
+        # Iterate over all the entries
+        for entry in listOfFile:
+            # Create full path
+            fullPath = os.path.join(dirName, entry)
+            # If entry is a directory then get the list of files in this directory
+            if os.path.isdir(fullPath):
+                allFiles = allFiles + self.getListOfFiles(fullPath)
+            else:
+                allFiles.append(fullPath)
+
+        return allFiles
+
+    def read_from_file(self, file_path):
+        print('read_from_file: file_path', file_path)
+        files = self.getListOfFiles(file_path)
+        # files = [f for f in listdir(file_path) if isfile(join(file_path, f))]
+        print('files: ', files)
+        for file in files:
+            # file_name = os.join(file_path, file)
+            print('file: ', file)
+            data_dict = {}
+            input_file = io.open(file, 'r')
+            # lines = input_file.readlines()
+            count = 0
+            keys_list = []
+            while True:
+                count += 1
+
+                # Get next line from file
+                line = input_file.readline()
+
+                # if line is empty
+                # end of file is reached
+                if not line:
+                    break
+
+                line_elements = line.split()
+                i = 0
+                for element in line_elements:
+                    if count == 1:
+                        data_dict[element] = []
+                        keys_list.append(element)
+                    else:
+                        data_dict[keys_list[i]].append(element)
+                    i += 1
+            input_file.close()
+            self.data_raw.append(data_dict)
+        return
