@@ -41,25 +41,30 @@ if __name__ == '__main__':
     model_metrics = ['mse']
     data_type = 'amplitude-modulation'
     verbosity = False
+    read_data_from_file = True
     # for classification problem use other methods
 
     #################################
     #   STEP: DATA
     #################################
     data = Data()
-    # ---> Generate Data
-    # Training set
-    batch_t_train, batch_data_train = data.generate_sequence_data(m=m_train, seq_length=seq_length,
+    if read_data_from_file:
+        data.read_from_file('dataset/SynchedData/Session_02')
+    else:
+
+        # ---> Generate Data
+        # Training set
+        batch_t_train, batch_data_train = data.generate_sequence_data(m=m_train, seq_length=seq_length,
                                                                   seed_number=seed_number, data_type=data_type)
-    batch_x_train, batch_y_train = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0)
-    # validation set
-    batch_t_val, batch_data_val = data.generate_sequence_data(m=m_val, seq_length=seq_length,
+        batch_x_train, batch_y_train = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0)
+        # validation set
+        batch_t_val, batch_data_val = data.generate_sequence_data(m=m_val, seq_length=seq_length,
                                                               seed_number=seed_number + 1, data_type=data_type)
-    batch_x_val, batch_y_val = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0)
-    # Test Set
-    batch_t_test, batch_data_test = data.generate_sequence_data(m=m_test, seq_length=seq_length,
+        batch_x_val, batch_y_val = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0)
+        # Test Set
+        batch_t_test, batch_data_test = data.generate_sequence_data(m=m_test, seq_length=seq_length,
                                                                 seed_number=seed_number + 2, data_type=data_type)
-    batch_x_test, batch_y_test = data.prepare_data(batch_data_test, Tx, Ty, Tx0, Ty0)
+        batch_x_test, batch_y_test = data.prepare_data(batch_data_test, Tx, Ty, Tx0, Ty0)
 
     # --> Print & Plot Data
     if verbosity:
