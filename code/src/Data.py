@@ -10,7 +10,6 @@ import io
 
 class Data:
     def __init__(self):
-        self.data_raw = []
         return
 
 
@@ -116,7 +115,6 @@ class Data:
                 x = x.ravel()
                 dx = dx.ravel()
 
-
             batch_t.append(timeSteps)
             # if (data_type == 'sin') or (data_type =='linear'):
             batch_x.append(np.array([x, dx]).T)  # [x, dx]
@@ -126,14 +124,21 @@ class Data:
         batch_x = np.array(batch_x)
         batch_dx = np.array(batch_dx)
 
-        # shape: (batch_size, seq_length, output_dim)
+        # shape: (batch_size, seq_length, feature_dim) ## feature_dim= output_dim
         return batch_t, batch_x
 
-    def prepare_data(self, batch_data, Tx, Ty, Tx0= 0, Ty0=1):
+    def prepare_data(self, batch_data, Tx, Ty, Tx0= 0, Ty0=1,  x_feature=[], y_feature=[]):
 
-        batch_x = batch_data[:, range(Tx0,  Tx0+Tx), :]
+        if not x_feature:
+            batch_x = batch_data[:, range(Tx0,  Tx0+Tx), :]
+        else:
+            batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0:2]
         # batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(batch_data, 2)))
-        batch_y = batch_data[:, range(Ty0, Ty0+Ty), :]
+        if not y_feature:
+            batch_y = batch_data[:, range(Ty0, Ty0+Ty), :]
+        else:
+            batch_y = batch_data[:, range(Ty0, Ty0 + Ty), 2:3]
+
         # batch_y = np.reshape(batch_y, (np.size(batch_y, 1), np.size(batch_y, 0), np.size(batch_y, 2)))
         batch_y = np.swapaxes(batch_y, 0, 1)
 
@@ -238,6 +243,7 @@ class Data:
         files = self.getListOfFiles(file_path)
         # files = [f for f in listdir(file_path) if isfile(join(file_path, f))]
         print('files: ', files)
+        data_raw = []
         for file in files:
             # file_name = os.join(file_path, file)
             print('file: ', file)
@@ -264,8 +270,117 @@ class Data:
                         data_dict[element] = []
                         keys_list.append(element)
                     else:
-                        data_dict[keys_list[i]].append(element)
+                        data_dict[keys_list[i]].append(float(element))
                     i += 1
             input_file.close()
-            self.data_raw.append(data_dict)
-        return
+            data_raw.append(data_dict)
+        print('key list: ', keys_list)
+        return data_raw
+
+    def prepare_data_batches(self, feature_list, data_raw, seq_length):
+        batch_t = []
+        batch_x = []
+        # if abs(data['rssiinCollision'])(count)) > 0.01:
+        for data in data_raw:
+            for count in range(len(data[feature_list[0]]) - seq_length):
+                x_ = []
+                for j in range(count, count+seq_length):
+                    x = []
+                    for feature in feature_list:
+                        x.append((data[feature])[j])
+                    x_.append(x)
+                batch_x.append(x_)
+
+        # shape: (batch_size, seq_length, output_dim)
+        return np.array(batch_t), np.array(batch_x)
+
+    def update_bracelet_data(self, data_raw, problem_type):
+
+        for data in data_raw:
+            updating_indices = []
+            for i in range( len(data['rssiinCollision']) ):
+                if abs( (data['rssiinCollision'])[i] ) < 0.01 :
+                    updating_indices.append(i)
+                else:
+                    # update the range of rssi values brings close to 1.
+                    (data['rssiinCollision'])[i]= (data['rssiinCollision'])[i] / 50.0
+
+            # remove the lines of the data with zero rssi, start from the last index to the first of the list
+            updating_indices.reverse()
+            for index in updating_indices:
+                for key in data:
+                    (data[key]).pop(index)
+
+            # update the time feature with the time difference instead of absolute timing
+            time_list = data['time_epoch_braclet']# copy by reference
+            for i in reversed(range(1, len(time_list))):
+                time_list[i] = (time_list[i] - time_list[i-1])/0.05
+
+            # remove also the first time we get time value
+            for key in data:
+                (data[key]).pop(0)
+
+
+            if problem_type =='classification':
+                # try the classification problem
+                distnace_threshold = 1.5
+                for i in range(len(data['braceletsdistance'])):
+                    if (data['braceletsdistance'])[i] < distnace_threshold:
+                        (data['braceletsdistance'])[i] = 1
+                    else:
+                        (data['braceletsdistance'])[i] = 0
+
+        return data_raw
+
+    def plot_bracelet_predictions(self, batch_y_test=[], prediction=[],
+                                  explanation=[]):  # , batch_x, batch_y
+        """
+        :param batch_t: time series (m x seq_length)
+        :param batch_y_test: real output (Ty x m_test x n_y)
+        :param prediction:  predicted output (Ty x m_test x n_y)
+        :param explanation: the figure's title
+        :return: return void
+        """
+        # batch_x= list(range(1 , 5))
+        # swap the axis to have the shape ( m_test , Ty , n_y)
+        batch_y_prediction_reshaped = np.swapaxes(prediction, 0, 1)
+        batch_y_test_reshaped = np.swapaxes(batch_y_test, 0, 1)
+
+        if not explanation:
+            explanation = ' '
+
+        # print(np.size(batch_y_test_reshaped, 0))
+        # print(np.size(batch_y_test_reshaped, 1))
+        n_outputs = np.size(batch_y_test_reshaped, 2)
+
+        batch_t_test = list(range(0, np.size(batch_y_test_reshaped, 0)))
+
+        # predThreshold = 0.5
+        # predMap = lambda x: 0 if x <= predThreshold else 1
+
+        # for j in range(n_outputs):
+        #     plt.figure()
+        #     plt.title('batches_sample- {}'.format(explanation))
+        #     for i in range(np.size(batch_y_test_reshaped, 0)):
+        #         pred = predMap(batch_y_prediction_reshaped[i, :, j])
+        #         # print(j, ' ', i, ' ', np.size(batch_t_test, axis=0), ' ', np.size(batch_y_test_reshaped, axis=0), ' ',
+        #         #       np.size(batch_y_test_reshaped, axis=2))
+        #         plt.plot(batch_t_test[i], batch_y_test_reshaped[i, :, j], 'go')
+        #         plt.plot(batch_t_test[i], pred, 'ro')
+        #     plt.ylabel('output {}'.format(str(j)))
+        #     plt.xlabel('batches')
+        #     plt.show()
+
+        for j in range(n_outputs):
+            plt.figure()
+            plt.title('batches_sample- {}'.format(explanation))
+            # pred =[]
+            # for i in range(np.size(batch_y_test_reshaped, 0)):
+            #     pred.append( predMap(batch_y_prediction_reshaped[i, :, j]))
+            # print(j, ' ', i, ' ', np.size(batch_t_test, axis=0), ' ', np.size(batch_y_test_reshaped, axis=0), ' ',
+            #       np.size(batch_y_test_reshaped, axis=2))
+            plt.plot(batch_t_test, batch_y_test_reshaped[:, :, j], 'go', markersize=10)
+            plt.plot(batch_t_test, batch_y_prediction_reshaped[:, :, j], 'r*', markersize=8)
+            plt.ylabel('output {}'.format(str(j)))
+            plt.xlabel('batches')
+            plt.show()

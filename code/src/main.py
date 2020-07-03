@@ -16,18 +16,18 @@ if __name__ == '__main__':
     #################################
     #   STEP: Define Hyper-parameters
     #################################
-    seq_length = 100  # 20 100
-    Tx = 15
-    Tx0 = 0  # this is used to prepare the data, not a part of rnn
-    Ty = 1
-    Ty0 = 15  # this is used to prepare the data, not a part of rnn
-    n_a = [32, 16, 8, 4]#[3, 2]#[32, 16]  # 5 32
-    n_y = 2
+    seq_length = 40  # 20 100
+    Tx = 40
+    Tx0 = 0   # this is used to prepare the data, not a part of rnn
+    Ty = 1    #
+    Ty0 = 39  # this is used to prepare the data, not a part of rnn : normally (Tx0+Tx)
+    n_a = [32, 16]#[3, 2]#[32, 16]  # 5 32
+    n_y = 1
     n_x = 2
-    m_train = 200  # 40 200
-    m_val = 100  # 2 20
-    m_test = 1  # 1 5
-    epochs = 100 #100  # 20 50
+    #m_train = 200  # 40 200
+    #m_val = 100  # 2 20
+    #m_test = 1  # 1 5
+    epochs = 20 #100  # 20 50
     model_name = 'model'
     models_path = 'models/models' + time_now_string
     # models_path = 'models/models_2020_3_26_19_10_54'# sin signal learned
@@ -37,11 +37,32 @@ if __name__ == '__main__':
     predictFuture = True
     seed_number = 0
     # use these for regression problem
-    loss_function = 'mean_squared_error'
-    model_metrics = ['mse']
+
+
     data_type = 'amplitude-modulation'
     verbosity = False
     read_data_from_file = True
+    feature_list = ['time_epoch_braclet', 'rssiinCollision', 'braceletsdistance']
+    x_feature = [0, 1]
+    y_feature = [2]
+
+
+    # options: 'regression' , 'classification'
+    problem_type = 'regression'
+    activation_type = 'relu'  #'softmax' ,, kernel_initializer = 'he_uniform'
+
+    if problem_type == 'classification':
+        model_metrics = ['accuracy']  # classification
+        loss_function = 'binary_crossentropy'  # classification
+
+    elif problem_type == 'regression':
+        model_metrics = ['mse'] # regression
+        loss_function = 'mean_squared_error'  # regression
+
+    else:
+        print('the problem type is not set correctly: ', problem_type)
+
+
     # for classification problem use other methods
 
     #################################
@@ -49,9 +70,30 @@ if __name__ == '__main__':
     #################################
     data = Data()
     if read_data_from_file:
-        data.read_from_file('dataset/SynchedData/Session_02')
-    else:
+        train_data_raw = data.read_from_file('dataset/train_val_test_Data/training')
+        train_data_raw_updated = data.update_bracelet_data(train_data_raw, problem_type)
+        batch_t_train, batch_data_train = data.prepare_data_batches(feature_list, train_data_raw_updated,
+                                                                             seq_length)
+        batch_x_train, batch_y_train = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0, x_feature, y_feature)
 
+        val_data_raw = data.read_from_file('dataset/train_val_test_Data/validation')
+        val_data_raw_updated = data.update_bracelet_data(val_data_raw, problem_type)
+        batch_t_val, batch_data_val = data.prepare_data_batches(feature_list, val_data_raw_updated,
+                                                                             seq_length)
+        batch_x_val, batch_y_val = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0, x_feature, y_feature)
+
+        test_data_raw = data.read_from_file('dataset/train_val_test_Data/test')
+        test_data_raw_updated = data.update_bracelet_data(test_data_raw, problem_type)
+        batch_t_test, batch_data_test = data.prepare_data_batches(feature_list, [test_data_raw_updated[0]],
+                                                                             seq_length)
+        batch_x_test, batch_y_test = data.prepare_data(batch_data_test, Tx, Ty, Tx0, Ty0, x_feature, y_feature)
+
+        m_train = batch_x_train.shape[0]
+        m_val = batch_x_val.shape[0]
+        m_test = batch_x_test.shape[0]
+
+
+    else:
         # ---> Generate Data
         # Training set
         batch_t_train, batch_data_train = data.generate_sequence_data(m=m_train, seq_length=seq_length,
@@ -89,7 +131,7 @@ if __name__ == '__main__':
     #################################
 
     plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
-    rnn = RnnKeras(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, Ty=Ty, m_train=m_train, m_val=m_val, m_test=m_test)
+    rnn = RnnKeras(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, Ty=Ty, m_train=m_train, m_val=m_val, m_test=m_test, activation_type=activation_type)
 
     if doTraining:
         rnn.create_model()
@@ -121,15 +163,39 @@ if __name__ == '__main__':
     if predictFuture:
         prediction = rnn.compute_prediction(batch_x_test)
         prediction = np.reshape(prediction, (Ty, m_test, n_y))  # in case  prediction does not have correct shaping
-        rmse_test = rnn.evaluate_prediction(batch_y_test, np.array(prediction))
-        print('RMSE of the test: ', rmse_test)
+
+        if problem_type == 'regression':
+            rmse_test = rnn.evaluate_prediction(batch_y_test, np.array(prediction))
+            print('RMSE of the test: ', rmse_test)
+        elif problem_type == 'classification':
+            accuracy_test= rnn.evaluate_prediction_accuracy(batch_y_test, np.array(prediction))
+            print('Acuuracy of the test: ', accuracy_test)
+        else:
+            print('problem_type variable is not set correctly: ', problem_type)
+
 
         # change the type of value from list to array
         prediction = np.array(prediction)
         batch_t_test = np.array(batch_t_test)
 
-        data.plot_test_prediction_data(batch_t_test[:, Ty0:Ty0 + Ty], batch_y_test, prediction,
-                                       'test (line), prediction (dashed lines)')
+        # data.plot_test_prediction_data(batch_t_test[:, Ty0:Ty0 + Ty], batch_y_test, prediction,
+        #                                'test (line), prediction (dashed lines)')
+        data.plot_bracelet_predictions(batch_y_test, prediction, 'distance: real: green, estimated: red')
+
+        if model_metrics[0] =='accuracy':
+            plt.figure()
+            plt.subplot(211)
+            plt.title('Loss')
+            plt.plot(history.history['loss'], label='train')
+            plt.plot(history.history['val_loss'], label='test')
+            plt.legend()
+            # plot accuracy during training
+            plt.subplot(212)
+            plt.title('Accuracy')
+            plt.plot(history.history['accuracy'], label='train')
+            plt.plot(history.history['val_accuracy'], label='test')
+            plt.legend()
+            plt.show()
 
     if verbosity:
         y_test = np.reshape(batch_y_test[:, 0, :], (1, Ty, n_y))

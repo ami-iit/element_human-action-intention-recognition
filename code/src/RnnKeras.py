@@ -6,7 +6,7 @@ from tensorflow.keras.layers import Dense, Activation, Dropout, Input, LSTM, Res
 from tensorflow.keras.layers import Concatenate
 from keras.initializers import glorot_uniform
 from keras.utils import to_categorical
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import load_model
 from tensorflow.keras.utils import plot_model
@@ -18,7 +18,7 @@ import copy
 
 
 class RnnKeras(SequentialModel):
-    def __init__(self, n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test):
+    def __init__(self, n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test, activation_type):
         # # print the tensorflow version
         # print(tf.__version__)
         # # hidden state dimensions of each RNN/LSTM cell
@@ -32,7 +32,7 @@ class RnnKeras(SequentialModel):
         # self.Ty= Ty
         # # number of training set
         # self.m = m
-        super().__init__(n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test)
+        super().__init__(n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test, activation_type)
 
         # TODO: Training
         # self.learning_rate = 0.0025
@@ -60,13 +60,14 @@ class RnnKeras(SequentialModel):
 
         self.LSTM_cell = []
         for i in range(self.m_layers):
-            self.LSTM_cell.append(LSTM(self.n_a[i], return_state=True, name='lstm_{}_'.format(i)))
+            self.LSTM_cell.append(LSTM(self.n_a[i], return_state=True, name='lstm_{}_'.format(i)))# stateful=True/False
         # self.LSTM_cell1 = LSTM(self.n_a[1], return_state=True, name='lstm_{}_'.format(1))
 
-        self.densor = Dense(self.n_y)  # , activation='softmax'
+        self.densor = Dense(self.n_y, activation=activation_type)  # , activation='softmax' 'relu', , kernel_initializer='he_uniform'
 
     def create_optimizer(self):
-        self.opt = Adam(lr=0.01, beta_1=0.9, beta_2=0.999, decay=0.01)
+        self.opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
+        #self.opt = SGD(lr=0.01, momentum=0.9)
         return
 
     def compile_model(self, loss_function, model_metrics):
@@ -86,9 +87,13 @@ class RnnKeras(SequentialModel):
         # history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
         #                          validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
         #                          verbose=True, callbacks=[plot_loss_value_obj])
-        history = self.model.fit(train_inputs, list(y_train), epochs=epochs,
+
+        for _ in range(epochs):
+            history = self.model.fit(train_inputs, list(y_train), epochs=1,
                                  validation_data=(val_inputs, list(y_val)),
                                  verbose=True, callbacks=[plot_loss_value_obj])
+            self.model.reset_states()
+
         return history
 
     def load_data(self, path):
@@ -97,6 +102,7 @@ class RnnKeras(SequentialModel):
     def save_model(self, file_path='', file_name='myModel'):
         Path(file_path).mkdir(parents=True, exist_ok=True)
         self.model.save('{}/{}.h5'.format(file_path, file_name))  # creates a HDF5 file 'my_model.h5'
+        print(' model saved in:  {}/{}.h5'.format(file_path, file_name))
         return
 
     def visualize_model(self, file_path='', file_name='myModel'):
@@ -310,6 +316,15 @@ class RnnKeras(SequentialModel):
                 evaluation = evaluation + np.sqrt(np.dot(err_t_m, err_t_m))
         evaluation = (1.0 / Ty) * (1.0 / m) * evaluation
         return evaluation
+
+    def evaluate_prediction_accuracy(self, y_test, y_prediction):
+        # y_test, y_prediction (Ty, m, n)
+        predThreshold = 0.5
+        m = tf.keras.metrics.BinaryAccuracy()
+        _ = m.update_state(y_test, y_prediction)
+        accuracy = m.result().numpy()
+
+        return accuracy
 
     def provide_model_summary(self):
         self.model.summary()

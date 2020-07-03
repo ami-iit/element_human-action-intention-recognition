@@ -3,7 +3,7 @@ import numpy as np
 
 
 class SequentialModel(ABC):
-    def __init__(self, n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test):
+    def __init__(self, n_a, n_y, n_x, Tx, Ty, m_train, m_val, m_test, activation_type):
         super().__init__()
         # hidden state dimensions of each RNN/LSTM cell
         self.n_a = n_a
