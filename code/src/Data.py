@@ -311,14 +311,20 @@ class Data:
                 for key in data:
                     (data[key]).pop(index)
 
+
+
+
             # update the time feature with the time difference instead of absolute timing
             time_list = data['time_epoch_braclet']# copy by reference
             for i in reversed(range(1, len(time_list))):
-                time_list[i] = (time_list[i] - time_list[i-1])/0.05
+                time_list[i] = abs(time_list[i] - time_list[i-1])/0.05
 
             # remove also the first time we get time value
             for key in data:
                 (data[key]).pop(0)
+
+
+
 
 
             if problem_type =='classification':
@@ -384,3 +390,19 @@ class Data:
             plt.ylabel('output {}'.format(str(j)))
             plt.xlabel('batches')
             plt.show()
+
+        return
+
+
+    def bracelet_data_augmentation(self, data_raw):
+        data_raw_reversred=[]
+        for data in data_raw:
+            reversed_data = {}
+            for key in data:
+                reversed_data[key] = (data[key])[::-1]
+            data_raw_reversred.append(reversed_data)
+
+        for reversed_data in data_raw_reversred:
+            data_raw.append(reversed_data)
+        return
+

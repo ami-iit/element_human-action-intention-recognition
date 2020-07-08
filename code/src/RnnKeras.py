@@ -60,13 +60,13 @@ class RnnKeras(SequentialModel):
 
         self.LSTM_cell = []
         for i in range(self.m_layers):
-            self.LSTM_cell.append(LSTM(self.n_a[i], return_state=True, name='lstm_{}_'.format(i)))# stateful=True/False
+            self.LSTM_cell.append(LSTM(self.n_a[i], return_state=True, name='lstm_{}_'.format(i))) # , stateful=True , batch_input_shape=(1, self.Tx, self.n_x)))# stateful=True/False
         # self.LSTM_cell1 = LSTM(self.n_a[1], return_state=True, name='lstm_{}_'.format(1))
 
         self.densor = Dense(self.n_y, activation=activation_type)  # , activation='softmax' 'relu', , kernel_initializer='he_uniform'
 
     def create_optimizer(self):
-        self.opt = Adam(lr=0.05, beta_1=0.9, beta_2=0.999, decay=0.01)
+        self.opt = Adam(lr=0.1, beta_1=0.9, beta_2=0.999, decay=0.01)
         #self.opt = SGD(lr=0.01, momentum=0.9)
         return
 
@@ -88,12 +88,15 @@ class RnnKeras(SequentialModel):
         #                          validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
         #                          verbose=True, callbacks=[plot_loss_value_obj])
 
-        for _ in range(epochs):
-            history = self.model.fit(train_inputs, list(y_train), epochs=1,
+        # for _ in range(epochs):
+        #     history = self.model.fit(train_inputs, list(y_train), epochs=1,
+        #                          validation_data=(val_inputs, list(y_val)),
+        #                          verbose=True, callbacks=[plot_loss_value_obj])
+        #     self.model.reset_states()
+
+        history = self.model.fit(train_inputs, list(y_train), epochs=epochs,
                                  validation_data=(val_inputs, list(y_val)),
                                  verbose=True, callbacks=[plot_loss_value_obj])
-            self.model.reset_states()
-
         return history
 
     def load_data(self, path):

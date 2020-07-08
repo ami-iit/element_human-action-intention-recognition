@@ -16,12 +16,12 @@ if __name__ == '__main__':
     #################################
     #   STEP: Define Hyper-parameters
     #################################
-    seq_length = 40  # 20 100
-    Tx = 40
+    seq_length = 10  # 20 100
+    Tx = 10
     Tx0 = 0   # this is used to prepare the data, not a part of rnn
     Ty = 1    #
-    Ty0 = 39  # this is used to prepare the data, not a part of rnn : normally (Tx0+Tx)
-    n_a = [32, 16]#[3, 2]#[32, 16]  # 5 32
+    Ty0 = 9  # this is used to prepare the data, not a part of rnn : normally (Tx0+Tx)
+    n_a = [16, 8]#[3, 2]#[32, 16]  # 5 32
     n_y = 1
     n_x = 2
     #m_train = 200  # 40 200
@@ -57,7 +57,9 @@ if __name__ == '__main__':
 
     elif problem_type == 'regression':
         model_metrics = ['mse'] # regression
-        loss_function = 'mean_squared_error'  # regression
+
+        #options: mean_squared_logarithmic_error , mean_squared_error
+        loss_function = 'mean_squared_logarithmic_error'  # regression
 
     else:
         print('the problem type is not set correctly: ', problem_type)
@@ -70,21 +72,24 @@ if __name__ == '__main__':
     #################################
     data = Data()
     if read_data_from_file:
-        train_data_raw = data.read_from_file('dataset/train_val_test_Data/training')
+        train_data_raw = data.read_from_file('dataset/train_val_test_Data_session_02_03/training')
+        data.bracelet_data_augmentation(train_data_raw)
         train_data_raw_updated = data.update_bracelet_data(train_data_raw, problem_type)
         batch_t_train, batch_data_train = data.prepare_data_batches(feature_list, train_data_raw_updated,
                                                                              seq_length)
         batch_x_train, batch_y_train = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0, x_feature, y_feature)
 
-        val_data_raw = data.read_from_file('dataset/train_val_test_Data/validation')
+        val_data_raw = data.read_from_file('dataset/train_val_test_Data_session_02_03/validation')
+        data.bracelet_data_augmentation(val_data_raw)
+
         val_data_raw_updated = data.update_bracelet_data(val_data_raw, problem_type)
         batch_t_val, batch_data_val = data.prepare_data_batches(feature_list, val_data_raw_updated,
                                                                              seq_length)
         batch_x_val, batch_y_val = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0, x_feature, y_feature)
 
-        test_data_raw = data.read_from_file('dataset/train_val_test_Data/test')
+        test_data_raw = data.read_from_file('dataset/train_val_test_Data_session_02_03/test')
         test_data_raw_updated = data.update_bracelet_data(test_data_raw, problem_type)
-        batch_t_test, batch_data_test = data.prepare_data_batches(feature_list, [test_data_raw_updated[0]],
+        batch_t_test, batch_data_test = data.prepare_data_batches(feature_list, test_data_raw_updated,
                                                                              seq_length)
         batch_x_test, batch_y_test = data.prepare_data(batch_data_test, Tx, Ty, Tx0, Ty0, x_feature, y_feature)
 
@@ -180,6 +185,20 @@ if __name__ == '__main__':
 
         # data.plot_test_prediction_data(batch_t_test[:, Ty0:Ty0 + Ty], batch_y_test, prediction,
         #                                'test (line), prediction (dashed lines)')
+
+        counters = []
+        for data_ in test_data_raw_updated:
+            counters.append(len(data_[feature_list[0]]) - seq_length)
+
+        sum = 0
+        i=0
+        for count in counters:
+
+            data.plot_bracelet_predictions(batch_y_test[:, range(sum, sum + count), :], prediction[:, range(sum, sum + count), :],
+                                           'distance: real: green, estimated: red, batch: {}'.format(i))
+            sum = sum + count
+            i = i+1
+
         data.plot_bracelet_predictions(batch_y_test, prediction, 'distance: real: green, estimated: red')
 
         if model_metrics[0] =='accuracy':
