@@ -96,7 +96,8 @@ class RnnKeras(SequentialModel):
 
         history = self.model.fit(train_inputs, list(y_train), epochs=epochs,
                                  validation_data=(val_inputs, list(y_val)),
-                                 verbose=True, callbacks=[plot_loss_value_obj])
+                                 verbose=True, callbacks=[plot_loss_value_obj],
+                                 )  # shuffle=False
         return history
 
     def load_data(self, path):

@@ -4,6 +4,9 @@ import random
 import matplotlib.pyplot as plt
 import os
 import io
+from sklearn.preprocessing import MinMaxScaler
+
+
 
 
 
@@ -133,7 +136,9 @@ class Data:
             batch_x = batch_data[:, range(Tx0,  Tx0+Tx), :]
         else:
             batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0:2]
-        # batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(batch_data, 2)))
+            # batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0:3]
+            # batch_x[:, :, -1] = 0.0
+            # batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(batch_data, 2)))
         if not y_feature:
             batch_y = batch_data[:, range(Ty0, Ty0+Ty), :]
         else:
