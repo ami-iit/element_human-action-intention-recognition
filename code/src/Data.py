@@ -135,20 +135,20 @@ class Data:
         if not x_feature:
             batch_x = batch_data[:, range(Tx0,  Tx0+Tx), :]
         else:
-            # batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0:2]
-            batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0] #0:3
+            batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0:2]
+            # batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0] #0:3
             # batch_x[:, :, -1] = 3.0
             # batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(batch_data, 2)))
         if not y_feature:
             batch_y = batch_data[:, range(Ty0, Ty0+Ty), :]
         else:
-            batch_y = batch_data[:, range(Ty0, Ty0 + Ty), 1]  #2:3]
+            batch_y = batch_data[:, range(Ty0, Ty0 + Ty), 2:3]  #2:3]
 
         # batch_y = np.reshape(batch_y, (np.size(batch_y, 1), np.size(batch_y, 0), np.size(batch_y, 2)))
         batch_y = np.swapaxes(batch_y, 0, 1)
 
-        batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(x_feature, 0)) )
-        batch_y = np.reshape(batch_y, (Ty, np.size(batch_data, 0), np.size(y_feature, 0)) )
+        batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(x_feature, 0)))
+        batch_y = np.reshape(batch_y, (Ty, np.size(batch_data, 0), np.size(y_feature, 0)))
 
         batch_x = np.array(batch_x)
         batch_y = np.array(batch_y)
@@ -327,13 +327,13 @@ class Data:
             ## if there is the time part
 
             # update the time feature with the time difference instead of absolute timing
-            # time_list = data['time_epoch_braclet']# copy by reference
-            # for i in reversed(range(1, len(time_list))):
-            #     time_list[i] = abs(time_list[i] - time_list[i-1])/0.05
-            #
-            # # remove also the first time we get time value
-            # for key in data:
-            #     (data[key]).pop(0)
+            time_list = data['time_epoch_braclet']# copy by reference
+            for i in reversed(range(1, len(time_list))):
+                time_list[i] = abs(time_list[i] - time_list[i-1])/0.05
+
+            # remove also the first time we get time value
+            for key in data:
+                (data[key]).pop(0)
 
 
             if problem_type =='classification':

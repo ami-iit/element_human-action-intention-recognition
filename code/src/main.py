@@ -25,7 +25,7 @@ if __name__ == '__main__':
     Ty0 = 4  # this is used to prepare the data, not a part of rnn : normally (Tx0+Tx)
     n_a = [16, 8]#[3, 2]#[32, 16]  # 5 32
     n_y = 1
-    n_x = 1
+    n_x = 2
     #m_train = 200  # 40 200
     #m_val = 100  # 2 20
     #m_test = 1  # 1 5
@@ -46,18 +46,18 @@ if __name__ == '__main__':
     data_type = 'amplitude-modulation'
     verbosity = False
     read_data_from_file = True
-    # feature_list = ['time_epoch_braclet', 'rssiinCollision', 'braceletsdistance']
-    # x_feature = [0, 1]
-    # y_feature = [2]
+    feature_list = ['time_epoch_braclet', 'rssiinCollision', 'braceletsdistance']
+    x_feature = [0, 1]
+    y_feature = [2]
 
-    feature_list = ['rssiinCollision', 'braceletsdistance']
-    x_feature = [0]
-    y_feature = [1]
+    # feature_list = ['rssiinCollision', 'braceletsdistance']
+    # x_feature = [0]
+    # y_feature = [1]
 
 
     # options: 'regression' , 'classification'
-    problem_type = 'regression'
-    activation_type = 'relu'  #'softmax'  'sigmoid', 'relu'  , kernel_initializer = 'he_uniform'
+    problem_type = 'classification'
+    activation_type = 'sigmoid'  #'softmax'  'sigmoid', 'relu'  , kernel_initializer = 'he_uniform'
 
     if problem_type == 'classification':
         model_metrics = ['accuracy']  # classification
@@ -259,7 +259,7 @@ if __name__ == '__main__':
             sum_ = sum_ + count
             i = i+1
 
-        data.plot_bracelet_predictions(batch_y_test, prediction, 'distance: real: green, estimated: red')
+
         data.plot_bracelet_predictions(batch_y_test, prediction, 'distance: real: green, estimated: red')
 
         if model_metrics[0] =='accuracy':
