@@ -18,14 +18,14 @@ if __name__ == '__main__':
     #################################
     #   STEP: Define Hyper-parameters
     #################################
-    seq_length = 10  # 20 100
-    Tx = 10
+    seq_length = 5  # 20 100
+    Tx = 5
     Tx0 = 0   # this is used to prepare the data, not a part of rnn
     Ty = 1    #
-    Ty0 = 9  # this is used to prepare the data, not a part of rnn : normally (Tx0+Tx)
-    n_a = [64, 32]#[3, 2]#[32, 16]  # 5 32
+    Ty0 = 4  # this is used to prepare the data, not a part of rnn : normally (Tx0+Tx)
+    n_a = [16, 8]#[3, 2]#[32, 16]  # 5 32
     n_y = 1
-    n_x = 2
+    n_x = 1
     #m_train = 200  # 40 200
     #m_val = 100  # 2 20
     #m_test = 1  # 1 5
@@ -39,15 +39,20 @@ if __name__ == '__main__':
     learnUncertainty = False
     predictFuture = True
     seed_number = 0
+
     # use these for regression problem
 
-
+    recursive = False
     data_type = 'amplitude-modulation'
     verbosity = False
     read_data_from_file = True
-    feature_list = ['time_epoch_braclet', 'rssiinCollision', 'braceletsdistance']
-    x_feature = [0, 1]
-    y_feature = [2]
+    # feature_list = ['time_epoch_braclet', 'rssiinCollision', 'braceletsdistance']
+    # x_feature = [0, 1]
+    # y_feature = [2]
+
+    feature_list = ['rssiinCollision', 'braceletsdistance']
+    x_feature = [0]
+    y_feature = [1]
 
 
     # options: 'regression' , 'classification'
@@ -132,6 +137,7 @@ if __name__ == '__main__':
         m_train = batch_x_train.shape[0]
         m_val = batch_x_val.shape[0]
         m_test = batch_x_test.shape[0]
+        # m_test = 1
 
 
     else:
@@ -175,7 +181,7 @@ if __name__ == '__main__':
     rnn = RnnKeras(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, Ty=Ty, m_train=m_train, m_val=m_val, m_test=m_test, activation_type=activation_type)
 
     if doTraining:
-        rnn.create_model()
+        rnn.create_model(recursive)
         rnn.create_optimizer()
         rnn.compile_model(loss_function, model_metrics)
         history = rnn.fit_model(x_train=batch_x_train, y_train=batch_y_train, x_val=batch_x_val, y_val=batch_y_val,
@@ -202,39 +208,58 @@ if __name__ == '__main__':
     #   STEP: PREDICTION
     #################################
     if predictFuture:
-        prediction = rnn.compute_prediction(batch_x_test)
-        prediction = np.reshape(prediction, (Ty, m_test, n_y))  # in case  prediction does not have correct shaping
+        if recursive:
+            prediction = []
+            for i in range(np.size(batch_x_test, axis=0)):
+                if i > 0:
+                    batch_x_test[i, 0, -1] = predict[-1, :, 0]
+                test_batch = np.array([batch_x_test[i, :, :]])  # (1, Tx, nx)
+                predict = rnn.compute_prediction(test_batch)
+                predict = np.array(predict)
+                prediction.append(predict[-1, :, :])
+
+            prediction = np.reshape(prediction, (1, np.size(batch_x_test, axis=0), n_y))  # in case  prediction does not have correct shaping
+
+
+            prediction = np.array(prediction)
+            batch_t_test = np.array(batch_t_test)
+
+            batch_y_test = np.array(batch_y_test[-1, :, :])
+            batch_y_test = np.reshape(batch_y_test, (1, np.size(batch_x_test, axis=0), n_y))
+        else:
+            prediction = rnn.compute_prediction(batch_x_test)
+            prediction = np.reshape(prediction, (Ty, m_test, n_y))  # in case  prediction does not have correct shaping
 
         if problem_type == 'regression':
             rmse_test = rnn.evaluate_prediction(batch_y_test, np.array(prediction))
             print('RMSE of the test: ', rmse_test)
         elif problem_type == 'classification':
-            accuracy_test= rnn.evaluate_prediction_accuracy(batch_y_test, np.array(prediction))
+            accuracy_test = rnn.evaluate_prediction_accuracy(batch_y_test, np.array(prediction))
             print('Acuuracy of the test: ', accuracy_test)
         else:
             print('problem_type variable is not set correctly: ', problem_type)
 
 
         # change the type of value from list to array
-        prediction = np.array(prediction)
-        batch_t_test = np.array(batch_t_test)
+
 
         # data.plot_test_prediction_data(batch_t_test[:, Ty0:Ty0 + Ty], batch_y_test, prediction,
         #                                'test (line), prediction (dashed lines)')
 
-        # counters = []
-        # for data_ in test_data_raw_updated:
-        #     counters.append(len(data_[feature_list[0]]) - seq_length)
-        #
-        # sum_ = 0
-        # i = 0
-        # for count in counters:
-        #
-        #     data.plot_bracelet_predictions(batch_y_test[:, range(sum_, sum_ + count), :], prediction[:, range(sum_, sum_ + count), :],
-        #                                    'distance: real: green, estimated: red, batch: {}'.format(i))
-        #     sum_ = sum_ + count
-        #     i = i+1
+        counters = []
+        for data_ in test_data_raw_updated:
+            counters.append(len(data_[feature_list[0]]) - seq_length)
 
+        sum_ = 0
+        i = 0
+        for count in counters:
+
+            data.plot_bracelet_predictions(batch_y_test[:, range(sum_, sum_ + count), :], prediction[:, range(sum_, sum_ + count), :],
+                                           'distance: real: green, estimated: red, batch: {}'.format(i))
+            sum_ = sum_ + count
+            i = i+1
+
+        data.plot_bracelet_predictions(batch_y_test, prediction, 'distance: real: green, estimated: red')
         data.plot_bracelet_predictions(batch_y_test, prediction, 'distance: real: green, estimated: red')
 
         if model_metrics[0] =='accuracy':

@@ -3,7 +3,7 @@ import tensorflow as tf
 from sklearn import metrics
 from tensorflow.keras.models import load_model, Model
 from tensorflow.keras.layers import Dense, Activation, Dropout, Input, LSTM, Reshape, Lambda, RepeatVector
-from tensorflow.keras.layers import Concatenate
+from tensorflow.keras.layers import concatenate
 from keras.initializers import glorot_uniform
 from keras.utils import to_categorical
 from tensorflow.keras.optimizers import Adam, SGD
@@ -72,6 +72,9 @@ class RnnKeras(SequentialModel):
 
     def compile_model(self, loss_function, model_metrics):
         self.model.compile(optimizer=self.opt, loss=loss_function, metrics=model_metrics)
+        # output_layers = ['input_1', 'dense']
+        # self.model.metrics_tensors = []
+        # self.model.metrics_tensors += [layer.output for layer in self.model.layers if layer.name in output_layers]
         return
 
     def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity):
@@ -87,12 +90,33 @@ class RnnKeras(SequentialModel):
         # history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
         #                          validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
         #                          verbose=True, callbacks=[plot_loss_value_obj])
+        #
+        #
 
-        # for _ in range(epochs):
+        # history = self.model.fit(train_inputs, list(y_train), epochs=5,
+        #                          validation_data=(val_inputs, list(y_val)),
+        #                          verbose=True, callbacks=[plot_loss_value_obj], shuffle=True)  #
+
+        # epoch2 = epochs
+        # for epoch in range(epoch2):
+        #     print('Epoch {}/{}'.format(epoch, epoch2))
         #     history = self.model.fit(train_inputs, list(y_train), epochs=1,
         #                          validation_data=(val_inputs, list(y_val)),
-        #                          verbose=True, callbacks=[plot_loss_value_obj])
-        #     self.model.reset_states()
+        #                          callbacks=[plot_loss_value_obj], verbose=True, shuffle=False)
+        #
+        #     prediction_train = self.compute_prediction(x_train, data_type='training')
+        #     x_train[:, 0, -1] = np.array(prediction_train)[-1, :, 0]
+        #
+        #     prediction_val = self.compute_prediction(x_val, data_type='validation')
+        #     x_val[:, 0, -1] = np.array(prediction_val)[-1, :, 0]
+        #
+        #     train_inputs = [x_train]
+        #     val_inputs = [x_val]
+        #     for i in range(self.m_layers):
+        #         train_inputs.append(self.a0_train[i])
+        #         train_inputs.append(self.c0_train[i])
+        #         val_inputs.append(self.a0_val[i])
+        #         val_inputs.append(self.c0_val[i])
 
         history = self.model.fit(train_inputs, list(y_train), epochs=epochs,
                                  validation_data=(val_inputs, list(y_val)),
@@ -123,7 +147,7 @@ class RnnKeras(SequentialModel):
 
     #######################
     #######################
-    def create_model(self):
+    def create_model(self, recursive=False):
         """
         Uses the trained "LSTM_cell" and "densor" from model() to generate a sequence of values.
 
@@ -208,26 +232,54 @@ class RnnKeras(SequentialModel):
                 outputs = outputs + [out]
 
             elif self.Tx == self.Ty:
-                print('Many-to-many (Tx=Ty>1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
-                # Many-to-many (Tx=Ty>1)
-                # Step 2: Loop over Ty and generate a value at every time step
-                for t in range(self.Ty):
+                if recursive:
+                    print('Many-to-many (Tx=Ty>1) recursive :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
+                    # Many-to-many (Tx=Ty>1)
+                    # Step 2: Loop over Ty and generate a value at every time step
+                    for t in range(self.Ty):
 
-                    for l in range(self.m_layers):
-                        if l > 0:
-                            input_layer_l = self.lambda_layer[l](a[l - 1])
-                            input_layer_l = self.reshapor[l](input_layer_l)
-                            a[l], _, c[l] = self.LSTM_cell[l](inputs=input_layer_l, initial_state=[a[l], c[l]])
-                        else:
-                            x = self.lambda_layer[l](X[:, t, :])
-                            x = self.reshapor[l](x)
-                            a[l], _, c[l] = self.LSTM_cell[l](inputs=x, initial_state=[a[l], c[l]])
+                        for l in range(self.m_layers):
+                            if l > 0:
+                                input_layer_l = self.lambda_layer[l](a[l - 1])
+                                input_layer_l = self.reshapor[l](input_layer_l)
+                                a[l], _, c[l] = self.LSTM_cell[l](inputs=input_layer_l, initial_state=[a[l], c[l]])
+                            else:
+                                if t > 0:
+                                    x1 = self.lambda_layer[0](out)
+                                    x2 = self.lambda_layer[l](X[:, t, 0:-1])
+                                    x = concatenate([x1, x2])
+                                else:
+                                    x = self.lambda_layer[l](X[:, t, :])
+                                x = self.reshapor[l](x)
+                                a[l], _, c[l] = self.LSTM_cell[l](inputs=x, initial_state=[a[l], c[l]])
 
-                    # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
-                    out = self.densor(a[-1])
+                        # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
+                        out = self.densor(a[-1])
 
-                    # Step 2.C: Append the prediction "out" to "outputs". out.shape = (None, 78) (≈1 line)
-                    outputs = outputs + [out]
+                        # Step 2.C: Append the prediction "out" to "outputs". out.shape = (None, 78) (≈1 line)
+                        outputs = outputs + [out]
+
+                else:
+                    print('Many-to-many (Tx=Ty>1) non recursive :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
+                    # Many-to-many (Tx=Ty>1)
+                    # Step 2: Loop over Ty and generate a value at every time step
+                    for t in range(self.Ty):
+
+                        for l in range(self.m_layers):
+                            if l > 0:
+                                input_layer_l = self.lambda_layer[l](a[l - 1])
+                                input_layer_l = self.reshapor[l](input_layer_l)
+                                a[l], _, c[l] = self.LSTM_cell[l](inputs=input_layer_l, initial_state=[a[l], c[l]])
+                            else:
+                                x = self.lambda_layer[l](X[:, t, :])
+                                x = self.reshapor[l](x)
+                                a[l], _, c[l] = self.LSTM_cell[l](inputs=x, initial_state=[a[l], c[l]])
+
+                        # Step 2.B: Apply Dense layer to the hidden state output of the LSTM_cell (≈1 line)
+                        out = self.densor(a[-1])
+
+                        # Step 2.C: Append the prediction "out" to "outputs". out.shape = (None, 78) (≈1 line)
+                        outputs = outputs + [out]
 
             else:
                 print('Many-to-many (Tx!=Ty>1) :: Tx = {} , Ty = {}'.format(self.Tx, self.Ty))
@@ -380,14 +432,17 @@ class PlotLosses(tf.keras.callbacks.Callback):
         self.figsize = figsize
         self.file_path = file_path
         self.file_name = file_name
+        self.logs_ = []
 
     def on_train_begin(self, logs={}):
 
         self.base_metrics = [metric for metric in self.params['metrics'] if not metric.startswith('val_')]
-        self.logs = []
+
 
     def on_epoch_end(self, epoch, logs={}):
-        self.logs.append(logs)
+        print('on_epoch_end')
+        # print(self.model.get_layer('input_1'))
+        self.logs_.append(logs)
         # save the model
         # print(logs)
         self.save_model(epoch, val_loss=logs['val_loss'])
@@ -396,12 +451,12 @@ class PlotLosses(tf.keras.callbacks.Callback):
         for metric_id, metric in enumerate(self.base_metrics):
             if metric == 'loss':
 
-                plt.plot(range(1, len(self.logs) + 1),
-                         [log[metric] for log in self.logs],
+                plt.plot(range(1, len(self.logs_) + 1),
+                         [log[metric] for log in self.logs_],
                          label="training")
                 if self.params['do_validation']:
-                    plt.plot(range(1, len(self.logs) + 1),
-                             [log['val_' + metric] for log in self.logs], '--',
+                    plt.plot(range(1, len(self.logs_) + 1),
+                             [log['val_' + metric] for log in self.logs_], '--',
                              label="validation")
                 plt.title(translate_metric(metric))
                 plt.xlabel('epoch')

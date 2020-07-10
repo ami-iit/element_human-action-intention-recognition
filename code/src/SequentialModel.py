@@ -44,7 +44,7 @@ class SequentialModel(ABC):
             self.c0_test.append(np.zeros((m_test, n_a[i])))
 
     @abstractmethod
-    def create_model(self):
+    def create_model(self, recursive=False):
         pass
 
     @abstractmethod
