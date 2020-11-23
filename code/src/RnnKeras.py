@@ -77,7 +77,7 @@ class RnnKeras(SequentialModel):
         # self.model.metrics_tensors += [layer.output for layer in self.model.layers if layer.name in output_layers]
         return
 
-    def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity):
+    def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity, recursive=False):
         #  for the validation set data I can use either validation_split=0.33 or validation_data=(Xval, Yval)
         train_inputs = [x_train]
         val_inputs = [x_val]
@@ -86,39 +86,41 @@ class RnnKeras(SequentialModel):
             train_inputs.append(self.c0_train[i])
             val_inputs.append(self.a0_val[i])
             val_inputs.append(self.c0_val[i])
-
+        #
         # history = self.model.fit([x_train, self.a0_train, self.c0_train], list(y_train), epochs=epochs,
         #                          validation_data=([x_val, self.a0_val, self.c0_val], list(y_val)),
         #                          verbose=True, callbacks=[plot_loss_value_obj])
-        #
-        #
 
-        # history = self.model.fit(train_inputs, list(y_train), epochs=5,
-        #                          validation_data=(val_inputs, list(y_val)),
-        #                          verbose=True, callbacks=[plot_loss_value_obj], shuffle=True)  #
 
-        # epoch2 = epochs
-        # for epoch in range(epoch2):
-        #     print('Epoch {}/{}'.format(epoch, epoch2))
-        #     history = self.model.fit(train_inputs, list(y_train), epochs=1,
-        #                          validation_data=(val_inputs, list(y_val)),
-        #                          callbacks=[plot_loss_value_obj], verbose=True, shuffle=False)
-        #
-        #     prediction_train = self.compute_prediction(x_train, data_type='training')
-        #     x_train[:, 0, -1] = np.array(prediction_train)[-1, :, 0]
-        #
-        #     prediction_val = self.compute_prediction(x_val, data_type='validation')
-        #     x_val[:, 0, -1] = np.array(prediction_val)[-1, :, 0]
-        #
-        #     train_inputs = [x_train]
-        #     val_inputs = [x_val]
-        #     for i in range(self.m_layers):
-        #         train_inputs.append(self.a0_train[i])
-        #         train_inputs.append(self.c0_train[i])
-        #         val_inputs.append(self.a0_val[i])
-        #         val_inputs.append(self.c0_val[i])
 
-        history = self.model.fit(train_inputs, list(y_train), epochs=epochs,
+        if recursive:
+            history = self.model.fit(train_inputs, list(y_train), epochs=5,
+                                 validation_data=(val_inputs, list(y_val)),
+                                 verbose=True, callbacks=[plot_loss_value_obj], shuffle=True)  #
+
+            epoch2 = epochs
+            for epoch in range(epoch2):
+                print('Epoch {}/{}'.format(epoch, epoch2))
+                history = self.model.fit(train_inputs, list(y_train), epochs=1,
+                                 validation_data=(val_inputs, list(y_val)),
+                                 callbacks=[plot_loss_value_obj], verbose=True, shuffle=False)
+
+                prediction_train = self.compute_prediction(x_train, data_type='training')
+                x_train[:, 0, -1] = np.array(prediction_train)[-1, :, 0]
+
+                prediction_val = self.compute_prediction(x_val, data_type='validation')
+                x_val[:, 0, -1] = np.array(prediction_val)[-1, :, 0]
+
+                train_inputs = [x_train]
+                val_inputs = [x_val]
+                for i in range(self.m_layers):
+                    train_inputs.append(self.a0_train[i])
+                    train_inputs.append(self.c0_train[i])
+                    val_inputs.append(self.a0_val[i])
+                    val_inputs.append(self.c0_val[i])
+        else:
+
+            history = self.model.fit(train_inputs, list(y_train), epochs=epochs,
                                  validation_data=(val_inputs, list(y_val)),
                                  verbose=True, callbacks=[plot_loss_value_obj],
                                  )  # shuffle=False
@@ -440,7 +442,7 @@ class PlotLosses(tf.keras.callbacks.Callback):
 
 
     def on_epoch_end(self, epoch, logs={}):
-        print('on_epoch_end')
+        # print('on_epoch_end')
         # print(self.model.get_layer('input_1'))
         self.logs_.append(logs)
         # save the model

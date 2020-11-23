@@ -1,14 +1,20 @@
 from __future__ import print_function
 
+import sys
+import os
+
+sys.path.append("/Users/kdarvish/Desktop/Bracelet/Algorithm/nnom/scripts")
+print(sys.path)
+from nnom import *
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from RnnKeras import RnnKeras, PlotLosses, Uncertainty
+from src.RnnKeras import RnnKeras, PlotLosses, Uncertainty
 from Data import Data
 import datetime
 import array as arr
 from sklearn.preprocessing import MinMaxScaler
-
 
 if __name__ == '__main__':
 
@@ -18,24 +24,24 @@ if __name__ == '__main__':
     #################################
     #   STEP: Define Hyper-parameters
     #################################
-    seq_length = 5  # 20 100
-    Tx = 5
-    Tx0 = 0   # this is used to prepare the data, not a part of rnn
-    Ty = 1    #
-    Ty0 = 4  # this is used to prepare the data, not a part of rnn : normally (Tx0+Tx)
-    n_a = [16, 8]#[3, 2]#[32, 16]  # 5 32
+    seq_length = 3  # 20 100
+    Tx = 3
+    Tx0 = 0  # this is used to prepare the data, not a part of rnn
+    Ty = 1  #
+    Ty0 = 2  # this is used to prepare the data, not a part of rnn : normally (Tx0+Tx)
+    n_a = [4]  # [3, 2]#[32, 16]  # 5 32
     n_y = 1
     n_x = 2
-    #m_train = 200  # 40 200
-    #m_val = 100  # 2 20
-    #m_test = 1  # 1 5
-    epochs = 10 #100  # 20 50
+    # m_train = 200  # 40 200
+    # m_val = 100  # 2 20
+    # m_test = 1  # 1 5
+    epochs = 2  # 100  # 20 50
     model_name = 'model'
     models_path = 'models/models' + time_now_string
     # models_path = 'models/models_2020_3_26_19_10_54'# sin signal learned
     # models_path = 'models/models_2020_4_14_19_46_56'  # amplitude-modulation signal learned
     doTraining = True
-    doScaling = False
+    doScaling = True
     learnUncertainty = False
     predictFuture = True
     seed_number = 0
@@ -54,10 +60,9 @@ if __name__ == '__main__':
     # x_feature = [0]
     # y_feature = [1]
 
-
     # options: 'regression' , 'classification'
-    problem_type = 'classification'
-    activation_type = 'sigmoid'  #'softmax'  'sigmoid', 'relu'  , kernel_initializer = 'he_uniform'
+    problem_type = 'regression'
+    activation_type = 'relu'  # 'softmax'  'sigmoid', 'relu'  , kernel_initializer = 'he_uniform'
 
     if problem_type == 'classification':
         model_metrics = ['accuracy']  # classification
@@ -66,12 +71,11 @@ if __name__ == '__main__':
     elif problem_type == 'regression':
         model_metrics = ['mse']  # regression
 
-        #options: mean_squared_logarithmic_error , mean_squared_error
+        # options: mean_squared_logarithmic_error , mean_squared_error
         loss_function = 'mean_squared_error'  # regression
 
     else:
         print('the problem type is not set correctly: ', problem_type)
-
 
     # for classification problem use other methods
 
@@ -85,7 +89,7 @@ if __name__ == '__main__':
         data.bracelet_data_augmentation(train_data_raw)
         train_data_raw_updated = data.update_bracelet_data(train_data_raw, problem_type)
         batch_t_train, batch_data_train = data.prepare_data_batches(feature_list, train_data_raw_updated,
-                                                                             seq_length)
+                                                                    seq_length)
         if doScaling:
             scalar_ = MinMaxScaler(feature_range=(0, 1))
             s0 = np.size(batch_data_train, 0)
@@ -99,14 +103,13 @@ if __name__ == '__main__':
 
         batch_x_train, batch_y_train = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0, x_feature, y_feature)
 
-
         # validation
         val_data_raw = data.read_from_file('dataset/train_val_test_Data_session_02_03/validation')
         data.bracelet_data_augmentation(val_data_raw)
 
         val_data_raw_updated = data.update_bracelet_data(val_data_raw, problem_type)
         batch_t_val, batch_data_val = data.prepare_data_batches(feature_list, val_data_raw_updated,
-                                                                             seq_length)
+                                                                seq_length)
 
         if doScaling:
             s0 = np.size(batch_data_val, 0)
@@ -118,12 +121,11 @@ if __name__ == '__main__':
 
         batch_x_val, batch_y_val = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0, x_feature, y_feature)
 
-
         # test
         test_data_raw = data.read_from_file('dataset/train_val_test_Data_session_02_03/test')
         test_data_raw_updated = data.update_bracelet_data(test_data_raw, problem_type)
         batch_t_test, batch_data_test = data.prepare_data_batches(feature_list, test_data_raw_updated,
-                                                                             seq_length)
+                                                                  seq_length)
         if doScaling:
             s0 = np.size(batch_data_test, 0)
             s1 = np.size(batch_data_test, 1)
@@ -144,15 +146,15 @@ if __name__ == '__main__':
         # ---> Generate Data
         # Training set
         batch_t_train, batch_data_train = data.generate_sequence_data(m=m_train, seq_length=seq_length,
-                                                                  seed_number=seed_number, data_type=data_type)
+                                                                      seed_number=seed_number, data_type=data_type)
         batch_x_train, batch_y_train = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0)
         # validation set
         batch_t_val, batch_data_val = data.generate_sequence_data(m=m_val, seq_length=seq_length,
-                                                              seed_number=seed_number + 1, data_type=data_type)
+                                                                  seed_number=seed_number + 1, data_type=data_type)
         batch_x_val, batch_y_val = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0)
         # Test Set
         batch_t_test, batch_data_test = data.generate_sequence_data(m=m_test, seq_length=seq_length,
-                                                                seed_number=seed_number + 2, data_type=data_type)
+                                                                    seed_number=seed_number + 2, data_type=data_type)
         batch_x_test, batch_y_test = data.prepare_data(batch_data_test, Tx, Ty, Tx0, Ty0)
 
     # --> Print & Plot Data
@@ -178,7 +180,8 @@ if __name__ == '__main__':
     #################################
 
     plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
-    rnn = RnnKeras(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, Ty=Ty, m_train=m_train, m_val=m_val, m_test=m_test, activation_type=activation_type)
+    rnn = RnnKeras(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, Ty=Ty, m_train=m_train, m_val=m_val, m_test=m_test,
+                   activation_type=activation_type)
 
     if doTraining:
         rnn.create_model(recursive)
@@ -187,7 +190,7 @@ if __name__ == '__main__':
         history = rnn.fit_model(x_train=batch_x_train, y_train=batch_y_train, x_val=batch_x_val, y_val=batch_y_val,
                                 epochs=epochs, plot_loss_value_obj=plot_losses, verbosity=verbosity)
         rnn.save_model(models_path, model_name)
-        rnn.visualize_model(models_path, model_name)
+        # rnn.visualize_model(models_path, model_name)
     else:
         rnn.load_model(models_path, model_name)
 
@@ -207,19 +210,29 @@ if __name__ == '__main__':
     #################################
     #   STEP: PREDICTION
     #################################
+    test_batch = np.array([batch_x_test[1, :, :]])  # (i, Tx, nx)
+    inputs = [test_batch]
+    # if data_type == 'test':
+    for i in range(rnn.m_layers):
+        inputs.append(rnn.a0_test[i])
+        inputs.append(rnn.c0_test[i])
+    y_ = np.reshape(batch_y_test[:, 1, :], (1, 1, 1))
+    generate_test_bin(np.array(test_batch)*127, np.array(y_), name='test_data.bin')
+    generate_model(rnn.model,  np.array(inputs), format='hwc', name="weights.h")
+
     if predictFuture:
         if recursive:
             prediction = []
             for i in range(np.size(batch_x_test, axis=0)):
                 if i > 0:
                     batch_x_test[i, 0, -1] = predict[-1, :, 0]
-                test_batch = np.array([batch_x_test[i, :, :]])  # (1, Tx, nx)
+                test_batch = np.array([batch_x_test[i, :, :]])  # (i, Tx, nx)
                 predict = rnn.compute_prediction(test_batch)
                 predict = np.array(predict)
                 prediction.append(predict[-1, :, :])
 
-            prediction = np.reshape(prediction, (1, np.size(batch_x_test, axis=0), n_y))  # in case  prediction does not have correct shaping
-
+            prediction = np.reshape(prediction, (
+                1, np.size(batch_x_test, axis=0), n_y))  # in case  prediction does not have correct shaping
 
             prediction = np.array(prediction)
             batch_t_test = np.array(batch_t_test)
@@ -239,30 +252,27 @@ if __name__ == '__main__':
         else:
             print('problem_type variable is not set correctly: ', problem_type)
 
-
         # change the type of value from list to array
-
 
         # data.plot_test_prediction_data(batch_t_test[:, Ty0:Ty0 + Ty], batch_y_test, prediction,
         #                                'test (line), prediction (dashed lines)')
 
-        counters = []
-        for data_ in test_data_raw_updated:
-            counters.append(len(data_[feature_list[0]]) - seq_length)
-
-        sum_ = 0
-        i = 0
-        for count in counters:
-
-            data.plot_bracelet_predictions(batch_y_test[:, range(sum_, sum_ + count), :], prediction[:, range(sum_, sum_ + count), :],
-                                           'distance: real: green, estimated: red, batch: {}'.format(i))
-            sum_ = sum_ + count
-            i = i+1
-
+        # counters = []
+        # for data_ in test_data_raw_updated:
+        #     counters.append(len(data_[feature_list[0]]) - seq_length)
+        #
+        # sum_ = 0
+        # i = 0
+        # for count in counters:
+        #
+        #     data.plot_bracelet_predictions(batch_y_test[:, range(sum_, sum_ + count), :], prediction[:, range(sum_, sum_ + count), :],
+        #                                    'distance: real: green, estimated: red, batch: {}'.format(i))
+        #     sum_ = sum_ + count
+        #     i = i+1
 
         data.plot_bracelet_predictions(batch_y_test, prediction, 'distance: real: green, estimated: red')
 
-        if model_metrics[0] =='accuracy':
+        if model_metrics[0] == 'accuracy':
             plt.figure()
             plt.subplot(211)
             plt.title('Loss')

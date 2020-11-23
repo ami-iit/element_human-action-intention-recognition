@@ -56,7 +56,7 @@ class SequentialModel(ABC):
         pass
 
     @abstractmethod
-    def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity):
+    def fit_model(self, x_train, y_train, x_val, y_val, epochs, plot_loss_value_obj, verbosity, recursive):
         pass
 
     @abstractmethod

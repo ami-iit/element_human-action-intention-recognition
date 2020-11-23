@@ -136,7 +136,7 @@ class Data:
             batch_x = batch_data[:, range(Tx0,  Tx0+Tx), :]
         else:
             batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0:2]
-            # batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0] #0:3
+            # batch_x = batch_data[:, range(Tx0, Tx0 + Tx), 0:3] #0:3
             # batch_x[:, :, -1] = 3.0
             # batch_x = np.reshape(batch_x, (np.size(batch_data, 0), Tx, np.size(batch_data, 2)))
         if not y_feature:
@@ -156,6 +156,14 @@ class Data:
         # batch_x shape: (batch_size, Tx, nx)
         # batch_y shape: (Ty, batch_size, ny)
         return batch_x, batch_y
+
+    def prepare_time_series_data_as_image(self, x, y):
+        x_ = np.array(x)
+        y_ = y[-1 , : , -1]
+        print (y.shape)
+        y_ = np.reshape(y_, y.shape[1])
+        y_= np.array(y_)
+        return x_, y_
 
     def load_data(self):
         return
@@ -314,7 +322,7 @@ class Data:
                     updating_indices.append(i)
                 else:
                     # update the range of rssi values brings close to 1.
-                    (data['rssiinCollision'])[i]= (data['rssiinCollision'])[i] / 50.0
+                    (data['rssiinCollision'])[i]= ((data['rssiinCollision'])[i] -60)/ 10.0
 
             # remove the lines of the data with zero rssi, start from the last index to the first of the list
             updating_indices.reverse()
