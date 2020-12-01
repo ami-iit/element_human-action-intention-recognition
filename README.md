@@ -36,3 +36,26 @@ In this element, at the first step, we will try to recognize the human action an
 ## Outcomes
 -  A repository for human action and intention recognition (Matlab, Python, or C++)
 
+## Dependencies
+
+- **IMPORTANT: To install properly `tensorflow 2.1` you should have python version `3.7`. Check [here](https://www.tensorflow.org/install/pip), [here](https://stackoverflow.com/questions/48720833/could-not-find-a-version-that-satisfies-the-requirement-tensorflow).** you can use the following command in macOS to install the required version of python: `brew install python@3.7`
+
+- I'll suggest you to install the repo inside a virtual environment to avoid clashing. To do so, you need to:
+  - if you do not have virtual environment, first install it `pip3 install virtualenv`
+  - Identify the directory of virtual environment: `virtualenv <Directory of virtual environment>`
+  - Activate the virtual environment: `source <Directory of virtual environment>/bin/activate`
+  - After finishing you work, you can `deactivate` the virtual environment
+
+- To install the dependencies, please run the following command:
+
+  `$pip3 install --user -r requirements.txt`
+
+  *Notes:* 
+
+  - If you want to install the code, you can use virtual environment, as mentioned before.
+
+  - if you want to install in system directoy, remove `--user` from the command line.
+
+    
+
+  

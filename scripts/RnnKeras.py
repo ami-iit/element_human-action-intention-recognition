@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from SequentialModel import SequentialModel
 import tensorflow as tf
 from sklearn import metrics
