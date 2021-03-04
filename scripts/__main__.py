@@ -41,6 +41,7 @@ if __name__ == '__main__':
     model_metrics = ['mse']
     data_type = 'amplitude-modulation'
     verbosity = False
+    load_data = False
     # for classification problem use other methods
 
     #################################

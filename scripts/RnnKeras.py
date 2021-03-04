@@ -363,9 +363,9 @@ class PlotLosses(tf.keras.callbacks.Callback):
         self.figsize = figsize
         self.file_path = file_path
         self.file_name = file_name
+        plt.show()
 
     def on_train_begin(self, logs={}):
-
         self.base_metrics = [metric for metric in self.params['metrics'] if not metric.startswith('val_')]
         self.logs = []
 
@@ -392,7 +392,7 @@ class PlotLosses(tf.keras.callbacks.Callback):
 
         plt.pause(0.05)
         plt.tight_layout()
-        plt.show()
+
 
     def save_model(self, epoch, val_loss):
         # creates a HDF5 file 'my_model_epochNumber_valLoss.h5'
