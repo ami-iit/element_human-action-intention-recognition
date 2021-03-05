@@ -30,3 +30,7 @@ add_custom_command(OUTPUT ${OUTPUT}
 add_custom_target(target ALL DEPENDS ${OUTPUT})
 install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --prefix ${OUTPUT})")
 
+
+if(UNIX)
+    find_package(TensorflowCC REQUIRED)
+endif()

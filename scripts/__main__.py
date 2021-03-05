@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from RnnKeras import RnnKeras, PlotLosses, Uncertainty
-from Data import Data
+from DatasetGenerationForPrediction import DatasetGenerationForPrediction
 import datetime
 import array as arr
 
@@ -17,17 +17,17 @@ if __name__ == '__main__':
     #   STEP: Define Hyper-parameters
     #################################
     seq_length = 100  # 20 100
-    Tx = 15
+    Tx = 3
     Tx0 = 0  # this is used to prepare the data, not a part of rnn
-    Ty = 1
-    Ty0 = 15  # this is used to prepare the data, not a part of rnn
+    Ty = 10
+    Ty0 = 3  # this is used to prepare the data, not a part of rnn
     n_a = [32, 16, 8, 4]#[3, 2]#[32, 16]  # 5 32
     n_y = 2
     n_x = 2
     m_train = 200  # 40 200
     m_val = 100  # 2 20
     m_test = 1  # 1 5
-    epochs = 100 #100  # 20 50
+    epochs = 20 #100  # 20 50
     model_name = 'model'
     models_path = 'models/models' + time_now_string
     # models_path = 'models/models_2020_3_26_19_10_54'# sin signal learned
@@ -41,28 +41,32 @@ if __name__ == '__main__':
     model_metrics = ['mse']
     data_type = 'amplitude-modulation'
     verbosity = False
-    read_data_from_file = True
+    read_data_from_file = False
     # for classification problem use other methods
 
     #################################
     #   STEP: DATA
     #################################
-    data = Data()
+    data = DatasetGenerationForPrediction()
     if read_data_from_file:
-        data.read_from_file('dataset/SynchedData/Session_02')
+        # ---> Read Data from File
+        # Training set
+        data.read_data_in_directory('dataset/bracelet')
+        # Validation set
+        # Test set
     else:
 
         # ---> Generate Data
         # Training set
-        batch_t_train, batch_data_train = data.generate_sequence_data(m=m_train, seq_length=seq_length,
+        batch_t_train, batch_data_train = data.generate_dataset(m=m_train, seq_length=seq_length,
                                                                   seed_number=seed_number, data_type=data_type)
         batch_x_train, batch_y_train = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0)
         # validation set
-        batch_t_val, batch_data_val = data.generate_sequence_data(m=m_val, seq_length=seq_length,
+        batch_t_val, batch_data_val = data.generate_dataset(m=m_val, seq_length=seq_length,
                                                               seed_number=seed_number + 1, data_type=data_type)
         batch_x_val, batch_y_val = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0)
         # Test Set
-        batch_t_test, batch_data_test = data.generate_sequence_data(m=m_test, seq_length=seq_length,
+        batch_t_test, batch_data_test = data.generate_dataset(m=m_test, seq_length=seq_length,
                                                                 seed_number=seed_number + 2, data_type=data_type)
         batch_x_test, batch_y_test = data.prepare_data(batch_data_test, Tx, Ty, Tx0, Ty0)
 

@@ -13,7 +13,7 @@ from tensorflow.keras.optimizers import Adam
 import tensorflow as tf
 import numpy as np
 from nnom import *
-from Data import Data
+from DatasetGenerationForPrediction import Data
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 
