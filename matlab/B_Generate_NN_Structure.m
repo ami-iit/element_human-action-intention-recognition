@@ -3,63 +3,31 @@
 %%%%        No. of Neurons (hidden layer size) *No.  Delays * No. of iteration     %%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-clc;clear all;close all;
+clc;
+clear;
+close all;
 
-IterationNo=2;
-Min_hiddenLayerSize=4;  Max_hiddenLayerSize=5;
-Min_layerDelays=2;      Max_layerDelays=3;
+%% PARAMETERS
 
+% NN parameters
+IterationNo=1; % number of iterations because of random initialization
+Min_hiddenLayerSize=20; % min: number of neurons in the hidden layer
+Max_hiddenLayerSize=20; % max: number of neurons in the hidden layer
+
+Min_layerDelays=3;     % min: number of recurssion
+Max_layerDelays=3;     % min: number of recurssion
+
+timeLengthData= 300;
 
 % Model Data
-Input_NN=cell(1,351);
-Output_NN=cell(1,351);
-model_no=11;val_no=2;test_no=2;
-experiment_counter=0;
-MODELNo=15;
-%pickUp
-for model_index=1:MODELNo
-    experiment_counter=experiment_counter+1;
-    data_file= fopen(strcat('../dataset/humanActionRecognition/PickUp/mod (',num2str(model_index),').txt')); 
-    data=textscan(data_file,'%f %f %f');fclose(data_file);
-    acc(:,1)=data{1};acc(:,2)=data{2};acc(:,3)=data{3};
-    for data_time=1:351
-        Input_NN{1,data_time}(:,experiment_counter)=acc(data_time,:)';
-        Output_NN{1,data_time}(:,experiment_counter)=[1;0;0;0];
-    end    
-end
-%Screwing
-for model_index=1:MODELNo
-    experiment_counter=experiment_counter+1;
-    data_file= fopen(strcat('../dataset/humanActionRecognition/Screwing/mod (',num2str(model_index),').txt')); 
-    data=textscan(data_file,'%f %f %f');fclose(data_file);
-    acc(:,1)=data{1};acc(:,2)=data{2};acc(:,3)=data{3};
-    for data_time=1:351
-        Input_NN{1,data_time}(:,experiment_counter)=acc(data_time,:)';
-        Output_NN{1,data_time}(:,experiment_counter)=[0;1;0;0];
-    end    
-end
-%PutDown
-for model_index=1:MODELNo
-    experiment_counter=experiment_counter+1;
-    data_file= fopen(strcat('../dataset/humanActionRecognition/PutDown/mod (',num2str(model_index),').txt')); 
-    data=textscan(data_file,'%f %f %f');fclose(data_file);
-    acc(:,1)=data{1};acc(:,2)=data{2};acc(:,3)=data{3};
-    for data_time=1:351
-        Input_NN{1,data_time}(:,experiment_counter)=acc(data_time,:)';
-        Output_NN{1,data_time}(:,experiment_counter)=[0;0;1;0];
-    end    
-end
-%ScrewingInitial
-for model_index=1:MODELNo
-    experiment_counter=experiment_counter+1;
-    data_file= fopen(strcat('../dataset/humanActionRecognition/ScrewingInitial/mod (',num2str(model_index),').txt')); 
-    data=textscan(data_file,'%f %f %f');fclose(data_file);
-    acc(:,1)=data{1};acc(:,2)=data{2};acc(:,3)=data{3};
-    for data_time=1:351
-        Input_NN{1,data_time}(:,experiment_counter)=acc(data_time,:)';
-        Output_NN{1,data_time}(:,experiment_counter)=[0;0;0;1];
-    end    
-end
+model_no=4;val_no=1;test_no=1;
+
+%% LOAD DATA
+
+% load the data
+importfile('../dataset/riskAssessment/dataset_37/processedData.mat');
+
+[Input_NN, Output_NN, Input_Test, Output_Test] = prepareDataset(processedData, timeLengthData);
 
 
 %% NN
@@ -83,9 +51,9 @@ targetSeries = Output_NN;
 % 4-12 * 2-5 * 3 * 10 --> 1080 times (1 min) --> 18 hr
 
 % single k-fold labels, 
-trainIndex=[1:11,16:26,31:41,46:56];
-valIndex=[12,13,27,28,42,43,57,58];
-testIndex = [14 15 29 30 44 45 59 60];
+trainIndex=[1,2,4];
+valIndex=[3];
+testIndex = [];
 
 % For finding proper structure we dont do the k-fold cross validation.
 
@@ -144,6 +112,8 @@ net.divideFcn = 'divideind';
 net.divideParam.trainInd =trainIndex;
 net.divideParam.valInd = valIndex;
 net.divideParam.testInd = testIndex;
+
+% net.layers{2}.transferFcn='logsig';
 
 % Choose a Training Function
 % For a list of all training functions type: help nntrain
@@ -235,9 +205,9 @@ perf = perform(net,Ts,Y)
 
 %% Test set
 
-% % [XsTest,XiTest,AiTest,TsTest] = preparets(net,Input_Test,Output_Test);
-% % YTest = net(XsTest,XiTest,AiTest);
-% % perfTest = perform(net,TsTest,YTest);
+[XsTest,XiTest,AiTest,TsTest] = preparets(net,Input_Test,Output_Test);
+YTest = net(XsTest,XiTest,AiTest);
+perfTest = perform(net,TsTest,YTest);
 
 % Recalculate Training, Validation and Test Performance
 %- trainTargets = gmultiply(targets,tr.trainMask);
@@ -335,11 +305,11 @@ figure (1),
 plotperform(tr);
 saveas(gcf,strcat('Figures/plotperform',num2str(counter),'.jpg'))
 
-% figure; plotresponse(TsTest,YTest);title('test: response');saveas(gcf,'E1.jpg')
+figure; plotresponse(TsTest,YTest);title('test: response');saveas(gcf,'E1.jpg')
 % E1 = gsubtract(TsTest,YTest);
 % figure; ploterrcorr(E1);title('test: errcorr');saveas(gcf,'E2.jpg')
 % 
-% figure, plotresponse(Ts,Y)
+figure, plotresponse(Ts,Y)
 % E2 = gsubtract(Ts,Y);
 % figure; ploterrcorr(E2);saveas(gcf,'E3.jpg')
 
@@ -348,6 +318,7 @@ Performance_Matrix(:,counter)=[counter;layerDelaysCounter;hiddenLayerSizeCounter
 end
 end
 end
+
 figure; plot(Performance_Matrix(1,:),Performance_Matrix(4,:),'-*k');
 title('Performance of Neural Networks Models');
 saveas(gcf,'NN1.jpg');
