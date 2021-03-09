@@ -1,0 +1,1 @@
+This dataset includes the human imu data, collected from a smartwatch. each data folder is related to different human actions.
