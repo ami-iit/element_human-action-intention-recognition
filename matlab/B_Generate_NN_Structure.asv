@@ -321,7 +321,7 @@ figure; plotresponse(TsTest,YTest);title('test: response');saveas(gcf,'E1.jpg')
 % E1 = gsubtract(TsTest,YTest);
 % figure; ploterrcorr(E1);title('test: errcorr');saveas(gcf,'E2.jpg')
 % 
-figure, plotresponse(Ts,Y)
+% figure, plotresponse(Ts,Y)
 % E2 = gsubtract(Ts,Y);
 % figure; ploterrcorr(E2);saveas(gcf,'E3.jpg')
 

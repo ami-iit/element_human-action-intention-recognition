@@ -26,6 +26,7 @@
 // tensorflow
 #include <tensorflow/core/platform/env.h>
 #include <tensorflow/core/public/session.h>
+#include <tensorflow/core/util/abstract_stack_trace.h>
 
 namespace tf = tensorflow;
 
@@ -34,6 +35,23 @@ class SequencePrediction : public yarp::os::RFModule
 {
 private:
     double m_dT;
+    tf::Tensor m_input;
+    tf::Status m_status;
+    tf::Session* m_session;
+    tf::SessionOptions sess_opts;
+
+    tf::GraphDef _graph_def;   // graph from frozen protobuf
+    tf::SessionOptions _opts;  // gpu options
+    tf::Session *_session = 0; // session to run the graph in tf back end
+    tf::Status _status;        // status check for each tf action trial
+    std::string _dev;          // device for the graph "\cpu:0" or "\cpu:0"
+    std::string _model_path = "/home/hallab/Github/project/joint_stem_detection_and_crop-weed_classification/testing_model/output_graph.pb";
+    std::string _img_path = "/home/hallab/Github/project/joint_stem_detection_and_crop-weed_classification/dataset/img/rgb_000008.png";
+
+
+    tf::keras
+
+
 
 public:
 
