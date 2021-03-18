@@ -11,9 +11,9 @@ for i=1:size(TsTest{1},2)
     end
     
     figure; 
-    title(strcat('test data (',num2str(i),'): target and estimated risk'));
     plotresponse(y_ground_truth,y_estimated);
-    %     saveas(gcf,'E1.jpg')
+    title(strcat('test data (',num2str(i),'): target and estimated risk'));
+    saveas(gcf,strcat('E',num2str(i),'.jpg'))
 
 end
 

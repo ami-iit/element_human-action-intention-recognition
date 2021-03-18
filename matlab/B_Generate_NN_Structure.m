@@ -14,8 +14,8 @@ IterationNo=1; % number of iterations because of random initialization
 Min_hiddenLayerSize=20; % min: number of neurons in the hidden layer
 Max_hiddenLayerSize=20; % max: number of neurons in the hidden layer
 
-Min_layerDelays=3;     % min: number of recurssion
-Max_layerDelays=3;     % min: number of recurssion
+Min_layerDelays=2;     % min: number of recurssion
+Max_layerDelays=2;     % min: number of recurssion
 
 timeLengthData= 300;
 % percentage of the test set among all the data
@@ -26,12 +26,14 @@ validationPercentage= 0.1;
 % Model Data
 model_no=4;val_no=1;test_no=1;
 
+classification= true;
+
 %% LOAD DATA
 
 % load the data
 
 dirDataset = '../dataset/riskAssessment/dataset_37/processedData2';
-[Input_NN, Output_NN, Input_Test, Output_Test] = prepareDataset(dirDataset, timeLengthData, testSetPercentage);
+[Input_NN, Output_NN, Input_Test, Output_Test] = prepareDataset(dirDataset, timeLengthData, testSetPercentage, classification);
 
 
 %% NN
@@ -51,7 +53,7 @@ targetSeries = Output_NN;
 
 % loops:  hiddenLayerSize , layerDelays, trainIndex ,*10 for check
 % 4-15 * 2-5 * 4 * 10 --> 1920 times (1 min) --> 32 hr
-% make list of nets
+% make list of nets, 
 % 4-12 * 2-5 * 3 * 10 --> 1080 times (1 min) --> 18 hr
 
 % single k-fold labels, 
@@ -97,7 +99,7 @@ net = layrecnet(layerDelays,hiddenLayerSize);
 %- net.inputs{1}.processFcns = {'removeconstantrows','mapminmax'};
 %- net.inputs{2}.processFcns = {'removeconstantrows','mapminmax'};
 
-% Prepare the Data for Training and Simulation
+% Prepare the Data for T(:,test_data_counter)raining and Simulation
 % The function PREPARETS prepares timeseries data for a particular network,
 % shifting time by the minimum amount to fill input states and layer states.
 % Using PREPARETS allows you to keep your original time series data unchanged, while
@@ -145,7 +147,7 @@ net.divideParam.testInd = testIndex;
 %-  'ploterrcorr', 'plotinerrcorr'};
 
 % Train the Network
-% net: New network
+% net: New networktest: response
  
 % tr: Training record (epoch and perf)
  
@@ -209,7 +211,7 @@ perf = perform(net,Ts,Y)
 %- earlyPredictPerformance = perform(nets,ts,ys)
 
 
-%%lastInstant = Y{end};
+%%lastInstant = Y{end};test: response
 %%ClassRes=round(lastInstant(:,testIndex));
 
 
@@ -285,7 +287,6 @@ perfTest = perform(net,TsTest,YTest);
 %ClassDesRes(1,1:2)=1;ClassDesRes(2,3:4)=1;ClassDesRes(3,5:6)=1;ClassDesRes(4,7:8)=1;
 
 %% Save and Load;
-
 % Net2=net;
 % save Net2;
 %load Net1;
@@ -318,10 +319,12 @@ plotperform(tr);
 saveas(gcf,strcat('Figures/plotperform',num2str(counter),'.jpg'))
 
 figure; plotresponse(TsTest,YTest);title('test: response');saveas(gcf,'E1.jpg')
+
+plotTestSet(TsTest,YTest);
 % E1 = gsubtract(TsTest,YTest);
 % figure; ploterrcorr(E1);title('test: errcorr');saveas(gcf,'E2.jpg')
 % 
-figure, plotresponse(Ts,Y)
+% figure, plotresponse(Ts,Y)
 % E2 = gsubtract(Ts,Y);
 % figure; ploterrcorr(E2);saveas(gcf,'E3.jpg')
 
@@ -334,3 +337,11 @@ end
 figure; plot(Performance_Matrix(1,:),Performance_Matrix(4,:),'-*k');
 title('Performance of Neural Networks Models');
 saveas(gcf,'NN1.jpg');
+
+if classification==true
+    lastInstantTs = TsTest{end};
+    ClassResTest=round(lastInstantTest(:,:));
+    [c,cm,ind,per] = confusion(lastInstantTs,lastInstantTest);
+    plotconfusion(lastInstantTs,lastInstantTest)
+    accuracy(j1)=1-c;
+end

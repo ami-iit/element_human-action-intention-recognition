@@ -1,4 +1,4 @@
-function [Input_NN, Output_NN, Input_Test, Output_Test] = prepareDataset(dirDataset, timeLengthData, testSetPercentage)
+function [Input_NN, Output_NN, Input_Test, Output_Test] = prepareDataset(dirDataset, timeLengthData, testSetPercentage, classification)
 training_data_counter=0;
 test_data_counter=0;
 
@@ -30,16 +30,30 @@ for j=1:size(dirNames,2)-1
                 for k=1:timeLengthData%% Test Data
                     
                     Input_Test{1,k}(:,test_data_counter)=input(k,:)';
-                    Output_Test{1,k}(:,test_data_counter)=riskMeasure;
-                    %  multi variable output:
-                    %     Output_NN{1,data_time}(:,experiment_counter)=[0;1;0;0];
+                    if classification==true
+                        %	multi variable output:
+                        output=[0;0;0];
+                        output(riskMeasure)=1;
+                        Output_Test{1,k}(:,test_data_counter)=output;
+                    else
+                        Output_Test{1,k}(:,test_data_counter)=riskMeasure;
+                    end
+                    
+
                 end
             else % training and validation set
                 training_data_counter=training_data_counter+1;
                 
                 for k=1:timeLengthData
                     Input_NN{1,k}(:,training_data_counter)=input(k,:)';
-                    Output_NN{1,k}(:,training_data_counter)=riskMeasure;
+                    if classification==true
+                        %	multi variable output:
+                        output=[0;0;0];
+                        output(riskMeasure)=1;
+                        Output_NN{1,k}(:,training_data_counter)=output;
+                    else
+                        Output_NN{1,k}(:,training_data_counter)=riskMeasure;
+                    end
                 end
             end
         end
