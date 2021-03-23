@@ -318,7 +318,7 @@ figure,
 plotperform(tr);
 saveas(gcf,strcat('Figures/plotperform',num2str(counter),'.jpg'))
 
-figure; plotresponse(TsTest,YTest);title('test: response');saveas(gcf,'E1.jpg')
+figure; plotresponse(TsTest,YTest);title('test: response');%saveas(gcf,'E1.jpg')
 
 plotTestSet(TsTest,YTest);
 % E1 = gsubtract(TsTest,YTest);
@@ -339,9 +339,12 @@ title('Performance of Neural Networks Models');
 saveas(gcf,'NN1.jpg');
 
 if classification==true
+    lastInstantTest = YTest{end};
     lastInstantTs = TsTest{end};
     ClassResTest=round(lastInstantTest(:,:));
+
     [c,cm,ind,per] = confusion(lastInstantTs,lastInstantTest);
     plotconfusion(lastInstantTs,lastInstantTest)
-    accuracy(j1)=1-c;
+    accuracy=1-c
+    saveas(gcf,'confusionMatrix.jpg')
 end

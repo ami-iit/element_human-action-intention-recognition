@@ -49,7 +49,7 @@ private:
     std::string _img_path = "/home/hallab/Github/project/joint_stem_detection_and_crop-weed_classification/dataset/img/rgb_000008.png";
 
 
-    tf::keras
+//    tf::keras
 
 
 
