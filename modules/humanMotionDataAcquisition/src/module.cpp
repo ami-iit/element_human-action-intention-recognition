@@ -62,49 +62,52 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
 
     yInfo() << "XsensRetargeting::configure:  NoOfJoints: " << m_actuatedDOFs;
 
-    std::string portName;
-    portName = rf.check( "HDEJointsPort", yarp::os::Value("HDEJointsPort")).asString();
+    std::string portNameIn, portNameOut;
+    portNameIn = rf.check( "HDEJointsPortIn", yarp::os::Value("HDEJointsPortIn")).asString();
 
-    if (!m_wholeBodyHumanJointsPort.open("/" + getName() + portName))
+    if (!m_wholeBodyHumanJointsPort.open("/" + getName() + portNameIn))
     {
-        yError() << "[XsensRetargeting::configure] " << portName << " port already open.";
+        yError() << "[XsensRetargeting::configure] " << portNameIn << " port already open.";
         return false;
     }
-    yarp::os::Network::connect("/iCub/RobotStateWrapper/state:o", "/" + getName() + portName);
+
+    portNameOut = rf.check( "HDEJointsPortOut", yarp::os::Value("HDEJointsPortOut")).asString();
+
+    yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
 
     //
-    portName = rf.check( "WearablesLeftShoesPort", yarp::os::Value("/FTShoeLeft/WearableData/data:i")).asString();
-    if (!m_leftShoesPort.open("/" + getName() + portName))
+    portNameIn = rf.check( "WearablesLeftShoesPort", yarp::os::Value("/FTShoeLeft/WearableData/data:i")).asString();
+    if (!m_leftShoesPort.open("/" + getName() + portNameIn))
     {
-        yError() << "[XsensRetargeting::configure] " << portName << " port already open.";
+        yError() << "[XsensRetargeting::configure] " << portNameIn << " port already open.";
         return false;
     }
-    yarp::os::Network::connect("/FTShoeLeft/WearableData/data:o", "/" + getName() + portName);
+    yarp::os::Network::connect("/FTShoeLeft/WearableData/data:o", "/" + getName() + portNameIn);
 
 
     //
-    portName = rf.check( "WearablesRightShoesPort", yarp::os::Value("/FTShoeRight/WearableData/data:i")).asString();
-    if (!m_rightShoesPort.open("/" + getName() + portName))
+    portNameIn = rf.check( "WearablesRightShoesPort", yarp::os::Value("/FTShoeRight/WearableData/data:i")).asString();
+    if (!m_rightShoesPort.open("/" + getName() + portNameIn))
     {
-        yError() << "[XsensRetargeting::configure] " << portName << " port already open.";
+        yError() << "[XsensRetargeting::configure] " << portNameIn << " port already open.";
         return false;
     }
-    yarp::os::Network::connect("/FTShoeRight/WearableData/data:o", "/" + getName() + portName);
+    yarp::os::Network::connect("/FTShoeRight/WearableData/data:o", "/" + getName() + portNameIn);
 
 
-    portName = rf.check( "controllerJointsPort",  yarp::os::Value("controllerJointsPort")).asString();
+    portNameIn = rf.check( "controllerJointsPort",  yarp::os::Value("controllerJointsPort")).asString();
 
-    if (!m_wholeBodyHumanSmoothedJointsPort.open("/" + getName() + portName))
+    if (!m_wholeBodyHumanSmoothedJointsPort.open("/" + getName() + portNameIn))
     {
-        yError() << "[XsensRetargeting::configure] Unable to open the port " << portName;
+        yError() << "[XsensRetargeting::configure] Unable to open the port " << portNameIn;
         return false;
     }
 
-    portName = rf.check( "controllerCoMPort",  yarp::os::Value("controllerCoMPort")).asString();
+    portNameIn = rf.check( "controllerCoMPort",  yarp::os::Value("controllerCoMPort")).asString();
 
-    if (!m_HumanCoMPort.open("/" + getName() + portName))
+    if (!m_HumanCoMPort.open("/" + getName() + portNameIn))
     {
-        yError() << "[XsensRetargeting::configure] Unable to open the port " << portName;
+        yError() << "[XsensRetargeting::configure] Unable to open the port " << portNameIn;
         return false;
     }
 
