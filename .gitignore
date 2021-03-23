@@ -33,6 +33,7 @@
 
 # Temporary Files
 *~
+*.asv
 
 # build folder
 build/
