@@ -10,8 +10,8 @@ if(NOT TensorflowCC_FOUND)
 	message(FATAL_ERROR "TensorflowCC is not found" )
 endif()
 
-add_subdirectory(PredictSequenceDataGenerated_module)
+#add_subdirectory(PredictSequenceDataGenerated_module)
 
 
-
+add_subdirectory(humanMotionDataAcquisition)
 

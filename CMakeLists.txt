@@ -9,6 +9,7 @@ set(PACKAGE_VERSION 1.0.0)
 project(HumanActionIntetionRecognition
   VERSION ${PACKAGE_VERSION})
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 find_package(Python REQUIRED)
 find_program(PYTHON "Python3")
