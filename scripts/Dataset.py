@@ -64,6 +64,7 @@ class Dataset(ABC):
                     data_dict[element] = []
                     keys_list.append(element)
                 else:
+                    element = float(element)
                     data_dict[keys_list[i]].append(element)
                 i += 1
         input_file.close()
@@ -77,6 +78,3 @@ class Dataset(ABC):
     def plot_data(self):
        pass
 
-    @abstractmethod
-    def generate_dataset(self):
-        pass

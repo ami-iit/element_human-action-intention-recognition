@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from RnnKeras import RnnKeras, PlotLosses, Uncertainty
-from DatasetGenerationForPrediction import DatasetGenerationForPrediction
+from DatasetHumanMotionPrediction import DatasetHumanMotionPrediction
 import datetime
 import array as arr
 
@@ -17,17 +17,17 @@ if __name__ == '__main__':
     #   STEP: Define Hyper-parameters
     #################################
     seq_length = 100  # 20 100
-    Tx = 3
+    Tx = 10
     Tx0 = 0  # this is used to prepare the data, not a part of rnn
-    Ty = 10
-    Ty0 = 3  # this is used to prepare the data, not a part of rnn
-    n_a = [32, 16, 8, 4]#[3, 2]#[32, 16]  # 5 32
-    n_y = 2
-    n_x = 2
+    Ty = 80
+    Ty0 = 10  # this is used to prepare the data, not a part of rnn
+    n_a = [64, 64]#[3, 2]#[32, 16]  # 5 32
+    n_y = 144
+    n_x = 144
     m_train = 200  # 40 200
     m_val = 100  # 2 20
     m_test = 1  # 1 5
-    epochs = 20 #100  # 20 50
+    epochs = 30 #100  # 20 50
     model_name = 'model'
     models_path = 'models/models' + time_now_string
     # models_path = 'models/models_2020_3_26_19_10_54'# sin signal learned
@@ -41,19 +41,37 @@ if __name__ == '__main__':
     model_metrics = ['mse']
     data_type = 'amplitude-modulation'
     verbosity = False
-    read_data_from_file = False
+    read_data_from_file = True
+    feature_list = []
+
+
     # for classification problem use other methods
 
     #################################
     #   STEP: DATA
     #################################
-    data = DatasetGenerationForPrediction()
+    data = DatasetHumanMotionPrediction()
     if read_data_from_file:
         # ---> Read Data from File
         # Training set
-        data.read_data_in_directory('dataset/bracelet')
+        data_training = data.read_data_in_directory('../dataset/HumanActionIntentionPrediction/train_val_test_Data/training')
+        batch_t_train, batch_data_train = data.prepare_data_batches(feature_list, data_training, seq_length)
+        batch_x_train, batch_y_train = data.prepare_data(batch_data_train, Tx, Ty, Tx0, Ty0)
+
         # Validation set
+        data_validation = data.read_data_in_directory('../dataset/HumanActionIntentionPrediction/train_val_test_Data/validation')
+        batch_t_validation, batch_data_val = data.prepare_data_batches(feature_list, data_validation, seq_length)
+        batch_x_val, batch_y_val = data.prepare_data(batch_data_val, Tx, Ty, Tx0, Ty0)
+
         # Test set
+        data_test = data.read_data_in_directory('../dataset/HumanActionIntentionPrediction/train_val_test_Data/test')
+        batch_t_test, batch_data_test = data.prepare_data_batches(feature_list, data_test, seq_length)
+        batch_x_test, batch_y_test = data.prepare_data(batch_data_test, Tx, Ty, Tx0, Ty0)
+
+        m_train = batch_x_train.shape[0]
+        m_val = batch_x_val.shape[0]
+        m_test = batch_x_test.shape[0]
+
     else:
 
         # ---> Generate Data
@@ -88,14 +106,18 @@ if __name__ == '__main__':
         print('y_test shape: ', batch_y_test.shape)
         data.plot_data(batch_t_test, batch_data_test, 'x:test')
 
+    print('---> data preparation is done ...')
+
     #################################
     #   STEP: TRAINING RNN
     #################################
+    print('---> Start rnn ...')
 
     plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
     rnn = RnnKeras(n_a=n_a, n_y=n_y, n_x=n_x, Tx=Tx, Ty=Ty, m_train=m_train, m_val=m_val, m_test=m_test)
 
     if doTraining:
+        print('---> Start training ...')
         rnn.create_model()
         rnn.create_optimizer()
         rnn.compile_model(loss_function, model_metrics)
@@ -104,7 +126,10 @@ if __name__ == '__main__':
         rnn.save_model(models_path, model_name)
         rnn.visualize_model(models_path, model_name)
     else:
+        print('---> Start loading model ...')
         rnn.load_model(models_path, model_name)
+
+    print('---> model is trained or loaded ...')
 
     if verbosity:
         rnn.provide_model_summary()
@@ -132,7 +157,7 @@ if __name__ == '__main__':
         prediction = np.array(prediction)
         batch_t_test = np.array(batch_t_test)
 
-        data.plot_test_prediction_data(batch_t_test[:, Ty0:Ty0 + Ty], batch_y_test, prediction,
+        data.plot_test_prediction_data(batch_t_test, batch_y_test, prediction,
                                        'test (line), prediction (dashed lines)')
 
     if verbosity:

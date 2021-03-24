@@ -365,14 +365,14 @@ class PlotLosses(tf.keras.callbacks.Callback):
         self.file_name = file_name
         plt.show()
 
-    def on_train_begin(self, logs={}):
+    def on_train_begin(self, logs=None):
         self.base_metrics = [metric for metric in self.params['metrics'] if not metric.startswith('val_')]
         self.logs = []
 
-    def on_epoch_end(self, epoch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
         self.logs.append(logs)
         # save the model
-        # print(logs)
+
         self.save_model(epoch, val_loss=logs['val_loss'])
 
         plt.clf()

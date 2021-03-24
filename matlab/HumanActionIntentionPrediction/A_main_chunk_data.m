@@ -73,7 +73,12 @@ test_set=chunked_data_list_random(test_indices);
 save_data_train_val_test(training_set,val_set, test_set, save_file_path, VariableNames, VariableTypes )
 
 
+for i= 1: size(VariableNames,2)
+    title_ = strrep(VariableNames(i),'_','-');
+    figure;
+    plot(time, var(:,i));  title(title_);
 
+end
 
 
           
