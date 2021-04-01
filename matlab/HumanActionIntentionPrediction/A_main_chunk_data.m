@@ -70,15 +70,28 @@ val_set=chunked_data_list_random(val_indices);
 test_set=chunked_data_list_random(test_indices);
 
 
-save_data_train_val_test(training_set,val_set, test_set, save_file_path, VariableNames, VariableTypes )
+% save_data_train_val_test(training_set,val_set, test_set, save_file_path, VariableNames, VariableTypes )
 
+time= var(:,1)-var(1,1);
 
-for i= 1: size(VariableNames,2)
+for i= 2: size(VariableNames,2)
     title_ = strrep(VariableNames(i),'_','-');
     figure;
     plot(time, var(:,i));  title(title_);
 
 end
+
+
+for i= 2: size(VariableNames,2)
+    if contains(VariableNames(i),'Knee')
+        VariableNames(i)
+        title_ = strrep(VariableNames(i),'_','-');
+        figure;
+        plot(time, var(:,i));  title(title_);
+    end
+    
+end
+
 
 
           
