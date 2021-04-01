@@ -63,13 +63,9 @@ class WindowGenerator():
   def plot(self, model=None, plot_col='jLeftKnee_roty_val', max_subplots=3):
       inputs, labels = self.example
       plt.figure(figsize=(12, 8))
+      plt.title(" state: {}".format(plot_col))
       plot_col_index = self.column_indices[plot_col]
-
-      print('plot: inputs', inputs)
-      print('plot: inputs', type(inputs))
-      print('plot: inputs', len(inputs))
-
-          max_n = min(max_subplots, len(inputs))
+      max_n = min(max_subplots, len(inputs))
 
       for n in range(max_n):
           plt.subplot(max_n, 1, n + 1)
