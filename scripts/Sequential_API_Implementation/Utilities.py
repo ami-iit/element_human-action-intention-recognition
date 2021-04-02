@@ -1,5 +1,9 @@
 import tensorflow as tf
+from tensorflow.keras.utils import plot_model
+from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
+from pathlib import Path
+
 
 
 def compile_and_fit(model, window, plot_losses, patience=2, MAX_EPOCHS=20):
@@ -16,7 +20,34 @@ def compile_and_fit(model, window, plot_losses, patience=2, MAX_EPOCHS=20):
                         callbacks=[early_stopping
                             # , plot_losses
                                    ])
+
+    plt.figure(figsize=(12, 8))
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss : {}'.format(model.name))
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'validation'], loc='upper left')
+    plt.show()
+
     return history
+
+
+def save_model(model, file_path='', file_name='myModel'):
+    Path(file_path).mkdir(parents=True, exist_ok=True)
+    model.save('{}/{}.h5'.format(file_path, file_name))  # creates a HDF5 file 'my_model.h5'
+    return
+
+
+def visualize_model(model, file_path='', file_name='myModel'):
+    plot_model(model, to_file='{}/{}.png'.format(file_path, file_name), show_shapes=True)
+
+    return
+
+
+def load_model_from_file(file_path='', file_name='myModel'):
+    model = load_model('{}/{}.h5'.format(file_path, file_name))
+    return model
 
 
 def translate_metric(x):

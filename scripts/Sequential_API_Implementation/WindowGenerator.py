@@ -61,6 +61,7 @@ class WindowGenerator():
       return inputs, labels
 
   def plot(self, model=None, plot_col='jLeftKnee_roty_val', max_subplots=3):
+      print('plot')
       inputs, labels = self.example
       plt.figure(figsize=(12, 8))
       plt.title(" state: {}".format(plot_col))
@@ -125,8 +126,9 @@ class WindowGenerator():
       """Get and cache an example batch of `inputs, labels` for plotting."""
       result = getattr(self, '_example', None)
       if result is None:
+          print('example is empty, feeding with test set')
           # No example batch was found, so get one from the `.train` dataset
-          result = next(iter(self.train))
+          result = next(iter(self.test))
           # And cache it for next time
           self._example = result
       return result

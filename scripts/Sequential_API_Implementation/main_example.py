@@ -18,31 +18,35 @@ from MultiStepLastBaseline import MultiStepLastBaseline
 from RepeatBaseline import RepeatBaseline
 from FeedBack import FeedBack
 from Utilities import compile_and_fit
+from Utilities import save_model
+from Utilities import visualize_model
 from Utilities import PlotLosses
 
 
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
-plot_fingures= False
+plot_figures= False
 
 # def main():
 if __name__ == "__main__":
     # Download the dataset
 
     model_name = 'model'
-    models_path = 'models/models';
-    plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
+    models_path = 'models/models'
+    MAX_EPOCHS = 20
+    OUT_STEPS = 150
+    INPUT_WIDTH = 150
+    HIDDEN_LAYER_SIZE = 256
+    PATIENCE = 5
+    PLOT_COL = 'r_shoe_ty'
+    MAX_SUBPLOTS = 5
 
+    plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
 
     # features_list = ['jLeftKnee_roty_val', 'jRightKnee_roty_val', 'jLeftKnee_roty_vel', 'jRightKnee_roty_vel']
     features_list = []
     pop_list = ['time']
     data_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition/dataset/HumanActionIntentionPrediction/RawData/Dataset01/Dataset_2021_03_23_13_45_06.txt'
-
-    MAX_EPOCHS = 20
-    OUT_STEPS = 240
-    INPUT_WIDTH = 10
-    HIDDEN_LAYER_SIZE = 256
 
     df_row = pd.read_csv(data_path, sep=' ')
     # slice [start:stop:step], starting from index 5 take every 6th record.
@@ -60,7 +64,7 @@ if __name__ == "__main__":
         df_time = df_row['time']- df_row['time'][0]
     df.head()
 
-    if plot_fingures:
+    if plot_figures:
         plot_cols = features_list
         plot_features = df[plot_cols]
         plot_features.index = df_time
@@ -72,7 +76,7 @@ if __name__ == "__main__":
 
     df.describe().transpose()
 
-    if plot_fingures:
+    if plot_figures:
         plt.figure(figsize=(12, 8))
         plt.hist2d(df['jLeftKnee_roty_val'], df['jLeftKnee_roty_vel'], bins=(50, 50), vmax=400)
         plt.colorbar()
@@ -94,14 +98,13 @@ if __name__ == "__main__":
     fft = tf.signal.rfft(df['jRightKnee_roty_val'])
     f_per_dataset = np.arange(0, len(fft))
 
-    if plot_fingures:
+    if plot_figures:
         plt.figure(figsize=(12, 8))
         plt.step(f_per_dataset, np.abs(fft))
         plt.xscale('log')
         # plt.ylim(0, 400000)
         plt.xlim([0.1, max(plt.xlim())])
         _ = plt.xlabel('Frequency (log scale)')
-
 
     column_indices = {name: i for i, name in enumerate(df.columns)}
 
@@ -123,7 +126,7 @@ if __name__ == "__main__":
     df_std = (df - train_mean) / train_std
     df_std = df_std.melt(var_name='Column', value_name='Normalized')
 
-    if plot_fingures:
+    if plot_figures:
         plt.figure(figsize=(12, 6))
         ax = sns.violinplot(x='Column', y='Normalized', data=df_std)
         _ = ax.set_xticklabels(df.keys(), rotation=90)
@@ -448,15 +451,16 @@ if __name__ == "__main__":
     #     print(f'{name:15s}: {value[1]:0.4f}')
     #
 
+    ####################################
+    ####################################
     ## Multi-step models
-
 
     multi_window = WindowGenerator(input_width=INPUT_WIDTH,
                                    label_width=OUT_STEPS,
                                    shift=OUT_STEPS,
                                    train_df=train_df, val_df=val_df, test_df=test_df)
 
-    multi_window.plot()
+    multi_window.plot(max_subplots=MAX_SUBPLOTS)
     multi_window
     multi_window_cpy = copy.deepcopy(multi_window)
 
@@ -529,21 +533,23 @@ if __name__ == "__main__":
     #     # Shape [batch, time, features] => [batch, CONV_WIDTH, features]
     #     tf.keras.layers.Lambda(lambda x: x[:, -CONV_WIDTH:, :]),
     #     # Shape => [batch, 1, conv_units]
-    #     tf.keras.layers.Conv1D(256, activation='relu', kernel_size=(CONV_WIDTH)),
+    #     tf.keras.layers.Conv1D(HIDDEN_LAYER_SIZE, activation='relu', kernel_size=(CONV_WIDTH)),
     #     # Shape => [batch, 1,  out_steps*features]
     #     tf.keras.layers.Dense(OUT_STEPS * num_features,
     #                           kernel_initializer=tf.initializers.zeros()),
     #     # Shape => [batch, out_steps, features]
     #     tf.keras.layers.Reshape([OUT_STEPS, num_features])
     # ])
+    # multi_conv_model._name = 'multi_conv_model'
     #
-    # history = compile_and_fit(multi_conv_model, multi_window_cpy, MAX_EPOCHS=MAX_EPOCHS)
+    # history = compile_and_fit(multi_conv_model, multi_window_cpy, plot_losses=plot_losses,
+    #                           patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
     #
     # IPython.display.clear_output()
     #
     # multi_val_performance['Conv'] = multi_conv_model.evaluate(multi_window_cpy.val)
     # multi_performance['Conv'] = multi_conv_model.evaluate(multi_window_cpy.test, verbose=0)
-    # multi_window.plot(multi_conv_model)
+    # multi_window.plot(multi_conv_model, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
 
     # RNN
     multi_lstm_model = tf.keras.Sequential([
@@ -556,72 +562,65 @@ if __name__ == "__main__":
         # Shape => [batch, out_steps, features]
         tf.keras.layers.Reshape([OUT_STEPS, num_features])
     ])
+    multi_lstm_model._name = 'multi_LSTM_model'
 
-    history = compile_and_fit(multi_lstm_model, multi_window_cpy, plot_losses, MAX_EPOCHS=MAX_EPOCHS)
-
-    plt.figure(figsize=(12, 8))
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'validation'], loc='upper left')
-    plt.show()
-
+    history = compile_and_fit(multi_lstm_model, multi_window_cpy, plot_losses=plot_losses, patience=5, MAX_EPOCHS=MAX_EPOCHS)
 
     IPython.display.clear_output()
-
     multi_val_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.val)
     multi_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.test, verbose=0)
 
-    plot_col='r_shoe_ty'
-    multi_window.plot(multi_lstm_model, max_subplots=20, plot_col=plot_col)
+    multi_window.plot(multi_lstm_model, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
 
-    ## Residual Net
+    # Residual Net
     # multi_residual_lstm = ResidualWrapper(
     #     tf.keras.Sequential([
-    #         tf.keras.layers.LSTM(32, return_sequences=True),
+    #         tf.keras.layers.LSTM(HIDDEN_LAYER_SIZE, return_sequences=True),
     #         tf.keras.layers.Dense(
-    #              num_features,
+    #             num_features,
     #             # The predicted deltas should start small
     #             # So initialize the output layer with zeros
-    #             kernel_initializer=tf.initializers.zeros())
-    #     ]))
+    #             kernel_initializer=tf.initializers.zeros()),
+    #         tf.keras.layers.Reshape([OUT_STEPS, num_features])
     #
-    # history = compile_and_fit(multi_residual_lstm, multi_window_cpy, patience=5, MAX_EPOCHS=MAX_EPOCHS*2)
+    #     ]))
+    # multi_residual_lstm._name = 'multi_residual_lstm'
+    #
+    # history = compile_and_fit(multi_residual_lstm, multi_window_cpy, plot_losses=plot_losses, patience=5, MAX_EPOCHS=MAX_EPOCHS)
     #
     # IPython.display.clear_output()
     # multi_val_performance['Residual LSTM'] = multi_residual_lstm.evaluate(multi_window_cpy.val)
     # multi_performance['Residual LSTM'] = multi_residual_lstm.evaluate(multi_window_cpy.test, verbose=0)
     # print()
-    # multi_window.plot(multi_residual_lstm, max_subplots=5)
-    #
+    # multi_window.plot(multi_residual_lstm, max_subplots=MAX_SUBPLOTS*3, plot_col=PLOT_COL)
 
 
-    ## Autoregressive RNN
-    # feedback_model = FeedBack(units=32, out_steps=OUT_STEPS, num_features=num_features)
+
+    # Autoregressive RNN
+    # feedback_model = FeedBack(units=HIDDEN_LAYER_SIZE, out_steps=OUT_STEPS, num_features=num_features)
+    # feedback_model._name = 'feedback_model'
     #
     # # prediction, state = feedback_model.warmup(multi_window_cpy.example[0])
     # # prediction.shape
     # # print('Output shape (batch, time, features): ', feedback_model(multi_window_cpy.example[0]).shape)
     #
-    # history = compile_and_fit(feedback_model, multi_window_cpy, MAX_EPOCHS=MAX_EPOCHS)
+    # history = compile_and_fit(feedback_model, multi_window_cpy, plot_losses=plot_losses, patience=5, MAX_EPOCHS=MAX_EPOCHS)
     #
     # IPython.display.clear_output()
     #
     # multi_val_performance['AR LSTM'] = feedback_model.evaluate(multi_window_cpy.val)
     # multi_performance['AR LSTM'] = feedback_model.evaluate(multi_window_cpy.test, verbose=0)
-    # multi_window.plot(feedback_model)
+    # multi_window.plot(feedback_model, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
     #
     # # performances
     # x = np.arange(len(multi_performance))
     # width = 0.3
     #
     # metric_name = 'mean_absolute_error'
-    # metric_index = lstm_model.metrics_names.index('mean_absolute_error')
+    # metric_index = multi_lstm_model.metrics_names.index('mean_absolute_error')
     # val_mae = [v[metric_index] for v in multi_val_performance.values()]
     # test_mae = [v[metric_index] for v in multi_performance.values()]
-    #
+    # plt.figure(figsize=(12, 8))
     # plt.bar(x - 0.17, val_mae, width, label='Validation')
     # plt.bar(x + 0.17, test_mae, width, label='Test')
     # plt.xticks(ticks=x, labels=multi_performance.keys(),
@@ -630,8 +629,6 @@ if __name__ == "__main__":
     # _ = plt.legend()
     # for name, value in multi_performance.items():
     #     print(f'{name:8s}: {value[1]:0.4f}')
-
-
 
 
 # if __name__ == "__main__":
