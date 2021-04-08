@@ -105,5 +105,29 @@ def DatasetUtility(data_path='dataset.txt', OUT_STEPS=1, INPUT_WIDTH=1, features
 
     multi_window.plot(max_subplots=MAX_SUBPLOTS)
 
-    return multi_window
+    return multi_window, train_mean, train_std, df
 
+
+def plot_prediction(time, inputs, labels, prediction, plot_index, PLOT_COL):
+    print('plot_prediction')
+    #
+    plt.title(" state: {}".format(PLOT_COL))
+    max_n = len(plot_index)
+    for n in range(max_n):
+        plt.subplot(max_n, 1, n + 1)
+        plt.ylabel(f'{PLOT_COL[n]} [normed]')
+        input_time = np.array(range(0, inputs.shape[1]))+ time
+        input_time = input_time.reshape(1, input_time.shape[0])
+        output_time = np.array(range(inputs.shape[1], inputs.shape[1] + labels.shape[0])) + time
+        output_time = output_time.reshape(1, output_time.shape[0])
+        plt.plot(input_time.transpose(), (inputs[:, :, n]).transpose(), 'b',
+             linewidth=5, label='Inputs', marker='.', zorder=10, alpha=0.7)
+        plt.scatter(output_time, prediction[:, :, n],
+                marker='X', edgecolors='k', label='Predictions',
+                c='#ff7f0e', s=64, zorder=-10, alpha=0.7)
+        plt.scatter(output_time, labels[:, n],
+                edgecolors='k', label='Labels', c='#2ca02c', s=64, zorder=5, alpha=0.7)
+
+    # plt.legend()
+    plt.xlabel('Time [samples]')
+    plt.pause(0.02)
