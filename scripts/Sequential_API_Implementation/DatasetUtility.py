@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import tensorflow as tf
-
+import time
 from WindowGenerator import WindowGenerator
 
 
@@ -131,3 +131,6 @@ def plot_prediction(time, inputs, labels, prediction, plot_index, PLOT_COL):
     # plt.legend()
     plt.xlabel('Time [samples]')
     plt.pause(0.02)
+
+def current_milli_time():
+    return round(time.time() * 1000)

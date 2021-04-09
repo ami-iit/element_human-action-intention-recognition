@@ -23,10 +23,13 @@ from Utilities import load_model_from_file
 from Utilities import PlotLosses
 from DatasetUtility import DatasetUtility
 from DatasetUtility import plot_prediction
+from DatasetUtility import current_milli_time
+
+from VisualizeHuman import visualize_human
 
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
-plot_figures= False
+plot_figures = False
 
 # def main():
 if __name__ == "__main__":
@@ -64,16 +67,26 @@ if __name__ == "__main__":
     for feature in PLOT_COL:
         plot_index = np.append(plot_index, df.columns.get_loc(feature))
 
-    plt.figure(figsize=(12, 8))
-    for t in range(38000, 39000, 10):
+    # plt.figure(figsize=(12, 8))
+    n = 0
+    mean_computation_time = 0.0
+    for t in range(1000, 1100, 10):
+        n += 1
         data_tmp = data[t:t+INPUT_WIDTH]
-        # batch_size, Tx, nx
+        # (batch_size, Tx, nx)
         data_tmp = np.reshape(data_tmp, (1, data_tmp.shape[0], data_tmp.shape[1]))
+        tik = current_milli_time()
         prediction = model.predict(data_tmp)
+        tok = current_milli_time()
+        mean_computation_time += tok - tik
         labels = data[t+INPUT_WIDTH:t+INPUT_WIDTH+OUT_STEPS]
         plot_prediction(time=t, inputs=data_tmp, labels=labels, prediction=prediction,
                         plot_index=plot_index, PLOT_COL=PLOT_COL)
 
+    mean_computation_time = mean_computation_time/n
+    print('==> average time for computing for prediction is: {} ms'.format(mean_computation_time))
+
+    visualize_human()
 
 # if __name__ == "__main__":
 #     main()
