@@ -25,7 +25,10 @@ from DatasetUtility import DatasetUtility
 from DatasetUtility import plot_prediction
 from DatasetUtility import current_milli_time
 
-from VisualizeHuman import visualize_human
+# from VisualizeHuman import visualize_human
+import yarp
+from yarp import Vector
+
 
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
@@ -33,7 +36,7 @@ plot_figures = False
 
 # def main():
 if __name__ == "__main__":
-
+    ## parameters
     model_name = 'myModel'
     model_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition/scripts/' \
                   'Sequential_API_Implementation/models'
@@ -50,7 +53,17 @@ if __name__ == "__main__":
     pop_list = ['time']
     total_window_size = INPUT_WIDTH + OUT_STEPS
 
+    ## yarp
+    yarp.Network.init()
+    rf = yarp.ResourceFinder()
+    rf.setDefaultContext("myContext");
+    rf.setDefaultConfigFile("default.ini")
 
+    p = yarp.BufferedPortBottle()
+    p.open("/motionPrediction:o")
+
+
+    ## model, data
     model = load_model_from_file(file_path=model_path, file_name=model_name)
 
     # features_list = ['jLeftKnee_roty_val', 'jRightKnee_roty_val', 'jLeftKnee_roty_vel', 'jRightKnee_roty_vel']
@@ -70,7 +83,7 @@ if __name__ == "__main__":
     # plt.figure(figsize=(12, 8))
     n = 0
     mean_computation_time = 0.0
-    for t in range(1000, 1100, 10):
+    for t in range(35000, 37200, 10):
         n += 1
         data_tmp = data[t:t+INPUT_WIDTH]
         # (batch_size, Tx, nx)
@@ -81,12 +94,21 @@ if __name__ == "__main__":
         mean_computation_time += tok - tik
         labels = data[t+INPUT_WIDTH:t+INPUT_WIDTH+OUT_STEPS]
         plot_prediction(time=t, inputs=data_tmp, labels=labels, prediction=prediction,
-                        plot_index=plot_index, PLOT_COL=PLOT_COL)
+                         plot_index=plot_index, PLOT_COL=PLOT_COL)
 
+        bottle = p.prepare()
+        bottle.clear()
+        pred = np.float64(np.array(prediction))
+        pred= np.reshape(pred, (pred.shape[1]*pred.shape[2]))
+        vec = yarp.Vector(list(pred))
+        bottle.addList().read(vec)
+        print("Sending ...")
+        p.write()
+    p.close()
     mean_computation_time = mean_computation_time/n
     print('==> average time for computing for prediction is: {} ms'.format(mean_computation_time))
 
-    visualize_human()
+#    visualize_human()
 
 # if __name__ == "__main__":
 #     main()
