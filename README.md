@@ -40,5 +40,5 @@ In this element, at the first step, we will try to recognize the human action an
 - [**Investigate and Implement of the Recurrent Neural Network (RNN) for human motion prediction**](https://github.com/dic-iit/element_human-action-intention-recognition/issues/5)
    Objectives of this milestone are to perform a brief state of the art study on human motion prediction and activity recognition; implement an RNN architecture and test it with simple dataset; implement an architecture to estimate the uncertainty associated with the prediction.
 - [**Perform Human Motion Prediction on real Human Dataset**](https://github.com/dic-iit/element_human-action-intention-recognition/issues/16)
-  Objectives of this milestone are to collect a dataset of real human motion (here walking) including kinematic and external wrenches; use those dataset to predict human walking motion and visualize the data
+  Objectives of this milestone are to collect a dataset of real human motion (here walking) including kinematic and external wrenches; use those dataset to predict human walking motion and visualize the data.
 
