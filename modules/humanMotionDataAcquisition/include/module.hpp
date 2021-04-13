@@ -54,6 +54,10 @@ private:
     yarp::sig::Vector m_leftShoes, m_rightShoes;
     yarp::sig::Vector m_wrenchValues;
 
+    /** vector containting joint values, joint velocities, left and right foot wrenches*/
+    yarp::sig::Vector m_kinDynValues;
+
+
     /** the order of joints list arrived from human state provider is
      different from the one we want to send to the controller */
     std::vector<std::string>
@@ -76,6 +80,8 @@ private:
     yarp::os::BufferedPort<yarp::sig::Vector> m_basePort;
     /** Port used to provide the human wrench port to yarp port.  */
     yarp::os::BufferedPort<yarp::sig::Vector> m_wrenchPort;
+    /** Port used to provide the human joint values, velocities, and wrenches to a yarp port.  */
+    yarp::os::BufferedPort<yarp::sig::Vector> m_KinDynPort;
 
     double m_dT; /**< Module period. */
     bool m_useXsens; /**< True if the Xsens is used in the retargeting */

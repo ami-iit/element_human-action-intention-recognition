@@ -131,6 +131,15 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
             yError() << "[HumanDataAcquisition::configure] Unable to open the port " << portNameIn;
             return false;
         }
+
+        portNameIn = rf.check( "humanKinDynPort",  yarp::os::Value("/humanKinDyn:o")).asString();
+
+        if (!m_KinDynPort.open("/" + getName() + portNameIn))
+        {
+            yError() << "[HumanDataAcquisition::configure] Unable to open the port " << portNameIn;
+            return false;
+        }
+
     }
 
 
@@ -144,6 +153,11 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
     m_leftShoes.resize(6,0.0);
     m_rightShoes.resize(6,0.0);
     m_wrenchValues.resize(12,0.0);
+
+    // size:  Joint values size, joint velocities, wrench values
+    size_t kinDynSize = m_robotJointsListNames.size()*2+ m_wrenchValues.size();
+    m_kinDynValues.resize(kinDynSize , 0.0);
+
 
     m_baseValues.resize(7,0.0);
 
@@ -238,7 +252,7 @@ bool HumanDataAcquisitionModule::getJointValues()
         {
             // check for the spikes in joint values
             if (std::abs(newHumanjointsValues[m_humanToRobotMap[j]] - m_jointValues(j))
-                < m_jointDiffThreshold)
+                    < m_jointDiffThreshold)
             {
                 m_jointValues(j) = newHumanjointsValues[m_humanToRobotMap[j]];
                 m_jointVelocities(j)=newHumanjointsVelocities[m_humanToRobotMap[j]];
@@ -246,8 +260,8 @@ bool HumanDataAcquisitionModule::getJointValues()
             } else
             {
                 yWarning() << "spike in data: joint : " << j << " , " << m_robotJointsListNames[j]
-                           << " ; old data: " << m_jointValues(j)
-                           << " ; new data:" << newHumanjointsValues[m_humanToRobotMap[j]];
+                              << " ; old data: " << m_jointValues(j)
+                              << " ; new data:" << newHumanjointsValues[m_humanToRobotMap[j]];
             }
         }
     } else
@@ -276,7 +290,7 @@ bool HumanDataAcquisitionModule::getJointValues()
         }
         /* find the map between the human and robot joint list orders*/
         if (!pImpl->mapJointsHDE2Controller(
-                m_robotJointsListNames, m_humanJointsListName, m_humanToRobotMap))
+                    m_robotJointsListNames, m_humanJointsListName, m_humanToRobotMap))
         {
             yError() << "[HumanDataAcquisition::getJointValues()] mapping is not possible";
             return false;
@@ -310,7 +324,7 @@ bool HumanDataAcquisitionModule::getLeftShoesWrenches(){
     {
         return true;
     }
-        yInfo()<<"left shoes: leftShoeWrench size: "<<leftShoeWrench->size();
+    yInfo()<<"left shoes: leftShoeWrench size: "<<leftShoeWrench->size();
 
     // data are located in 5th element:
     yarp::os::Value list4 = leftShoeWrench->get(4);
@@ -339,7 +353,7 @@ bool HumanDataAcquisitionModule::getRightShoesWrenches(){
         yInfo()<<"[HumanDataAcquisitionModule::getRightShoesWrenches()] right shoes port is empty";
         return true;
     }
-        yInfo()<<"right shoes: rightShoeWrench size: "<<rightShoeWrench->size();
+    yInfo()<<"right shoes: rightShoeWrench size: "<<rightShoeWrench->size();
 
     // data are located in 5th element:
     yarp::os::Value list4 = rightShoeWrench->get(4);
@@ -377,19 +391,6 @@ bool HumanDataAcquisitionModule::updateModule()
         yError() << "[HumanDataAcquisition::updateModule] m_wholeBodyHumanJointsPort port is closed";
         return false;
     }
-
-    if(m_wholeBodyJointsPort.isClosed())
-    {
-        yError() << "[HumanDataAcquisition::updateModule] m_wholeBodyJointsPort port is closed";
-        return false;
-    }
-
-    if (m_HumanCoMPort.isClosed())
-    {
-        yError() << "[HumanDataAcquisition::updateModule] m_HumanCoMPort port is closed";
-        return false;
-    }
-
     if (m_leftShoesPort.isClosed())
     {
         yError() << "[HumanDataAcquisition::updateModule] m_leftShoesPort port is closed";
@@ -400,16 +401,40 @@ bool HumanDataAcquisitionModule::updateModule()
         yError() << "[HumanDataAcquisition::updateModule] m_rightShoesPort port is closed";
         return false;
     }
-    if(m_basePort.isClosed())
+
+
+    if(m_streamData)
     {
-        yError() << "[HumanDataAcquisition::updateModule] m_basePort port is closed";
-        return false;
+        if(m_wholeBodyJointsPort.isClosed())
+        {
+            yError() << "[HumanDataAcquisition::updateModule] m_wholeBodyJointsPort port is closed";
+            return false;
+        }
+
+        if (m_HumanCoMPort.isClosed())
+        {
+            yError() << "[HumanDataAcquisition::updateModule] m_HumanCoMPort port is closed";
+            return false;
+        }
+
+
+        if(m_basePort.isClosed())
+        {
+            yError() << "[HumanDataAcquisition::updateModule] m_basePort port is closed";
+            return false;
+        }
+        if(m_wrenchPort.isClosed())
+        {
+            yError() << "[HumanDataAcquisition::updateModule] m_wrenchPort port is closed";
+            return false;
+        }
+        if (m_KinDynPort.isClosed())
+        {
+            yError() << "[HumanDataAcquisition::updateModule] m_KinDynPort port is closed";
+            return false;
+        }
     }
-    if(m_wrenchPort.isClosed())
-    {
-        yError() << "[HumanDataAcquisition::updateModule] m_wrenchPort port is closed";
-        return false;
-    }
+
 
     if (!m_firstIteration && m_streamData)
     {
@@ -421,23 +446,44 @@ bool HumanDataAcquisitionModule::updateModule()
         // Joints
         yarp::sig::Vector& refValues = m_wholeBodyJointsPort.prepare();
 
-            refValues = m_jointValues;
+        refValues = m_jointValues;
         m_wholeBodyJointsPort.write();
 
         // Wrench vector
         for(size_t i=0; i<m_leftShoes.size();i++)
         {
-             m_wrenchValues(i)= m_leftShoes(i);
-             m_wrenchValues(6+i)= m_rightShoes(i);
+            m_wrenchValues(i)= m_leftShoes(i);
+            m_wrenchValues(6+i)= m_rightShoes(i);
         }
 
         yarp::sig::Vector& wrenchValues = m_wrenchPort.prepare();
-            wrenchValues = m_wrenchValues;
+        wrenchValues = m_wrenchValues;
         m_wrenchPort.write();
+
         // base vector
         yarp::sig::Vector& baseValues = m_basePort.prepare();
-            baseValues = m_baseValues;
+        baseValues = m_baseValues;
         m_basePort.write();
+
+
+
+
+        // joint values, velocities, left and right wrenchs vector
+        // size:  Joint values size, joint velocities, wrench values
+        for (size_t i=0; i<m_jointValues.size(); i++)
+        {
+            m_kinDynValues(i)= m_jointValues(i);
+            m_kinDynValues(m_jointValues.size()+ i)= m_jointVelocities(i);
+        }
+        for (size_t i=0;i< m_wrenchValues.size(); i++ )
+        {
+            m_kinDynValues(m_jointValues.size()*2 + i) = m_wrenchValues(i);
+        }
+
+        yarp::sig::Vector& kinDynValues = m_KinDynPort.prepare();
+        kinDynValues = m_kinDynValues;
+        m_KinDynPort.write();
+
     }
 
     return true;
@@ -490,8 +536,8 @@ bool HumanDataAcquisitionModule::close()
     return true;
 }
 bool HumanDataAcquisitionModule::impl::mapJointsHDE2Controller(std::vector<std::string> robotJointsListNames,
-                                                     std::vector<std::string> humanJointsListName,
-                                                     std::vector<unsigned>& humanToRobotMap)
+                                                               std::vector<std::string> humanJointsListName,
+                                                               std::vector<unsigned>& humanToRobotMap)
 {
     if (!humanToRobotMap.empty())
     {
@@ -524,7 +570,7 @@ bool HumanDataAcquisitionModule::impl::mapJointsHDE2Controller(std::vector<std::
     for (size_t i = 0; i < robotJointsListNames.size(); i++)
     {
         yInfo() << "(" << i << ", " << humanToRobotMap[i] << "): " << robotJointsListNames[i]
-                << " , " << humanJointsListName[(humanToRobotMap[i])];
+                   << " , " << humanJointsListName[(humanToRobotMap[i])];
     }
 
     return true;
