@@ -27,7 +27,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
     // check if the configuration file is empty
     if (rf.isNull())
     {
-        yError() << "[XsensRetargeting::configure] Empty configuration for the OculusModule "
+        yError() << "[HumanDataAcquisition::configure] Empty configuration for the OculusModule "
                     "application.";
         return false;
     }
@@ -41,13 +41,17 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
 
     setName(name.c_str());
 
-    // initialize minimum jerk trajectory for the whole body
+    m_logData = rf.check("logData", yarp::os::Value(true)).asBool();
 
+    m_streamData = rf.check("streamData", yarp::os::Value(true)).asBool();
+
+
+    // initialize minimum jerk trajectory for the whole body
     yarp::os::Value* axesListYarp;
 
     if (!rf.check("joints_list", axesListYarp))
     {
-        yError() << "[XsensRetargeting::configure] Unable to find joints_list"
+        yError() << "[HumanDataAcquisition::configure] Unable to find joints_list"
                     "into config file.";
         return false;
     }
@@ -60,14 +64,14 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
     m_jointValues.resize(m_actuatedDOFs, 0.0);
     m_jointVelocities.resize(m_actuatedDOFs,0.0);
 
-    yInfo() << "XsensRetargeting::configure:  NoOfJoints: " << m_actuatedDOFs;
+    yInfo() << "HumanDataAcquisition::configure:  NoOfJoints: " << m_actuatedDOFs;
 
     std::string portNameIn, portNameOut;
     portNameIn = rf.check( "HDEJointsPortIn", yarp::os::Value("HDEJointsPortIn")).asString();
 
     if (!m_wholeBodyHumanJointsPort.open("/" + getName() + portNameIn))
     {
-        yError() << "[XsensRetargeting::configure] " << portNameIn << " port already open.";
+        yError() << "[HumanDataAcquisition::configure] " << portNameIn << " port already open.";
         return false;
     }
 
@@ -79,7 +83,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
     portNameIn = rf.check( "WearablesLeftShoesPort", yarp::os::Value("/FTShoeLeft/WearableData/data:i")).asString();
     if (!m_leftShoesPort.open("/" + getName() + portNameIn))
     {
-        yError() << "[XsensRetargeting::configure] " << portNameIn << " port already open.";
+        yError() << "[HumanDataAcquisition::configure] " << portNameIn << " port already open.";
         return false;
     }
     yarp::os::Network::connect("/FTShoeLeft/WearableData/data:o", "/" + getName() + portNameIn);
@@ -89,27 +93,46 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
     portNameIn = rf.check( "WearablesRightShoesPort", yarp::os::Value("/FTShoeRight/WearableData/data:i")).asString();
     if (!m_rightShoesPort.open("/" + getName() + portNameIn))
     {
-        yError() << "[XsensRetargeting::configure] " << portNameIn << " port already open.";
+        yError() << "[HumanDataAcquisition::configure] " << portNameIn << " port already open.";
         return false;
     }
     yarp::os::Network::connect("/FTShoeRight/WearableData/data:o", "/" + getName() + portNameIn);
 
-
-    portNameIn = rf.check( "controllerJointsPort",  yarp::os::Value("controllerJointsPort")).asString();
-
-    if (!m_wholeBodyHumanSmoothedJointsPort.open("/" + getName() + portNameIn))
+    if(m_streamData)
     {
-        yError() << "[XsensRetargeting::configure] Unable to open the port " << portNameIn;
-        return false;
+        portNameIn = rf.check( "humanJointsPort",  yarp::os::Value("/jointPosition:o")).asString();
+
+        if (!m_wholeBodyJointsPort.open("/" + getName() + portNameIn))
+        {
+            yError() << "[HumanDataAcquisition::configure] Unable to open the port " << portNameIn;
+            return false;
+        }
+
+        portNameIn = rf.check( "humanCoMPort",  yarp::os::Value("/CoM:o")).asString();
+
+        if (!m_HumanCoMPort.open("/" + getName() + portNameIn))
+        {
+            yError() << "[HumanDataAcquisition::configure] Unable to open the port " << portNameIn;
+            return false;
+        }
+
+        portNameIn = rf.check( "humanBasePort",  yarp::os::Value("/basePose:o")).asString();
+
+        if (!m_basePort.open("/" + getName() + portNameIn))
+        {
+            yError() << "[HumanDataAcquisition::configure] Unable to open the port " << portNameIn;
+            return false;
+        }
+
+        portNameIn = rf.check( "humanWrenchPort",  yarp::os::Value("/wrenchesVector:o")).asString();
+
+        if (!m_wrenchPort.open("/" + getName() + portNameIn))
+        {
+            yError() << "[HumanDataAcquisition::configure] Unable to open the port " << portNameIn;
+            return false;
+        }
     }
 
-    portNameIn = rf.check( "controllerCoMPort",  yarp::os::Value("controllerCoMPort")).asString();
-
-    if (!m_HumanCoMPort.open("/" + getName() + portNameIn))
-    {
-        yError() << "[XsensRetargeting::configure] Unable to open the port " << portNameIn;
-        return false;
-    }
 
     m_firstIteration = true;
 
@@ -120,46 +143,54 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
 
     m_leftShoes.resize(6,0.0);
     m_rightShoes.resize(6,0.0);
+    m_wrenchValues.resize(12,0.0);
+
+    m_baseValues.resize(7,0.0);
 
 
     //***********************
     // Chose an unique filename
-    std::time_t t = std::time(nullptr);
-    std::tm tm = *std::localtime(&t);
-    std::stringstream fileName;
-    fileName << "Dataset_" << std::put_time(&tm, "%Y_%m_%d_%H_%M_%S") << ".txt";
-
-    // open the log file
-    m_logger.open(fileName.str().c_str());
-    yInfo() << "data will save in: " << fileName.str();
-
-    std::string features= "time ";
-    for (size_t i = 0; i < m_robotJointsListNames.size(); i++)
+    if(m_logData)
     {
+        std::time_t t = std::time(nullptr);
+        std::tm tm = *std::localtime(&t);
+        std::stringstream fileName;
+        fileName << "Dataset_" << std::put_time(&tm, "%Y_%m_%d_%H_%M_%S") << ".txt";
+
+        // open the log file
+        m_logger.open(fileName.str().c_str());
+        yInfo() << "data will save in: " << fileName.str();
+
+        std::string features= "time ";
+        for (size_t i = 0; i < m_robotJointsListNames.size(); i++)
+        {
             features += (m_robotJointsListNames[i]) + "_val ";
-    }
-    for (size_t i = 0; i < m_robotJointsListNames.size(); i++)
-    {
+        }
+        for (size_t i = 0; i < m_robotJointsListNames.size(); i++)
+        {
             features += (m_robotJointsListNames[i]) + "_vel ";
+        }
+
+        features+="l_shoe_fx l_shoe_fy l_shoe_fz l_shoe_tx l_shoe_ty l_shoe_tz ";
+        features+="r_shoe_fx r_shoe_fy r_shoe_fz r_shoe_tx r_shoe_ty r_shoe_tz";
+        yInfo()<<"features: "<<features;
+
+        m_logger << features + "\n";
     }
-
-    features+="l_shoe_fx l_shoe_fy l_shoe_fz l_shoe_tx l_shoe_ty l_shoe_tz ";
-    features+="r_shoe_fx r_shoe_fy r_shoe_fz r_shoe_tx r_shoe_ty r_shoe_tz";
-    yInfo()<<"features: "<<features;
-
-    m_logger << features + "\n";
 
 
     //***********************
 
 
 
-    yInfo() << "[XsensRetargeting::configure]"
+    yInfo() << "[HumanDataAcquisition::configure]"
             << " Sampling time  : " << m_dT;
-    yInfo() << "[XsensRetargeting::configure]"
+    yInfo()<<"[HumanDataAcquisition::configure] m_logData: "<<m_logData;
+    yInfo()<<"[HumanDataAcquisition::configure] m_streamData: "<<m_streamData;
+    yInfo() << "[HumanDataAcquisition::configure]"
             << " Joint threshold: " << m_jointDiffThreshold;
 
-    yInfo() << " [XsensRetargeting::configure] done!";
+    yInfo() << " [HumanDataAcquisition::configure] done!";
     return true;
 }
 bool HumanDataAcquisitionModule::getJointValues()
@@ -167,15 +198,14 @@ bool HumanDataAcquisitionModule::getJointValues()
 
     human::HumanState* desiredHumanStates = m_wholeBodyHumanJointsPort.read(false);
 
-    if (desiredHumanStates == NULL)
+    if (desiredHumanStates == nullptr)
     {
         return true;
     }
 
     // get the new joint values
     std::vector<double> newHumanjointsValues = desiredHumanStates->positions;
-    std::vector<double> newHumanjointsVelocities= desiredHumanStates->velocities;
-
+    std::vector<double> newHumanjointsVelocities = desiredHumanStates->velocities;
 
     // get the new CoM positions
     human::Vector3 CoMValues = desiredHumanStates->CoMPositionWRTGlobal;
@@ -184,9 +214,25 @@ bool HumanDataAcquisitionModule::getJointValues()
     m_CoMValues(1) = CoMValues.y;
     m_CoMValues(2) = CoMValues.z;
 
+    // get base values
+    human::Vector3  newBasePosition = desiredHumanStates->baseOriginWRTGlobal;
+    human::Quaternion newBaseOrientation = desiredHumanStates->baseOrientationWRTGlobal;
+
+    m_baseValues(0)=newBasePosition.x;
+    m_baseValues(1)=newBasePosition.y;
+    m_baseValues(2)=newBasePosition.z;
+
+    m_baseValues(3)=newBaseOrientation.w;
+    m_baseValues(4)=newBaseOrientation.imaginary.x;
+    m_baseValues(5)=newBaseOrientation.imaginary.y;
+    m_baseValues(6)=newBaseOrientation.imaginary.z;
+
+
+
+
     if (!m_firstIteration)
     {
-        yInfo() << "[XsensRetargeting::getJointValues] Xsens Retargeting Module is Running ...";
+        yInfo() << "[HumanDataAcquisition::getJointValues] Xsens Retargeting Module is Running ...";
 
         for (unsigned j = 0; j < m_actuatedDOFs; j++)
         {
@@ -232,12 +278,12 @@ bool HumanDataAcquisitionModule::getJointValues()
         if (!pImpl->mapJointsHDE2Controller(
                 m_robotJointsListNames, m_humanJointsListName, m_humanToRobotMap))
         {
-            yError() << "[XsensRetargeting::getJointValues()] mapping is not possible";
+            yError() << "[HumanDataAcquisition::getJointValues()] mapping is not possible";
             return false;
         }
         if (m_humanToRobotMap.size() == 0)
         {
-            yError() << "[XsensRetargeting::getJointValues()] m_humanToRobotMap.size is zero";
+            yError() << "[HumanDataAcquisition::getJointValues()] m_humanToRobotMap.size is zero";
         }
 
         /* fill the robot joint list values*/
@@ -322,43 +368,76 @@ bool HumanDataAcquisitionModule::updateModule()
     getJointValues();
     getLeftShoesWrenches();
     getRightShoesWrenches();
-    logData();
+
+    if(m_logData)
+        logData();
 
     if (m_wholeBodyHumanJointsPort.isClosed())
     {
-        yError() << "[XsensRetargeting::updateModule] m_wholeBodyHumanJointsPort port is closed";
+        yError() << "[HumanDataAcquisition::updateModule] m_wholeBodyHumanJointsPort port is closed";
+        return false;
+    }
+
+    if(m_wholeBodyJointsPort.isClosed())
+    {
+        yError() << "[HumanDataAcquisition::updateModule] m_wholeBodyJointsPort port is closed";
         return false;
     }
 
     if (m_HumanCoMPort.isClosed())
     {
-        yError() << "[XsensRetargeting::updateModule] m_HumanCoMPort port is closed";
+        yError() << "[HumanDataAcquisition::updateModule] m_HumanCoMPort port is closed";
         return false;
     }
 
     if (m_leftShoesPort.isClosed())
     {
-        yError() << "[XsensRetargeting::updateModule] m_HumanCoMPort port is closed";
+        yError() << "[HumanDataAcquisition::updateModule] m_leftShoesPort port is closed";
         return false;
     }
     if (m_rightShoesPort.isClosed())
     {
-        yError() << "[XsensRetargeting::updateModule] m_HumanCoMPort port is closed";
+        yError() << "[HumanDataAcquisition::updateModule] m_rightShoesPort port is closed";
+        return false;
+    }
+    if(m_basePort.isClosed())
+    {
+        yError() << "[HumanDataAcquisition::updateModule] m_basePort port is closed";
+        return false;
+    }
+    if(m_wrenchPort.isClosed())
+    {
+        yError() << "[HumanDataAcquisition::updateModule] m_wrenchPort port is closed";
         return false;
     }
 
-
-
-    if (!m_firstIteration)
+    if (!m_firstIteration && m_streamData)
     {
+        // CoM
         yarp::sig::Vector& CoMrefValues = m_HumanCoMPort.prepare();
         CoMrefValues = m_CoMValues;
         m_HumanCoMPort.write();
 
-        yarp::sig::Vector& refValues = m_wholeBodyHumanSmoothedJointsPort.prepare();
+        // Joints
+        yarp::sig::Vector& refValues = m_wholeBodyJointsPort.prepare();
 
             refValues = m_jointValues;
-        m_wholeBodyHumanSmoothedJointsPort.write();
+        m_wholeBodyJointsPort.write();
+
+        // Wrench vector
+        for(size_t i=0; i<m_leftShoes.size();i++)
+        {
+             m_wrenchValues(i)= m_leftShoes(i);
+             m_wrenchValues(6+i)= m_rightShoes(i);
+        }
+
+        yarp::sig::Vector& wrenchValues = m_wrenchPort.prepare();
+            wrenchValues = m_wrenchValues;
+        m_wrenchPort.write();
+        // base vector
+        yarp::sig::Vector& baseValues = m_basePort.prepare();
+            baseValues = m_baseValues;
+        m_basePort.write();
     }
 
     return true;
@@ -400,7 +479,8 @@ bool HumanDataAcquisitionModule::logData()
 
 bool HumanDataAcquisitionModule::close()
 {
-    m_logger.close();
+    if (m_logData)
+        m_logger.close();
 
     yInfo() << "Data saved with the following order.";
     yInfo() << "<yarp time (s)>,<data>";
@@ -433,7 +513,7 @@ bool HumanDataAcquisitionModule::impl::mapJointsHDE2Controller(std::vector<std::
         }
         if (!foundMatch)
         {
-            yError() << "[XsensRetargeting::impl::mapJointsHDE2CONTROLLER] not found match for: "
+            yError() << "[HumanDataAcquisition::impl::mapJointsHDE2CONTROLLER] not found match for: "
                      << robotJointsListNames[i] << " , " << i;
             return false;
         }

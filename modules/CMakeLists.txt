@@ -14,4 +14,5 @@ endif()
 
 
 add_subdirectory(humanMotionDataAcquisition)
+add_subdirectory(humanPredictionVisualizer)
 

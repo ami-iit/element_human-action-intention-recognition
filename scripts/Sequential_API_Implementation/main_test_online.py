@@ -24,11 +24,9 @@ from Utilities import PlotLosses
 from DatasetUtility import DatasetUtility
 from DatasetUtility import plot_prediction
 from DatasetUtility import current_milli_time
-
 # from VisualizeHuman import visualize_human
-import yarp
-from yarp import Vector
 
+import yarp
 
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
@@ -54,6 +52,10 @@ if __name__ == "__main__":
     total_window_size = INPUT_WIDTH + OUT_STEPS
 
     ## yarp
+    if not yarp.Network.checkNetwork():
+        print("[main] Unable to find YARP network")
+        exit(0)
+        # return
     yarp.Network.init()
     rf = yarp.ResourceFinder()
     rf.setDefaultContext("myContext");
@@ -83,7 +85,7 @@ if __name__ == "__main__":
     # plt.figure(figsize=(12, 8))
     n = 0
     mean_computation_time = 0.0
-    for t in range(35000, 37200, 10):
+    for t in range(35000, 35300, 10):
         n += 1
         data_tmp = data[t:t+INPUT_WIDTH]
         # (batch_size, Tx, nx)
@@ -108,7 +110,7 @@ if __name__ == "__main__":
     mean_computation_time = mean_computation_time/n
     print('==> average time for computing for prediction is: {} ms'.format(mean_computation_time))
 
-#    visualize_human()
+    # visualize_human()
 
 # if __name__ == "__main__":
 #     main()

@@ -44,12 +44,20 @@ private:
     /** target (robot) joint velocities (raw amd smoothed values) */
     yarp::sig::Vector m_jointVelocities;
 
-    yarp::sig::Vector m_leftShoes, m_rightShoes;
     /** CoM joint values coming from human-state-provider */
     yarp::sig::Vector m_CoMValues;
+
+    /** base values coming from human-state-provider */
+    yarp::sig::Vector m_baseValues;
+
+    /** wrenches value coming from wearables */
+    yarp::sig::Vector m_leftShoes, m_rightShoes;
+    yarp::sig::Vector m_wrenchValues;
+
+    /** the order of joints list arrived from human state provider is
+     different from the one we want to send to the controller */
     std::vector<std::string>
-    m_humanJointsListName; // the order of joints list arrived from human state provider is
-    // different from the one we want to send to the controller
+    m_humanJointsListName;
 
     /** Port used to retrieve the human whole body joint pose. */
     yarp::os::BufferedPort<human::HumanState> m_wholeBodyHumanJointsPort;
@@ -60,13 +68,19 @@ private:
     /** Port used to retrieve the right shoes wrenches. */
     yarp::os::BufferedPort<yarp::os::Bottle> m_rightShoesPort;
 
-    /** Port used to provide the smoothed joint pose to the controller. */
-    yarp::os::BufferedPort<yarp::sig::Vector> m_wholeBodyHumanSmoothedJointsPort;
-    /** Port used to provide the human CoM position to the controller.  */
+    /** Port used to provide the smoothed joint pose to yarp port. */
+    yarp::os::BufferedPort<yarp::sig::Vector> m_wholeBodyJointsPort;
+    /** Port used to provide the human CoM position to the yarp network.  */
     yarp::os::BufferedPort<yarp::sig::Vector> m_HumanCoMPort;
+    /** Port used to provide the human base pose to yarp network.  */
+    yarp::os::BufferedPort<yarp::sig::Vector> m_basePort;
+    /** Port used to provide the human wrench port to yarp port.  */
+    yarp::os::BufferedPort<yarp::sig::Vector> m_wrenchPort;
 
     double m_dT; /**< Module period. */
     bool m_useXsens; /**< True if the Xsens is used in the retargeting */
+    bool m_logData;/**< True to log human data*/
+    bool m_streamData;/**< True to stream human data */
 
     std::ofstream m_logger;
 
@@ -92,9 +106,10 @@ public:
 
 
     bool getLeftShoesWrenches();
+
     bool getRightShoesWrenches();
 
-    bool getSmoothedJointValues(yarp::sig::Vector& smoothedJointValues);
+    bool getBasePoseValues();
 
 
     bool logData();
