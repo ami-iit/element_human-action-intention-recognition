@@ -430,12 +430,14 @@ int main(int argc, char* argv[])
                 yError() << LogPrefix << "failed to connect to the port " << modelConfigurationMap[modelName].jointPositionPortName;
                 return EXIT_FAILURE;
             }
+            yInfo()<<"connected to the ports: "<<modelConfigurationMap[modelName].jointPositionPortName<<modelConfigurationMap[modelName].jointPositionPort.getName();
             jointValuesVector = modelConfigurationMap[modelName].jointPositionPort.read(true);
             while (jointValuesVector == nullptr)
             {
                 yError() << LogPrefix << "no data coming from the port " << modelConfigurationMap[modelName].jointPositionPortName;
                 return EXIT_FAILURE;
             }
+            yInfo()<<"joint values: "<<jointValuesVector->toString();
 
             // check if the joits values read from the port correspond to the length of the joint list
             if ( jointValuesVector->size() != modelConfigurationMap[modelName].jointList.size())

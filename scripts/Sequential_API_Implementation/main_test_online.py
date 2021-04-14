@@ -50,20 +50,26 @@ if __name__ == "__main__":
     features_list = []
     pop_list = ['time']
     total_window_size = INPUT_WIDTH + OUT_STEPS
+    INPUT_FEATURE_SIZE = 144
 
     ## yarp
     if not yarp.Network.checkNetwork():
         print("[main] Unable to find YARP network")
-        exit(0)
-        # return
+
     yarp.Network.init()
     rf = yarp.ResourceFinder()
     rf.setDefaultContext("myContext");
     rf.setDefaultConfigFile("default.ini")
 
-    p = yarp.BufferedPortBottle()
-    p.open("/motionPrediction:o")
+    human_kin_dyn_port = yarp.BufferedPortBottle()
+    human_kin_dyn_port.open("/humanKinDyn:i")
+    is_connected=yarp.Network.connect("/humanDataAcquisition/humanKinDyn:o", "/humanKinDyn:i")
+    # is_connected = yarp.Network.isConnected("/humanDataAcquisition/humanKinDyn:o", "/humanKinDyn:i")
+    print("port is connected: {}".format(is_connected))
+    yarp.delay(0.5)
 
+    prediction_port = yarp.BufferedPortVector()
+    prediction_port.open("/motionPrediction:o")
 
     ## model, data
     model = load_model_from_file(file_path=model_path, file_name=model_name)
@@ -83,6 +89,62 @@ if __name__ == "__main__":
         plot_index = np.append(plot_index, df.columns.get_loc(feature))
 
     # plt.figure(figsize=(12, 8))
+    data_Tx = []
+    human_data= []
+    human_data = np.resize(human_data, INPUT_FEATURE_SIZE)
+    # human_data.resize(144)
+    count = 0
+    while True:
+        human_kin_dyn = human_kin_dyn_port.read(False)
+        # bot = yarp.Bottle(human_kin_dyn)
+        # print(human_kin_dyn)
+        if not human_kin_dyn:
+            # print("no data")
+            continue
+        tik = current_milli_time()
+        # if count == 0:
+            # human_data.resize(human_kin_dyn.size())
+        # print("human_kin_dyn reading ...", human_kin_dyn.size())
+        for i in range(INPUT_FEATURE_SIZE):
+            human_data[i] = (human_kin_dyn.get(i).asFloat64() - train_mean[i])/train_std[i]
+        # human_data_std = (human_data - train_mean) / train_std
+        data_Tx.append(human_data)
+        print(np.shape(data_Tx))
+        if np.shape(data_Tx)[0] == INPUT_WIDTH:
+
+            # data_Tx= np.delete(data_Tx, 0, axis=0)
+            print(np.shape(data_Tx))
+            human_data_Tx = np.array(data_Tx)
+            # input array size: (batch_size, Tx, nx) // batch_size=1
+            human_data_Tx = np.reshape(human_data_Tx, (1, INPUT_WIDTH, INPUT_FEATURE_SIZE))
+            # output array size: (batch_size, Ty, nx) // batch_size=1
+            prediction = model.predict(human_data_Tx)
+
+            tok = current_milli_time()
+
+            ## STREAM DATA
+            bottle = prediction_port.prepare()
+            bottle.clear()
+            pred = np.float64(np.array(prediction[:, 5, 0:66]))
+            if np.size(pred.shape) > 2:
+                pred = np.reshape(pred, (pred.shape[1] * pred.shape[2]))
+            else:
+                pred = np.reshape(pred, (pred.shape[0] * pred.shape[1]))
+            print("pred[0]: ", pred[0])
+            for i in range(pred.size):
+                bottle.push_back(pred[i] * train_std[i] + train_mean[i])
+            print("Sending ...")
+            prediction_port.write()
+
+            data_Tx.pop(0)
+
+        print("----------")
+
+        print("human_data shape: ", human_data.shape)
+        count += 1
+        yarp.delay(0.01)
+
+
     n = 0
     mean_computation_time = 0.0
     for t in range(35000, 35300, 10):
@@ -98,15 +160,15 @@ if __name__ == "__main__":
         plot_prediction(time=t, inputs=data_tmp, labels=labels, prediction=prediction,
                          plot_index=plot_index, PLOT_COL=PLOT_COL)
 
-        bottle = p.prepare()
+        bottle = prediction_port.prepare()
         bottle.clear()
         pred = np.float64(np.array(prediction))
         pred= np.reshape(pred, (pred.shape[1]*pred.shape[2]))
         vec = yarp.Vector(list(pred))
         bottle.addList().read(vec)
         print("Sending ...")
-        p.write()
-    p.close()
+        prediction_port.write()
+    prediction_port.close()
     mean_computation_time = mean_computation_time/n
     print('==> average time for computing for prediction is: {} ms'.format(mean_computation_time))
 
