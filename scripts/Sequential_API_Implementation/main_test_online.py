@@ -1,5 +1,6 @@
 import os
 import datetime
+import sys
 
 import IPython
 import IPython.display
@@ -25,12 +26,54 @@ from DatasetUtility import DatasetUtility
 from DatasetUtility import plot_prediction
 from DatasetUtility import current_milli_time
 # from VisualizeHuman import visualize_human
-
+import threading
 import yarp
+import time
 
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 plot_figures = False
+threadLock = threading.Lock()
+threads = []
+datatoprint =[0]
+
+def print_time(threadName, threadID, delay, counter, data):
+    while counter:
+        time.sleep(delay)
+        threadLock.acquire()
+        data.append(threadID*counter)
+        print(threadName, "data: ", data)
+        threadLock.release()
+        counter -= 1
+
+
+class Inference(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.threadID = 3
+        self.threadName = "inference"
+
+    def run(self):
+        print("thread starting {}".format(self.threadName))
+        # threadLock.acquire()
+        print_time(self.threadName, threadID=self.threadID, delay=0.1, counter=3, data=datatoprint)
+        # threadLock.release()
+
+
+class GetHumanData(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.threadID = 2
+        self.threadName = "getData"
+
+    def run(self):
+        print("thread starting {}".format(self.threadName))
+        # threadLock.acquire()
+        print_time(self.threadName, threadID=self.threadID, delay=0.2, counter=2, data=datatoprint)
+        # threadLock.release()
+
+
+
 
 # def main():
 if __name__ == "__main__":
@@ -52,13 +95,31 @@ if __name__ == "__main__":
     total_window_size = INPUT_WIDTH + OUT_STEPS
     INPUT_FEATURE_SIZE = 144
 
+    # Create new threads
+    inferenceThread = Inference()
+    dataReceiverThread = GetHumanData()
+
+    # start the threads
+    inferenceThread.start()
+    dataReceiverThread.start()
+
+    # Add threads to thread list
+    threads.append(inferenceThread)
+    threads.append(dataReceiverThread)
+
+    # Wait for all threads to complete
+    for t in threads:
+        t.join()
+    print("Exiting Main Thread")
+    sys.exit()
+
     ## yarp
     if not yarp.Network.checkNetwork():
         print("[main] Unable to find YARP network")
 
     yarp.Network.init()
     rf = yarp.ResourceFinder()
-    rf.setDefaultContext("myContext");
+    rf.setDefaultContext("myContext")
     rf.setDefaultConfigFile("default.ini")
 
     human_kin_dyn_port = yarp.BufferedPortBottle()
@@ -101,7 +162,6 @@ if __name__ == "__main__":
         if not human_kin_dyn:
             # print("no data")
             continue
-        tik = current_milli_time()
         # if count == 0:
             # human_data.resize(human_kin_dyn.size())
         # print("human_kin_dyn reading ...", human_kin_dyn.size())
@@ -118,9 +178,11 @@ if __name__ == "__main__":
             # input array size: (batch_size, Tx, nx) // batch_size=1
             human_data_Tx = np.reshape(human_data_Tx, (1, INPUT_WIDTH, INPUT_FEATURE_SIZE))
             # output array size: (batch_size, Ty, nx) // batch_size=1
-            prediction = model.predict(human_data_Tx)
-
+            tik = current_milli_time()
+            prediction = model.predict(human_data_Tx, use_multiprocessing=True)
             tok = current_milli_time()
+
+            print('prediction time: ', tok-tik)
 
             ## STREAM DATA
             bottle = prediction_port.prepare()
