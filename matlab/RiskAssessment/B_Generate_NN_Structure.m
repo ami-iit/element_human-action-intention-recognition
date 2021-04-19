@@ -3,6 +3,8 @@
 %%%%        No. of Neurons (hidden layer size) *No.  Delays * No. of iteration     %%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+
 clc;
 clear;
 close all;
@@ -11,13 +13,13 @@ close all;
 
 % NN parameters
 IterationNo=1; % number of iterations because of random initialization
-Min_hiddenLayerSize=20; % min: number of neurons in the hidden layer
-Max_hiddenLayerSize=20; % max: number of neurons in the hidden layer
+Min_hiddenLayerSize=40; % min: number of neurons in the hidden layer
+Max_hiddenLayerSize=40; % max: number of neurons in the hidden layer
 
-Min_layerDelays=2;     % min: number of recurssion
-Max_layerDelays=2;     % min: number of recurssion
+Min_layerDelays=3;     % min: number of recurssion
+Max_layerDelays=3;     % min: number of recurssion
 
-timeLengthData= 300;
+timeLengthData= 50;
 % percentage of the test set among all the data
 testSetPercentage=0.1;
 % percentage of the validation set in the data used for training
@@ -32,7 +34,7 @@ classification= true;
 
 % load the data
 
-dirDataset = '../dataset/riskAssessment/dataset_37/processedData2';
+dirDataset = '../../../DataSet/RiskAssessment/processed_lifting_data/processed_lifting_data';
 [Input_NN, Output_NN, Input_Test, Output_Test] = prepareDataset(dirDataset, timeLengthData, testSetPercentage, classification);
 
 
