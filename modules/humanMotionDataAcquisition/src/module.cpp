@@ -43,6 +43,12 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
 
     m_logData = rf.check("logData", yarp::os::Value(true)).asBool();
 
+    m_useJointValues=rf.check("useJointValues", yarp::os::Value(false)).asBool();
+    m_useJointVelocities=rf.check("useJointVelocities", yarp::os::Value(false)).asBool();
+    m_useLeftFootWrench=rf.check("useLeftFootWrench", yarp::os::Value(false)).asBool();
+    m_useRightFootWrench=rf.check("useRightFootWrench", yarp::os::Value(false)).asBool();
+
+
     m_streamData = rf.check("streamData", yarp::os::Value(true)).asBool();
 
 
@@ -80,24 +86,28 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
     yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
 
     //
-    portNameIn = rf.check( "WearablesLeftShoesPort", yarp::os::Value("/FTShoeLeft/WearableData/data:i")).asString();
-    if (!m_leftShoesPort.open("/" + getName() + portNameIn))
+    if(m_useLeftFootWrench)
     {
-        yError() << "[HumanDataAcquisition::configure] " << portNameIn << " port already open.";
-        return false;
+        portNameIn = rf.check( "WearablesLeftShoesPort", yarp::os::Value("/FTShoeLeft/WearableData/data:i")).asString();
+        if (!m_leftShoesPort.open("/" + getName() + portNameIn))
+        {
+            yError() << "[HumanDataAcquisition::configure] " << portNameIn << " port already open.";
+            return false;
+        }
+        yarp::os::Network::connect("/FTShoeLeft/WearableData/data:o", "/" + getName() + portNameIn);
     }
-    yarp::os::Network::connect("/FTShoeLeft/WearableData/data:o", "/" + getName() + portNameIn);
-
 
     //
-    portNameIn = rf.check( "WearablesRightShoesPort", yarp::os::Value("/FTShoeRight/WearableData/data:i")).asString();
-    if (!m_rightShoesPort.open("/" + getName() + portNameIn))
+    if(m_useRightFootWrench)
     {
-        yError() << "[HumanDataAcquisition::configure] " << portNameIn << " port already open.";
-        return false;
+        portNameIn = rf.check( "WearablesRightShoesPort", yarp::os::Value("/FTShoeRight/WearableData/data:i")).asString();
+        if (!m_rightShoesPort.open("/" + getName() + portNameIn))
+        {
+            yError() << "[HumanDataAcquisition::configure] " << portNameIn << " port already open.";
+            return false;
+        }
+        yarp::os::Network::connect("/FTShoeRight/WearableData/data:o", "/" + getName() + portNameIn);
     }
-    yarp::os::Network::connect("/FTShoeRight/WearableData/data:o", "/" + getName() + portNameIn);
-
     if(m_streamData)
     {
         portNameIn = rf.check( "humanJointsPort",  yarp::os::Value("/jointPosition:o")).asString();
@@ -152,11 +162,30 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
 
     m_leftShoes.resize(6,0.0);
     m_rightShoes.resize(6,0.0);
-    m_wrenchValues.resize(12,0.0);
+
+    size_t wrenchSize =0;
+
+    if (m_useLeftFootWrench)
+        wrenchSize+=6;
+    if(m_useRightFootWrench)
+        wrenchSize+=6;
+
+    m_wrenchValues.resize(wrenchSize,0.0);
 
     // size:  Joint values size, joint velocities, wrench values
-    size_t kinDynSize = m_robotJointsListNames.size()*2+ m_wrenchValues.size();
+    size_t kinDynSize =0;
+    if(m_useJointValues)
+            kinDynSize += m_robotJointsListNames.size();
+    if(m_useJointVelocities)
+            kinDynSize += m_robotJointsListNames.size();
+    if (m_useLeftFootWrench)
+        kinDynSize += 6;
+    if (m_useRightFootWrench)
+        kinDynSize += 6;
+
     m_kinDynValues.resize(kinDynSize , 0.0);
+    yInfo()<<"wrenchSize: "<<wrenchSize;
+    yInfo()<<"kinDynSize: "<<kinDynSize;
 
 
     m_baseValues.resize(7,0.0);
@@ -176,17 +205,29 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder& rf)
         yInfo() << "data will save in: " << fileName.str();
 
         std::string features= "time ";
-        for (size_t i = 0; i < m_robotJointsListNames.size(); i++)
+        if(m_useJointValues)
         {
-            features += (m_robotJointsListNames[i]) + "_val ";
+            for (size_t i = 0; i < m_robotJointsListNames.size(); i++)
+            {
+                features += (m_robotJointsListNames[i]) + "_val ";
+            }
         }
-        for (size_t i = 0; i < m_robotJointsListNames.size(); i++)
+        if(m_useJointVelocities)
         {
-            features += (m_robotJointsListNames[i]) + "_vel ";
+            for (size_t i = 0; i < m_robotJointsListNames.size(); i++)
+            {
+                features += (m_robotJointsListNames[i]) + "_vel ";
+            }
         }
 
-        features+="l_shoe_fx l_shoe_fy l_shoe_fz l_shoe_tx l_shoe_ty l_shoe_tz ";
-        features+="r_shoe_fx r_shoe_fy r_shoe_fz r_shoe_tx r_shoe_ty r_shoe_tz";
+        if(m_useLeftFootWrench)
+        {
+            features+="l_shoe_fx l_shoe_fy l_shoe_fz l_shoe_tx l_shoe_ty l_shoe_tz ";
+        }
+        if(m_useRightFootWrench)
+        {
+            features+="r_shoe_fx r_shoe_fy r_shoe_fz r_shoe_tx r_shoe_ty r_shoe_tz";
+        }
         yInfo()<<"features: "<<features;
 
         m_logger << features + "\n";
@@ -246,7 +287,7 @@ bool HumanDataAcquisitionModule::getJointValues()
 
     if (!m_firstIteration)
     {
-        yInfo() << "[HumanDataAcquisition::getJointValues] Xsens Retargeting Module is Running ...";
+        yInfo() << "[HumanDataAcquisition::getJointValues] Module is Running ...";
 
         for (unsigned j = 0; j < m_actuatedDOFs; j++)
         {
@@ -309,8 +350,8 @@ bool HumanDataAcquisitionModule::getJointValues()
         }
     }
 
-    yInfo() << "joint [0]: " << m_robotJointsListNames[0] << " : "
-            << newHumanjointsValues[m_humanToRobotMap[0]] << " , " << m_jointValues(0) <<" , "<<m_jointVelocities(0);
+//    yInfo() << "joint [0]: " << m_robotJointsListNames[0] << " : "
+//            << newHumanjointsValues[m_humanToRobotMap[0]] << " , " << m_jointValues(0) <<" , "<<m_jointVelocities(0);
 
     return true;
 }
@@ -324,7 +365,7 @@ bool HumanDataAcquisitionModule::getLeftShoesWrenches(){
     {
         return true;
     }
-    yInfo()<<"left shoes: leftShoeWrench size: "<<leftShoeWrench->size();
+//    yInfo()<<"left shoes: leftShoeWrench size: "<<leftShoeWrench->size();
 
     // data are located in 5th element:
     yarp::os::Value list4 = leftShoeWrench->get(4);
@@ -336,7 +377,7 @@ bool HumanDataAcquisitionModule::getLeftShoesWrenches(){
     for (size_t i=0; i<6; i++)
         m_leftShoes(i)=tmp3->get(i+2).asDouble();
 
-    yInfo()<<"m_leftShoes: "<<m_leftShoes.toString();
+//    yInfo()<<"m_leftShoes: "<<m_leftShoes.toString();
 
 
     return true;
@@ -353,7 +394,7 @@ bool HumanDataAcquisitionModule::getRightShoesWrenches(){
         yInfo()<<"[HumanDataAcquisitionModule::getRightShoesWrenches()] right shoes port is empty";
         return true;
     }
-    yInfo()<<"right shoes: rightShoeWrench size: "<<rightShoeWrench->size();
+//    yInfo()<<"right shoes: rightShoeWrench size: "<<rightShoeWrench->size();
 
     // data are located in 5th element:
     yarp::os::Value list4 = rightShoeWrench->get(4);
@@ -365,7 +406,7 @@ bool HumanDataAcquisitionModule::getRightShoesWrenches(){
     for (size_t i=0; i<6; i++)
         m_rightShoes(i)=tmp3->get(i+2).asDouble();
 
-    yInfo()<<"m_rightShoes: "<<m_rightShoes.toString();
+//    yInfo()<<"m_rightShoes: "<<m_rightShoes.toString();
 
 
     return true;
@@ -380,8 +421,10 @@ bool HumanDataAcquisitionModule::updateModule()
 {
 
     getJointValues();
-    getLeftShoesWrenches();
-    getRightShoesWrenches();
+    if(m_useLeftFootWrench)
+        getLeftShoesWrenches();
+    if(m_useRightFootWrench)
+        getRightShoesWrenches();
 
     if(m_logData)
         logData();
@@ -391,17 +434,22 @@ bool HumanDataAcquisitionModule::updateModule()
         yError() << "[HumanDataAcquisition::updateModule] m_wholeBodyHumanJointsPort port is closed";
         return false;
     }
-    if (m_leftShoesPort.isClosed())
+    if(m_useLeftFootWrench)
     {
-        yError() << "[HumanDataAcquisition::updateModule] m_leftShoesPort port is closed";
-        return false;
+        if (m_leftShoesPort.isClosed())
+        {
+            yError() << "[HumanDataAcquisition::updateModule] m_leftShoesPort port is closed";
+            return false;
+        }
     }
-    if (m_rightShoesPort.isClosed())
+    if(m_useRightFootWrench)
     {
-        yError() << "[HumanDataAcquisition::updateModule] m_rightShoesPort port is closed";
-        return false;
+        if (m_rightShoesPort.isClosed())
+        {
+            yError() << "[HumanDataAcquisition::updateModule] m_rightShoesPort port is closed";
+            return false;
+        }
     }
-
 
     if(m_streamData)
     {
@@ -423,10 +471,13 @@ bool HumanDataAcquisitionModule::updateModule()
             yError() << "[HumanDataAcquisition::updateModule] m_basePort port is closed";
             return false;
         }
-        if(m_wrenchPort.isClosed())
+        if(m_useLeftFootWrench ||m_useRightFootWrench)
         {
-            yError() << "[HumanDataAcquisition::updateModule] m_wrenchPort port is closed";
-            return false;
+            if(m_wrenchPort.isClosed())
+            {
+                yError() << "[HumanDataAcquisition::updateModule] m_wrenchPort port is closed";
+                return false;
+            }
         }
         if (m_KinDynPort.isClosed())
         {
@@ -450,10 +501,23 @@ bool HumanDataAcquisitionModule::updateModule()
         m_wholeBodyJointsPort.write();
 
         // Wrench vector
-        for(size_t i=0; i<m_leftShoes.size();i++)
+
+        size_t wrenchCounter=0;
+        if(m_useLeftFootWrench)
         {
-            m_wrenchValues(i)= m_leftShoes(i);
-            m_wrenchValues(6+i)= m_rightShoes(i);
+            for(size_t i=0; i<m_leftShoes.size();i++)
+            {
+                m_wrenchValues(i)= m_leftShoes(i);
+                wrenchCounter++;
+            }
+        }
+        if(m_useRightFootWrench)
+        {
+            for(size_t i=0; i<m_rightShoes.size();i++)
+            {
+                // if uses both wrenches, wrenchCounter is 6, otherwise it will 0.
+                m_wrenchValues(wrenchCounter+i)= m_rightShoes(i);
+            }
         }
 
         yarp::sig::Vector& wrenchValues = m_wrenchPort.prepare();
@@ -466,18 +530,25 @@ bool HumanDataAcquisitionModule::updateModule()
         m_basePort.write();
 
 
-
-
         // joint values, velocities, left and right wrenchs vector
         // size:  Joint values size, joint velocities, wrench values
+        size_t count=0;
         for (size_t i=0; i<m_jointValues.size(); i++)
         {
-            m_kinDynValues(i)= m_jointValues(i);
-            m_kinDynValues(m_jointValues.size()+ i)= m_jointVelocities(i);
+            if(m_useJointValues)
+            {
+                m_kinDynValues(i)= m_jointValues(i);
+                count++;
+            }
+            if(m_useJointVelocities)
+            {
+                m_kinDynValues(m_jointValues.size()+ i)= m_jointVelocities(i);
+                count++;
+            }
         }
         for (size_t i=0;i< m_wrenchValues.size(); i++ )
         {
-            m_kinDynValues(m_jointValues.size()*2 + i) = m_wrenchValues(i);
+            m_kinDynValues(count + i) = m_wrenchValues(i);
         }
 
         yarp::sig::Vector& kinDynValues = m_KinDynPort.prepare();

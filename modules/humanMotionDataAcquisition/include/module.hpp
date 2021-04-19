@@ -100,6 +100,11 @@ private:
     bool m_firstIteration;
     double m_jointDiffThreshold;
 
+    bool m_useJointValues;
+    bool m_useJointVelocities;
+    bool m_useLeftFootWrench;
+    bool m_useRightFootWrench;
+
 public:
     HumanDataAcquisitionModule();
     ~HumanDataAcquisitionModule();

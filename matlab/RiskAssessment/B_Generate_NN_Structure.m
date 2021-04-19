@@ -29,6 +29,7 @@ validationPercentage= 0.1;
 model_no=4;val_no=1;test_no=1;
 
 classification= true;
+saveModel=true;
 
 %% LOAD DATA
 
@@ -293,10 +294,11 @@ perfTest = perform(net,TsTest,YTest);
 % save Net2;
 %load Net1;
 
-%mkdir('Nets/net1')
-savefile = strcat('Nets/net',num2str(counter),'.mat');
-save(savefile ,'net')
-
+if saveModel
+    %mkdir('Nets/net1')
+    savefile = strcat('Nets/net',num2str(counter),'.mat');
+    save(savefile ,'net')
+end
 
 % how increase number of layers and check it
 % increase number of layers --> 15 for modeling as GMM
