@@ -93,16 +93,28 @@ while true
 end
 
 
-disp('human time series data');
-disp(humanKinDynTimeSeries);
+disp('Computing the lifting risk index:');
+Input_Test= prepareDatasetOnline(humanKinDynTimeSeries,NoFinalSamples);
 
-estimatedRisk=2;
+[XsTest,XiTest,AiTest] = preparets(net,Input_Test);
+YTest = net(XsTest,XiTest,AiTest);
+plotTestSet(YTest,YTest);
+
+% disp(humanKinDynTimeSeries);
+
+[val, idx]=max(YTest{end});
+
+estimatedRisk=idx;
 
 riskVector = risk_port.prepare();
 riskVector.clear();
 
 riskVector.push_back(estimatedRisk)
 risk_port.write();
+
+disp('ESTIMATED RISK IS:')
+
+disp(estimatedRisk)
 
 disp('estimation is done; closing ...')
 pause(1.0);
