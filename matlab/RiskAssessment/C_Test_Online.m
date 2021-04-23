@@ -1,7 +1,7 @@
 clc; clear; close all;
 %% Parameters
-load('Nets/net1.mat')
-userMass=80; %kg
+load('Nets/netClassification1.mat')
+userMass=   75.4332; %kg
 userWeight=userMass *9.81;
 sleepTime = 0.01; % sec
 
@@ -104,17 +104,18 @@ plotTestSet(YTest,YTest);
 
 [val, idx]=max(YTest{end});
 
-estimatedRisk=idx;
+estimatedRiskIndex=idx;
 
 riskVector = risk_port.prepare();
 riskVector.clear();
 
-riskVector.push_back(estimatedRisk)
+riskVector.push_back(estimatedRiskIndex)
 risk_port.write();
 
 disp('ESTIMATED RISK IS:')
 
-disp(estimatedRisk)
+disp(['index:', num2str(estimatedRiskIndex)])
+disp(['value:',num2str(val)])
 
 disp('estimation is done; closing ...')
 pause(1.0);

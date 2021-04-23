@@ -12,11 +12,13 @@ close all;
 %% PARAMETERS
 
 % NN parameters
-IterationNo=1; % number of iterations because of random initialization
-Min_hiddenLayerSize=40; % min: number of neurons in the hidden layer
-Max_hiddenLayerSize=40; % max: number of neurons in the hidden layer
+NN_Name='Nets/netRegression3-';
+IterationNo=4; % number of iterations because of random initialization
+Min_hiddenLayerSize=5; % min: number of neurons in the hidden layer
+step_hiddenLayerSize=10;
+Max_hiddenLayerSize=55; % max: number of neurons in the hidden layer
 
-Min_layerDelays=3;     % min: number of recurssion
+Min_layerDelays=2;     % min: number of recurssion
 Max_layerDelays=3;     % min: number of recurssion
 
 timeLengthData= 50;
@@ -28,7 +30,7 @@ validationPercentage= 0.1;
 % Model Data
 model_no=4;val_no=1;test_no=1;
 
-classification= true;
+classification= false;
 saveModel=true;
 
 %% LOAD DATA
@@ -37,7 +39,6 @@ saveModel=true;
 
 dirDataset = '../../../DataSet/RiskAssessment/processed_lifting_data/processed_lifting_data';
 [Input_NN, Output_NN, Input_Test, Output_Test] = prepareDataset(dirDataset, timeLengthData, testSetPercentage, classification);
-
 
 %% NN
 
@@ -83,7 +84,7 @@ counter=0;
 Performance_Matrix=[];
 
 for layerDelaysCounter=Min_layerDelays:Max_layerDelays
-for hiddenLayerSizeCounter =Min_hiddenLayerSize:Max_hiddenLayerSize
+for hiddenLayerSizeCounter =Min_hiddenLayerSize:step_hiddenLayerSize:Max_hiddenLayerSize
 for iterator=1:IterationNo
     
 counter=counter+1
@@ -296,7 +297,7 @@ perfTest = perform(net,TsTest,YTest);
 
 if saveModel
     %mkdir('Nets/net1')
-    savefile = strcat('Nets/net',num2str(counter),'.mat');
+    savefile = strcat(NN_Name,num2str(counter),'.mat');
     save(savefile ,'net')
 end
 
@@ -333,6 +334,8 @@ plotTestSet(TsTest,YTest);
 % figure; ploterrcorr(E2);saveas(gcf,'E3.jpg')
 
 Performance_Matrix(:,counter)=[counter;layerDelaysCounter;hiddenLayerSizeCounter;perf ];
+
+close all;
 
 end
 end
