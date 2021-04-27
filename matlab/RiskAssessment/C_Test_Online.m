@@ -1,6 +1,6 @@
 clc; clear; close all;
 %% Parameters
-load('Nets/netClassification1.mat')
+load('Nets/netRegression1.mat')
 userMass=   75.4332; %kg
 userWeight=userMass *9.81;
 sleepTime = 0.01; % sec

@@ -28,13 +28,13 @@ mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 DO_DATA_PREPROCESSING = False
 LEARN_LAST_MODEL = False
-LEARN_LINEAR_MODEL = False
-LEARN_DENSE_MODEL = False
-LEARN_CNN_MODEL = False
-LEARN_LSTM_MODEL = False
+LEARN_LINEAR_MODEL = True
+LEARN_DENSE_MODEL = True
+LEARN_CNN_MODEL = True
+LEARN_LSTM_MODEL = True
 LEARN_RESIDUAL_MODEL = False
 LEARN_AUTOREGRESSIVE_LSTM_MODEL = False
-DO_PERFORMANCE_ANALYSIS = False
+DO_PERFORMANCE_ANALYSIS = True
 NORMALIZE_INPUT = False
 
 # def main():
@@ -45,10 +45,11 @@ if __name__ == "__main__":
     models_path = 'models/models'
     MAX_EPOCHS = 20 #Default: 20
     OUT_STEPS = 1 #Default: 240
+    SHIFT = 0
     INPUT_WIDTH = 10 #Default: 10
-    HIDDEN_LAYER_SIZE = 256 #Default: 256
+    HIDDEN_LAYER_SIZE = 128 #Default: 256
     PATIENCE = 4 #Default: 4
-    PLOT_COL = 'r_shoe_ty'
+    PLOT_COL = 'temperature'
     MAX_SUBPLOTS = 5
     CONV_WIDTH = 10 #Default: 10
     TRAIN_PERCENTAGE = 0.7
@@ -212,13 +213,13 @@ if __name__ == "__main__":
 
     multi_window = WindowGenerator(input_width=INPUT_WIDTH,
                                    label_width=OUT_STEPS,
-                                   shift=OUT_STEPS,
+                                   shift=SHIFT,
                                    train_input_df=train_input_df, val_input_df=val_input_df, test_input_df=test_input_df,
                                    train_target_df=train_target_df, val_target_df=val_target_df, test_target_df=test_target_df)
 
     multi_window.train
 
-    multi_window.plot(max_subplots=MAX_SUBPLOTS)
+    multi_window.plot(max_subplots=4)
     multi_window_cpy = copy.deepcopy(multi_window)
 
     multi_val_performance = {}
@@ -228,7 +229,6 @@ if __name__ == "__main__":
         last_baseline = MultiStepLastBaseline(OUT_STEPS)
         last_baseline.compile(loss=tf.losses.MeanSquaredError(),
                               metrics=[tf.metrics.MeanAbsoluteError()])
-
 
         multi_val_performance['Last'] = last_baseline.evaluate(multi_window_cpy.val)
         multi_performance['Last'] = last_baseline.evaluate(multi_window_cpy.test, verbose=0)
@@ -262,7 +262,7 @@ if __name__ == "__main__":
         IPython.display.clear_output()
         multi_val_performance['Linear'] = multi_linear_model.evaluate(multi_window_cpy.val)
         multi_performance['Linear'] = multi_linear_model.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(multi_linear_model)
+        multi_window.plot(multi_linear_model, max_subplots=4)
 
     # DENSE
     if LEARN_DENSE_MODEL:
@@ -285,7 +285,7 @@ if __name__ == "__main__":
         IPython.display.clear_output()
         multi_val_performance['Dense'] = multi_dense_model.evaluate(multi_window_cpy.val)
         multi_performance['Dense'] = multi_dense_model.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(multi_dense_model)
+        multi_window.plot(multi_dense_model, max_subplots=4)
 
     # ## CONV
     if LEARN_CNN_MODEL:
@@ -382,8 +382,8 @@ if __name__ == "__main__":
         x = np.arange(len(multi_performance))
         width = 0.3
 
-        metric_name = 'mean_absolute_error'
-        metric_index = multi_lstm_model.metrics_names.index('mean_absolute_error')
+        metric_name = 'accuracy'
+        metric_index = multi_lstm_model.metrics_names.index('accuracy')
         val_mae = [v[metric_index] for v in multi_val_performance.values()]
         test_mae = [v[metric_index] for v in multi_performance.values()]
         plt.figure(figsize=(12, 8))

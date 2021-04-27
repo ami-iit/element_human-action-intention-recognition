@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import random
 
 import matplotlib.pyplot as plt
 
@@ -65,36 +66,50 @@ class WindowGenerator():
       self._example = inputs, labels
       return inputs, labels
 
-  def plot(self, model=None, plot_col='', max_subplots=3):
+  def plot(self, model=None, plot_col='', max_subplots=1):
       print('plot')
       inputs, labels = self.example
       plt.figure(figsize=(12, 8))
+      if not plot_col:
+          print('plot_col is empty, using the first feature.')
+          plot_col=list(self.column_indices.keys())[0]
+
       plt.title(" state: {}".format(plot_col))
       plot_col_index = self.column_indices[plot_col]
       max_n = min(max_subplots, len(inputs))
 
+      r = lambda: random.randint(0, 255)/255.0
+      # add for each class of labels a new color for the plot
+      labels_array=np.array(labels)
+      labels_array = np.reshape(labels_array, len(labels_array))
+      number_classes= set(labels_array)
+      classes_color={}
+      for i in number_classes:
+          classes_color.update({i: (r(), r(), r())})
+
       for n in range(max_n):
+          print(max_n, n+1)
           plt.subplot(max_n, 1, n + 1)
           plt.ylabel(f'{plot_col} [normed]')
           plt.plot(self.input_indices, inputs[n, :, plot_col_index],
-                   label='Inputs', marker='.', zorder=-10)
+                   label='Inputs', marker='.', zorder=-10, color=classes_color[labels_array[n]])
 
-          if self.label_columns:
-              label_col_index = self.label_columns_indices.get(plot_col, None)
-          else:
-              label_col_index = plot_col_index
-
-          if label_col_index is None:
-              continue
-
-          plt.scatter(self.label_indices, labels[n, :, label_col_index],
-                      edgecolors='k', label='Labels', c='#2ca02c', s=64)
+          # if self.label_columns:
+          #     label_col_index = self.label_columns_indices.get(plot_col, None)
+          # else:
+          #     label_col_index = plot_col_index
+          #
+          # if label_col_index is None:
+          #     continue
+          #
+          # plt.scatter(self.label_indices, labels[n, :, label_col_index],
+          #             edgecolors='k', label='Labels', c='#2ca02c', s=64)
           if model is not None:
               predictions = model(inputs)
-              plt.scatter(self.label_indices, predictions[n, :, label_col_index],
-                          marker='X', edgecolors='k', label='Predictions',
-                          c='#ff7f0e', s=64)
-
+              predictions_array = np.array(predictions)
+              predictions_array = np.reshape(predictions_array, len(predictions_array))
+              plt.plot(self.input_indices, inputs[n, :, plot_col_index],
+                       label='Inputs', marker='.', zorder=-10, color=classes_color[predictions_array[n] > 0])
           if n == 0:
               plt.legend()
 
@@ -115,7 +130,10 @@ class WindowGenerator():
           batch_size=32)
 
       # ds = ds.map(self.split_window)
-      self._example = ds
+      for batch in ds:
+          inputs, labels = batch
+          break
+      self._example = inputs, labels
 
       return ds
 

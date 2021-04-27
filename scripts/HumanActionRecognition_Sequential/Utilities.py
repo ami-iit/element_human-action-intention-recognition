@@ -11,10 +11,10 @@ def compile_and_fit(model, window, plot_losses, patience=2, MAX_EPOCHS=20):
                                                       patience=patience,
                                                       mode='min')
 
-    model.compile(loss=tf.losses.BinaryCrossentropy(),
+
+    model.compile(loss=tf.losses.BinaryCrossentropy(from_logits=True),
                   optimizer=tf.optimizers.Adam(),
                   metrics=[tf.metrics.Accuracy()])
-
     history = model.fit(window.train, epochs=MAX_EPOCHS,
                         validation_data=window.val,
                         callbacks=[early_stopping
