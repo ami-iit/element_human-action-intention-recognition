@@ -1,3 +1,8 @@
+import tensorflow as tf
+fashion_mnist = tf.keras.datasets.fashion_mnist
+
+(train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
+
 for key in data_validation[0].keys():
     k = k+1
     if key=='l_shoe_fz':

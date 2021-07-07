@@ -41,9 +41,8 @@ build/
 # python folders
 .idea/
 dist/
-scripts/__pycache__/
-scripts/models/
-
+__pycache__/
+__untrack/
 
 # emacs
 \#*\#

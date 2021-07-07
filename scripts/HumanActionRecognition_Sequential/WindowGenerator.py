@@ -3,6 +3,8 @@ import tensorflow as tf
 import random
 
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import OneHotEncoder
+
 
 class WindowGenerator():
   def __init__(self, input_width, label_width, shift,

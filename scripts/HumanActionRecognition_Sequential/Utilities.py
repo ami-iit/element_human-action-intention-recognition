@@ -12,9 +12,13 @@ def compile_and_fit(model, window, plot_losses, patience=2, MAX_EPOCHS=20):
                                                       mode='min')
 
 
+    # model.compile(loss=tf.losses.SparseCategoricalCrossentropy(from_logits=True),
+    #               optimizer=tf.optimizers.Adam(),
+    #               metrics=[tf.metrics.Accuracy()])
     model.compile(loss=tf.losses.BinaryCrossentropy(from_logits=True),
                   optimizer=tf.optimizers.Adam(),
-                  metrics=[tf.metrics.Accuracy()])
+                  metrics=['accuracy'])
+
     history = model.fit(window.train, epochs=MAX_EPOCHS,
                         validation_data=window.val,
                         callbacks=[early_stopping
