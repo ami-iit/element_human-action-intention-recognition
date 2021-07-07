@@ -41,4 +41,7 @@ In this element, at the first step, we will try to recognize the human action an
    Objectives of this milestone are to perform a brief state of the art study on human motion prediction and activity recognition; implement an RNN architecture and test it with simple dataset; implement an architecture to estimate the uncertainty associated with the prediction.
 - [**Perform Human Motion Prediction on real Human Dataset**](https://github.com/dic-iit/element_human-action-intention-recognition/issues/16)
   Objectives of this milestone are to collect a dataset of real human motion (here walking) including kinematic and external wrenches; use those dataset to predict human walking motion and visualize the data.
+  
+-  [**Use RNN for predicting human symbolic actions**](https://github.com/dic-iit/element_human-action-intention-recognition/issues/45)  Objective of this milestone is to recognize the human actions in the future. This can be used for example for the lifting task for ergonomy assessment.
 
+-  [**Close the Pipeline between Human-Action Prediction and Motion Prediction**](https://github.com/dic-iit/element_human-action-intention-recognition/issues/46)  Objective of this milestone is to close the pipeline between the human action prediction and human motion prediction. The human predicted actions are used for predicting the human motion in the future.
