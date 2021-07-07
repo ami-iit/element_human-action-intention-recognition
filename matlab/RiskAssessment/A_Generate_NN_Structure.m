@@ -321,7 +321,7 @@ end
 
 figure, 
 plotperform(tr);
-saveas(gcf,strcat('Figures/plotperform',num2str(counter),'.jpg'))
+saveas(gcf,strcat('plotperform',num2str(counter),'.jpg'))
 
 figure; plotresponse(TsTest,YTest);title('test: response');%saveas(gcf,'E1.jpg')
 
