@@ -28,13 +28,13 @@ mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 DO_DATA_PREPROCESSING = False
 LEARN_LAST_MODEL = False
-LEARN_LINEAR_MODEL = True
+LEARN_LINEAR_MODEL = False
 LEARN_DENSE_MODEL = True
-LEARN_CNN_MODEL = True
-LEARN_LSTM_MODEL = True
+LEARN_CNN_MODEL = False
+LEARN_LSTM_MODEL = False
 LEARN_RESIDUAL_MODEL = False
 LEARN_AUTOREGRESSIVE_LSTM_MODEL = False
-DO_PERFORMANCE_ANALYSIS = True
+DO_PERFORMANCE_ANALYSIS = False
 NORMALIZE_INPUT = False
 
 # def main():
@@ -46,8 +46,8 @@ if __name__ == "__main__":
     MAX_EPOCHS = 20 #Default: 20
     OUT_STEPS = 1 #Default: 240
     SHIFT = 0
-    INPUT_WIDTH = 10 #Default: 10
-    HIDDEN_LAYER_SIZE = 128 #Default: 256
+    INPUT_WIDTH = 1 #Default: 10
+    HIDDEN_LAYER_SIZE = 10 #Default: 256
     PATIENCE = 4 #Default: 4
     PLOT_COL = 'temperature'
     MAX_SUBPLOTS = 5
@@ -271,12 +271,9 @@ if __name__ == "__main__":
             # Shape [batch, time, features] => [batch, 1, features]
             tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
             # Shape => [batch, 1, dense_units]
-            tf.keras.layers.Dense(512, activation='relu'),
+            tf.keras.layers.Dense(64, activation='relu'),
             # Shape => [batch, out_steps*features]
-            tf.keras.layers.Dense(OUT_STEPS * num_features,
-                              kernel_initializer=tf.initializers.zeros()),
-            # Shape => [batch, out_steps, features]
-            tf.keras.layers.Reshape([OUT_STEPS, num_features])
+            tf.keras.layers.Dense(1)
         ])
 
         history = compile_and_fit(multi_dense_model, multi_window_cpy, plot_losses=plot_losses,
