@@ -27,13 +27,9 @@ from Utilities import PlotLosses
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 DO_DATA_PREPROCESSING = False
-LEARN_LAST_MODEL = False
-LEARN_LINEAR_MODEL = False
 LEARN_DENSE_MODEL = True
 LEARN_CNN_MODEL = True
 LEARN_LSTM_MODEL = True
-LEARN_RESIDUAL_MODEL = False
-LEARN_AUTOREGRESSIVE_LSTM_MODEL = False
 DO_PERFORMANCE_ANALYSIS = True
 NORMALIZE_INPUT = True
 OUTPUT_CATEGORIAL = True
@@ -46,10 +42,10 @@ if __name__ == "__main__":
     model_name = 'model'
     models_path = 'models/models'
     MAX_EPOCHS = 50 #Default: 20
-    OUT_STEPS = 1 #Default: 240
-    SHIFT = 2  # offset
+    OUT_STEPS = 1 # only `1` is possible
+    SHIFT = 1  # offset
     INPUT_WIDTH = 10 #Default: 10
-    HIDDEN_LAYER_SIZE = 512 #Default: 256
+    HIDDEN_LAYER_SIZE = 256 #Default: 256
     PATIENCE = 4 #Default: 4
     PLOT_COL = 'temperature'
     MAX_SUBPLOTS = 5
@@ -235,45 +231,6 @@ if __name__ == "__main__":
     multi_val_performance = {}
     multi_performance = {}
 
-    if LEARN_LAST_MODEL:
-        last_baseline = MultiStepLastBaseline(OUT_STEPS)
-        last_baseline.compile(loss=tf.losses.MeanSquaredError(),
-                              metrics=[tf.metrics.MeanAbsoluteError()])
-
-        multi_val_performance['Last'] = last_baseline.evaluate(multi_window_cpy.val)
-        multi_performance['Last'] = last_baseline.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(last_baseline)
-
-    # similar multi step prediction
-    # repeat_baseline = RepeatBaseline()
-    # repeat_baseline.compile(loss=tf.losses.MeanSquaredError(),
-    #                         metrics=[tf.metrics.MeanAbsoluteError()])
-    #
-    # multi_val_performance['Repeat'] = repeat_baseline.evaluate(multi_window_cpy.val)
-    # multi_performance['Repeat'] = repeat_baseline.evaluate(multi_window_cpy.test, verbose=0)
-    # multi_window.plot(repeat_baseline)
-
-    # Linear
-    if LEARN_LINEAR_MODEL:
-        multi_linear_model = tf.keras.Sequential([
-            # Take the last time-step.
-            # Shape [batch, time, features] => [batch, 1, features]
-            tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
-            # Shape => [batch, 1, out_steps*features]
-            tf.keras.layers.Dense(OUT_STEPS * num_features,
-                                  kernel_initializer=tf.initializers.zeros()),
-            # Shape => [batch, out_steps, features]
-            tf.keras.layers.Reshape([OUT_STEPS, num_features])
-        ])
-
-        history = compile_and_fit(multi_linear_model, multi_window_cpy, plot_losses=plot_losses,
-                              patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
-
-        IPython.display.clear_output()
-        multi_val_performance['Linear'] = multi_linear_model.evaluate(multi_window_cpy.val)
-        multi_performance['Linear'] = multi_linear_model.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(multi_linear_model, max_subplots=4)
-
     # DENSE
     if LEARN_DENSE_MODEL:
         multi_dense_model = tf.keras.Sequential([
@@ -340,51 +297,6 @@ if __name__ == "__main__":
         multi_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.test, verbose=0)
 
         multi_window.plot(multi_lstm_model, max_subplots=MAX_SUBPLOTS, output_labels=output_labels)
-
-    # Residual Net
-    if LEARN_RESIDUAL_MODEL:
-        if OUT_STEPS == INPUT_WIDTH:
-            multi_residual_lstm = ResidualWrapper(
-                tf.keras.Sequential([
-                    tf.keras.layers.LSTM(HIDDEN_LAYER_SIZE, return_sequences=True),
-                    tf.keras.layers.Dense(
-                        num_features,
-                        # The predicted deltas should start small
-                        # So initialize the output layer with zeros
-                        kernel_initializer=tf.initializers.zeros()),
-                    tf.keras.layers.Reshape([OUT_STEPS, num_features])
-
-                ]))
-            multi_residual_lstm._name = 'multi_residual_lstm'
-
-            history = compile_and_fit(multi_residual_lstm, multi_window_cpy, plot_losses=plot_losses, patience=5, MAX_EPOCHS=MAX_EPOCHS)
-
-            IPython.display.clear_output()
-            multi_val_performance['Residual LSTM'] = multi_residual_lstm.evaluate(multi_window_cpy.val)
-            multi_performance['Residual LSTM'] = multi_residual_lstm.evaluate(multi_window_cpy.test, verbose=0)
-            print()
-            multi_window.plot(multi_residual_lstm, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
-        else:
-            print('To learn residual model you have equal input and output length')
-            print('input length: {}, output length: {}'.format(INPUT_WIDTH, OUT_STEPS))
-
-    # Autoregressive RNN
-    if LEARN_AUTOREGRESSIVE_LSTM_MODEL:
-        feedback_model = FeedBack(units=HIDDEN_LAYER_SIZE, out_steps=OUT_STEPS, num_features=num_features)
-        feedback_model._name = 'feedback_model'
-
-        # prediction, state = feedback_model.warmup(multi_window_cpy.example[0])
-        # prediction.shape
-        # print('Output shape (batch, time, features): ', feedback_model(multi_window_cpy.example[0]).shape)
-
-        history = compile_and_fit(feedback_model, multi_window_cpy, plot_losses=plot_losses, patience=5, MAX_EPOCHS=MAX_EPOCHS)
-
-        IPython.display.clear_output()
-
-        multi_val_performance['AR LSTM'] = feedback_model.evaluate(multi_window_cpy.val)
-        multi_performance['AR LSTM'] = feedback_model.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(feedback_model, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
-
     # performances
     if DO_PERFORMANCE_ANALYSIS:
         x = np.arange(len(multi_performance))
