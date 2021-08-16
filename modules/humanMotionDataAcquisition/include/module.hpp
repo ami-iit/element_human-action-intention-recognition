@@ -3,179 +3,172 @@
 
 // std
 #include <cmath>
-#include <memory>
 #include <cstdio>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <string>
 #include <iterator>
+#include <memory>
 #include <sstream>
+#include <string>
 
 // YARP
-#include <yarp/os/Bottle.h>
-#include <yarp/os/Network.h>
-#include <HumanDynamicsEstimation/HumanState.h>
+#include <hde/msgs/HumanState.h>
 #include <yarp/dev/PolyDriver.h>
 #include <yarp/os/Bottle.h>
 #include <yarp/os/BufferedPort.h>
+#include <yarp/os/LogStream.h>
+#include <yarp/os/Network.h>
 #include <yarp/os/RFModule.h>
 #include <yarp/sig/Vector.h>
-#include <yarp/os/LogStream.h>
 
 #include <chrono>
 #include <yarp/os/Clock.h>
 
-class mapJoints
-{
+class mapJoints {
 public:
-    std::string name;
-    int index;
+  std::string name;
+  int index;
 };
 
-class HumanDataAcquisitionModule : public yarp::os::RFModule
-{
+class HumanDataAcquisitionModule : public yarp::os::RFModule {
 private:
-    /** An implementation class for spepcific functionalities required in this module. */
-    class impl;
-    std::unique_ptr<impl> pImpl;
-    /** target (robot) joint values (raw amd smoothed values) */
-    yarp::sig::Vector m_jointValues, m_smoothedJointValues;
-    /** target (robot) joint velocities (raw amd smoothed values) */
-    yarp::sig::Vector m_jointVelocities;
+  /** An implementation class for spepcific functionalities required in this
+   * module. */
+  class impl;
+  std::unique_ptr<impl> pImpl;
+  /** target (robot) joint values (raw amd smoothed values) */
+  yarp::sig::Vector m_jointValues, m_smoothedJointValues;
+  /** target (robot) joint velocities (raw amd smoothed values) */
+  yarp::sig::Vector m_jointVelocities;
 
-    /** CoM joint values coming from human-state-provider */
-    yarp::sig::Vector m_CoMValues;
+  /** CoM joint values coming from human-state-provider */
+  yarp::sig::Vector m_CoMValues;
 
-    /** base values coming from human-state-provider */
-    yarp::sig::Vector m_baseValues;
+  /** base values coming from human-state-provider */
+  yarp::sig::Vector m_baseValues;
 
-    /** wrenches value coming from wearables */
-    yarp::sig::Vector m_leftShoes, m_rightShoes;
-    yarp::sig::Vector m_wrenchValues;
+  /** wrenches value coming from wearables */
+  yarp::sig::Vector m_leftShoes, m_rightShoes;
+  yarp::sig::Vector m_wrenchValues;
 
-    /** vector containting joint values, joint velocities, left and right foot wrenches*/
-    yarp::sig::Vector m_kinDynValues;
+  /** vector containting joint values, joint velocities, left and right foot
+   * wrenches*/
+  yarp::sig::Vector m_kinDynValues;
 
+  /** the order of joints list arrived from human state provider is
+   different from the one we want to send to the controller */
+  std::vector<std::string> m_humanJointsListName;
 
-    /** the order of joints list arrived from human state provider is
-     different from the one we want to send to the controller */
-    std::vector<std::string>
-    m_humanJointsListName;
+  /** Port used to retrieve the human whole body joint pose. */
+  yarp::os::BufferedPort<hde::msgs::HumanState> m_wholeBodyHumanJointsPort;
 
-    /** Port used to retrieve the human whole body joint pose. */
-    yarp::os::BufferedPort<human::HumanState> m_wholeBodyHumanJointsPort;
+  /** Port used to retrieve the left shoes wrenches. */
+  yarp::os::BufferedPort<yarp::os::Bottle> m_leftShoesPort;
 
-    /** Port used to retrieve the left shoes wrenches. */
-    yarp::os::BufferedPort<yarp::os::Bottle> m_leftShoesPort;
+  /** Port used to retrieve the right shoes wrenches. */
+  yarp::os::BufferedPort<yarp::os::Bottle> m_rightShoesPort;
 
-    /** Port used to retrieve the right shoes wrenches. */
-    yarp::os::BufferedPort<yarp::os::Bottle> m_rightShoesPort;
+  /** Port used to provide the smoothed joint pose to yarp port. */
+  yarp::os::BufferedPort<yarp::sig::Vector> m_wholeBodyJointsPort;
+  /** Port used to provide the human CoM position to the yarp network.  */
+  yarp::os::BufferedPort<yarp::sig::Vector> m_HumanCoMPort;
+  /** Port used to provide the human base pose to yarp network.  */
+  yarp::os::BufferedPort<yarp::sig::Vector> m_basePort;
+  /** Port used to provide the human wrench port to yarp port.  */
+  yarp::os::BufferedPort<yarp::sig::Vector> m_wrenchPort;
+  /** Port used to provide the human joint values, velocities, and wrenches to a
+   * yarp port.  */
+  yarp::os::BufferedPort<yarp::sig::Vector> m_KinDynPort;
 
-    /** Port used to provide the smoothed joint pose to yarp port. */
-    yarp::os::BufferedPort<yarp::sig::Vector> m_wholeBodyJointsPort;
-    /** Port used to provide the human CoM position to the yarp network.  */
-    yarp::os::BufferedPort<yarp::sig::Vector> m_HumanCoMPort;
-    /** Port used to provide the human base pose to yarp network.  */
-    yarp::os::BufferedPort<yarp::sig::Vector> m_basePort;
-    /** Port used to provide the human wrench port to yarp port.  */
-    yarp::os::BufferedPort<yarp::sig::Vector> m_wrenchPort;
-    /** Port used to provide the human joint values, velocities, and wrenches to a yarp port.  */
-    yarp::os::BufferedPort<yarp::sig::Vector> m_KinDynPort;
+  double m_dT;       /**< Module period. */
+  bool m_useXsens;   /**< True if the Xsens is used in the retargeting */
+  bool m_logData;    /**< True to log human data*/
+  bool m_streamData; /**< True to stream human data */
 
-    double m_dT; /**< Module period. */
-    bool m_useXsens; /**< True if the Xsens is used in the retargeting */
-    bool m_logData;/**< True to log human data*/
-    bool m_streamData;/**< True to stream human data */
+  std::ofstream m_logger;
 
-    std::ofstream m_logger;
+  std::vector<std::string>
+      m_robotJointsListNames; /**< Vector containing the name of the controlled
+                                 joints.*/
+  size_t m_actuatedDOFs;      /**< Number of the actuated DoF */
 
+  std::vector<unsigned> m_humanToRobotMap;
 
-    std::vector<std::string>
-    m_robotJointsListNames; /**< Vector containing the name of the controlled joints.*/
-    size_t m_actuatedDOFs; /**< Number of the actuated DoF */
+  bool m_firstIteration;
+  double m_jointDiffThreshold;
 
-    std::vector<unsigned> m_humanToRobotMap;
-
-    bool m_firstIteration;
-    double m_jointDiffThreshold;
-
-    bool m_useJointValues;
-    bool m_useJointVelocities;
-    bool m_useLeftFootWrench;
-    bool m_useRightFootWrench;
+  bool m_useJointValues;
+  bool m_useJointVelocities;
+  bool m_useLeftFootWrench;
+  bool m_useRightFootWrench;
 
 public:
-    HumanDataAcquisitionModule();
-    ~HumanDataAcquisitionModule();
-    /*
-     * Configure the whole body retargeting retargeting.
-     * @param config reference to a resource finder object.
-     * @return true in case of success and false otherwise
-     */
-    bool getJointValues();
+  HumanDataAcquisitionModule();
+  ~HumanDataAcquisitionModule();
+  /*
+   * Configure the whole body retargeting retargeting.
+   * @param config reference to a resource finder object.
+   * @return true in case of success and false otherwise
+   */
+  bool getJointValues();
 
+  bool getLeftShoesWrenches();
 
-    bool getLeftShoesWrenches();
+  bool getRightShoesWrenches();
 
-    bool getRightShoesWrenches();
+  bool getBasePoseValues();
 
-    bool getBasePoseValues();
+  bool logData();
 
+  /**
+   * Get the period of the RFModule.
+   * @return the period of the module.
+   */
+  double getPeriod() final;
 
-    bool logData();
+  /**
+   * Main function of the RFModule.
+   * @return true in case of success and false otherwise.
+   */
+  bool updateModule() final;
 
-    /**
-     * Get the period of the RFModule.
-     * @return the period of the module.
-     */
-    double getPeriod() final;
+  /**
+   * Configure the RFModule.
+   * @param rf is the reference to a resource finder object
+   * @return true in case of success and false otherwise.
+   */
+  bool configure(yarp::os::ResourceFinder &rf) final;
 
-    /**
-     * Main function of the RFModule.
-     * @return true in case of success and false otherwise.
-     */
-    bool updateModule() final;
-
-    /**
-     * Configure the RFModule.
-     * @param rf is the reference to a resource finder object
-     * @return true in case of success and false otherwise.
-     */
-    bool configure(yarp::os::ResourceFinder& rf) final;
-
-    /**
-     * Close the RFModule.
-     * @return true in case of success and false otherwise.
-     */
-    bool close() final;
-
+  /**
+   * Close the RFModule.
+   * @return true in case of success and false otherwise.
+   */
+  bool close() final;
 };
 
-inline bool yarpListToStringVector(yarp::os::Value*& input, std::vector<std::string>& output)
-{
-    // clear the std::vector
-    output.clear();
+inline bool yarpListToStringVector(yarp::os::Value *&input,
+                                   std::vector<std::string> &output) {
+  // clear the std::vector
+  output.clear();
 
-    // check if the yarp value is a list
-    if (!input->isList())
-    {
-        yError() << "[yarpListToStringVector] The input is not a list.";
-        return false;
-    }
+  // check if the yarp value is a list
+  if (!input->isList()) {
+    yError() << "[yarpListToStringVector] The input is not a list.";
+    return false;
+  }
 
-    yarp::os::Bottle* bottle = input->asList();
-    for (int i = 0; i < bottle->size(); i++)
-    {
-        // check if the elements of the bottle are strings
-        if (!bottle->get(i).isString())
-        {
-            yError() << "[yarpListToStringVector] There is a field that is not a string.";
-            return false;
-        }
-        output.push_back(bottle->get(i).asString());
+  yarp::os::Bottle *bottle = input->asList();
+  for (int i = 0; i < bottle->size(); i++) {
+    // check if the elements of the bottle are strings
+    if (!bottle->get(i).isString()) {
+      yError()
+          << "[yarpListToStringVector] There is a field that is not a string.";
+      return false;
     }
-    return true;
+    output.push_back(bottle->get(i).asString());
+  }
+  return true;
 }
 
 #endif // WHOLEBODYRETARGETING_H
