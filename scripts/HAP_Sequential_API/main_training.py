@@ -30,12 +30,14 @@ DO_DATA_PREPROCESSING = False
 LEARN_LAST_MODEL = False
 LEARN_LINEAR_MODEL = False
 LEARN_DENSE_MODEL = True
-LEARN_CNN_MODEL = False
-LEARN_LSTM_MODEL = False
+LEARN_CNN_MODEL = True
+LEARN_LSTM_MODEL = True
 LEARN_RESIDUAL_MODEL = False
 LEARN_AUTOREGRESSIVE_LSTM_MODEL = False
-DO_PERFORMANCE_ANALYSIS = False
-NORMALIZE_INPUT = False
+DO_PERFORMANCE_ANALYSIS = True
+NORMALIZE_INPUT = True
+OUTPUT_CATEGORIAL = True
+NUMBER_CATEGORIES = 3
 
 # def main():
 if __name__ == "__main__":
@@ -43,11 +45,11 @@ if __name__ == "__main__":
 
     model_name = 'model'
     models_path = 'models/models'
-    MAX_EPOCHS = 20 #Default: 20
+    MAX_EPOCHS = 50 #Default: 20
     OUT_STEPS = 1 #Default: 240
-    SHIFT = 0
-    INPUT_WIDTH = 1 #Default: 10
-    HIDDEN_LAYER_SIZE = 10 #Default: 256
+    SHIFT = 2  # offset
+    INPUT_WIDTH = 10 #Default: 10
+    HIDDEN_LAYER_SIZE = 512 #Default: 256
     PATIENCE = 4 #Default: 4
     PLOT_COL = 'temperature'
     MAX_SUBPLOTS = 5
@@ -62,10 +64,10 @@ if __name__ == "__main__":
     input_feature_list = ['temperature']
     output_feature_list = ['label']
     pop_list = ['time']
-    data_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition/scripts/' \
-                'HumanActionRecognition_Sequential/exampleData.txt'
+    data_path = '/home/kourosh/icub_ws/external/DataSet/TemperatureDataset/TemperatureClassification.txt'
 
-    df_row = pd.read_csv(data_path, sep=',')
+    # df: data frame
+    df_row = pd.read_csv(data_path, sep=' , ')
 
     #     data_path = '/home/kourosh/icub_ws/external/element_human-action' \
     #                 '-intention-recognition/dataset/HumanActionIntentionPrediction/' \
@@ -84,8 +86,16 @@ if __name__ == "__main__":
     else:
         df_output = df_row
 
+    if OUTPUT_CATEGORIAL:
+        df_output = pd.get_dummies(df_output)
+        output_labels = df_output.keys()
+
+    print('01: output_labels', output_labels)
+
+
+    # start the time from the zero, depends on the application
     if 'time' in df_row:
-        df_time = df_row['time']- df_row['time'][0]
+        df_time = df_row['time'] - df_row['time'][0]
     df_input.head()
 
     if pop_list is not None:
@@ -218,8 +228,8 @@ if __name__ == "__main__":
                                    train_target_df=train_target_df, val_target_df=val_target_df, test_target_df=test_target_df)
 
     multi_window.train
-
-    multi_window.plot(max_subplots=4)
+    print('02: output_labels', output_labels)
+    multi_window.plot(max_subplots=3,  output_labels=output_labels)
     multi_window_cpy = copy.deepcopy(multi_window)
 
     multi_val_performance = {}
@@ -271,9 +281,10 @@ if __name__ == "__main__":
             # Shape [batch, time, features] => [batch, 1, features]
             tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
             # Shape => [batch, 1, dense_units]
-            tf.keras.layers.Dense(64, activation='relu'),
+            tf.keras.layers.Dense(512, activation='relu'),
             # Shape => [batch, out_steps*features]
-            tf.keras.layers.Dense(1)
+            tf.keras.layers.Dense(OUT_STEPS*NUMBER_CATEGORIES, activation='softmax'),
+            tf.keras.layers.Reshape([OUT_STEPS*NUMBER_CATEGORIES]),
         ])
 
         history = compile_and_fit(multi_dense_model, multi_window_cpy, plot_losses=plot_losses,
@@ -282,7 +293,7 @@ if __name__ == "__main__":
         IPython.display.clear_output()
         multi_val_performance['Dense'] = multi_dense_model.evaluate(multi_window_cpy.val)
         multi_performance['Dense'] = multi_dense_model.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(multi_dense_model, max_subplots=4)
+        multi_window.plot(multi_dense_model, max_subplots=4, output_labels=output_labels)
 
     # ## CONV
     if LEARN_CNN_MODEL:
@@ -292,10 +303,10 @@ if __name__ == "__main__":
             # Shape => [batch, 1, conv_units]
             tf.keras.layers.Conv1D(HIDDEN_LAYER_SIZE, activation='relu', kernel_size=(CONV_WIDTH)),
             # Shape => [batch, 1,  out_steps*features]
-            tf.keras.layers.Dense(OUT_STEPS * num_features,
-                                  kernel_initializer=tf.initializers.zeros()),
+            tf.keras.layers.Dense(OUT_STEPS * NUMBER_CATEGORIES,
+                                  kernel_initializer=tf.initializers.zeros(), activation='softmax'),
             # Shape => [batch, out_steps, features]
-            tf.keras.layers.Reshape([OUT_STEPS, num_features])
+            tf.keras.layers.Reshape([OUT_STEPS*NUMBER_CATEGORIES])
         ])
         multi_conv_model._name = 'multi_conv_model'
 
@@ -306,7 +317,7 @@ if __name__ == "__main__":
 
         multi_val_performance['Conv'] = multi_conv_model.evaluate(multi_window_cpy.val)
         multi_performance['Conv'] = multi_conv_model.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(multi_conv_model, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
+        multi_window.plot(multi_conv_model, max_subplots=MAX_SUBPLOTS,  output_labels=output_labels)
 
     # RNN
     if LEARN_LSTM_MODEL:
@@ -315,10 +326,10 @@ if __name__ == "__main__":
             # Adding more `lstm_units` just overfits more quickly.
             tf.keras.layers.LSTM(HIDDEN_LAYER_SIZE, return_sequences=False),
             # Shape => [batch, out_steps*features]
-            tf.keras.layers.Dense(OUT_STEPS * num_features,
-                                  kernel_initializer=tf.initializers.zeros()),
+            tf.keras.layers.Dense(OUT_STEPS * NUMBER_CATEGORIES,
+                                  kernel_initializer=tf.initializers.zeros(), activation='softmax'),
             # Shape => [batch, out_steps, features]
-            tf.keras.layers.Reshape([OUT_STEPS, num_features])
+            tf.keras.layers.Reshape([OUT_STEPS * NUMBER_CATEGORIES])
         ])
         multi_lstm_model._name = 'multi_LSTM_model'
 
@@ -328,7 +339,7 @@ if __name__ == "__main__":
         multi_val_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.val)
         multi_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.test, verbose=0)
 
-        multi_window.plot(multi_lstm_model, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
+        multi_window.plot(multi_lstm_model, max_subplots=MAX_SUBPLOTS, output_labels=output_labels)
 
     # Residual Net
     if LEARN_RESIDUAL_MODEL:

@@ -33,9 +33,9 @@ class WindowGenerator():
     self.label_width = label_width
     self.shift = shift
 
-    self.total_window_size = input_width + shift
+    self.total_window_size = self.input_width + self.shift
 
-    self.input_slice = slice(0, input_width)
+    self.input_slice = slice(0, self.input_width)
     self.input_indices = np.arange(self.total_window_size)[self.input_slice]
 
     self.label_start = self.total_window_size - self.label_width
@@ -68,54 +68,55 @@ class WindowGenerator():
       self._example = inputs, labels
       return inputs, labels
 
-  def plot(self, model=None, plot_col='', max_subplots=1):
+  def plot(self, model=None, plot_col='', max_subplots=1, output_labels=[]):
       print('plot')
+      print('output_labels: ', output_labels)
       inputs, labels = self.example
       plt.figure(figsize=(12, 8))
-      if not plot_col:
-          print('plot_col is empty, using the first feature.')
-          plot_col=list(self.column_indices.keys())[0]
-
-      plt.title(" state: {}".format(plot_col))
-      plot_col_index = self.column_indices[plot_col]
       max_n = min(max_subplots, len(inputs))
-
-      r = lambda: random.randint(0, 255)/255.0
-      # add for each class of labels a new color for the plot
-      labels_array=np.array(labels)
-      labels_array = np.reshape(labels_array, len(labels_array))
-      number_classes= set(labels_array)
-      classes_color={}
-      for i in number_classes:
-          classes_color.update({i: (r(), r(), r())})
-
+      ax=0
       for n in range(max_n):
-          print(max_n, n+1)
-          plt.subplot(max_n, 1, n + 1)
-          plt.ylabel(f'{plot_col} [normed]')
-          plt.plot(self.input_indices, inputs[n, :, plot_col_index],
-                   label='Inputs', marker='.', zorder=-10, color=classes_color[labels_array[n]])
+          ax=ax+1
+          if model is not None:
+              plt.subplot(max_n, 2, ax)
+          else:
+              plt.subplot(max_n, 1, ax)
 
-          # if self.label_columns:
-          #     label_col_index = self.label_columns_indices.get(plot_col, None)
-          # else:
-          #     label_col_index = plot_col_index
-          #
-          # if label_col_index is None:
-          #     continue
-          #
-          # plt.scatter(self.label_indices, labels[n, :, label_col_index],
-          #             edgecolors='k', label='Labels', c='#2ca02c', s=64)
+          if not plot_col:
+              print('plot_col is empty, using the first feature.')
+              plot_col = list(self.column_indices.keys())[0]
+          # plt.title(" state: {}".format(plot_col))
+          plot_col_index = self.column_indices[plot_col]
+
+          plt.ylabel(f'{plot_col} [normed]')
+          plt.plot(inputs[n, :, plot_col_index])
+
           if model is not None:
               predictions = model(inputs)
-              predictions_array = np.array(predictions)
-              predictions_array = np.reshape(predictions_array, len(predictions_array))
-              plt.plot(self.input_indices, inputs[n, :, plot_col_index],
-                       label='Inputs', marker='.', zorder=-10, color=classes_color[predictions_array[n] > 0])
-          if n == 0:
-              plt.legend()
+              predicted_label = np.argmax(predictions[n, :])
+              label = np.argmax(labels[n, :])
 
-      plt.xlabel('Time [samples]')
+              if predicted_label == label:
+                  color = 'blue'
+              else:
+                  color = 'red'
+
+              plt.xlabel("{} {:2.0f}% ({})".format(output_labels[predicted_label],
+                                                   100 * np.max(predictions[n, :]),
+                                                   output_labels[label]), color=color)
+
+              ax = ax + 1
+              plt.subplot(max_n, 2, ax)
+              plt.xticks(range(output_labels.size))
+              plt.yticks([])
+              thisplot = plt.bar(range(output_labels.size), predictions[n, :], color="#777777")
+              plt.ylim([0, 1])
+              thisplot[predicted_label].set_color('red')
+              thisplot[label].set_color('blue')
+
+          else:
+              label = np.argmax(labels[n, :])
+              plt.xlabel("({})".format(output_labels[label]), color='blue')
 
   def make_dataset(self, input_data, target_data):
       input_data = np.array(input_data, dtype=np.float32)

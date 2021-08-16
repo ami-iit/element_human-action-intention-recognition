@@ -15,15 +15,16 @@ def compile_and_fit(model, window, plot_losses, patience=2, MAX_EPOCHS=20):
     # model.compile(loss=tf.losses.SparseCategoricalCrossentropy(from_logits=True),
     #               optimizer=tf.optimizers.Adam(),
     #               metrics=[tf.metrics.Accuracy()])
-    model.compile(loss=tf.losses.BinaryCrossentropy(from_logits=True),
+    model.compile(loss=tf.losses.CategoricalCrossentropy(from_logits=False),
                   optimizer=tf.optimizers.Adam(),
                   metrics=['accuracy'])
 
     history = model.fit(window.train, epochs=MAX_EPOCHS,
-                        validation_data=window.val,
-                        callbacks=[early_stopping
-                            # , plot_losses
-                                   ])
+                        validation_data=window.val
+                        , callbacks=[early_stopping
+                            #, plot_losses
+                            ]
+                        )
 
     plt.figure(figsize=(12, 8))
     plt.plot(history.history['loss'])
