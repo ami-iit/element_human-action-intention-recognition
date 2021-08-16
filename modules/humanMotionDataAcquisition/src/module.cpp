@@ -1,4 +1,7 @@
 //#include "yarp/ HumanState.h"
+#include <chrono>
+#include <thread>
+
 #include <module.hpp>
 
 class HumanDataAcquisitionModule::impl {
@@ -51,6 +54,24 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
       rf.check("useRightFootWrench", yarp::os::Value(false)).asBool();
 
   m_streamData = rf.check("streamData", yarp::os::Value(true)).asBool();
+
+  m_useForAnnotation =
+      rf.check("useForAnnotation", yarp::os::Value(false)).asBool();
+
+  // the annotation list size
+  m_annotationList.resize(0);
+  if (rf.check("AnnotationList")) {
+    yarp::os::Value *annotationListYarp;
+    if (!rf.check("AnnotationList", annotationListYarp)) {
+      yError()
+          << "[HumanDataAcquisition::configure] Unable to find AnnotationList"
+             "into config file.";
+      return false;
+    }
+    yarpListToStringVector(annotationListYarp, m_annotationList);
+  }
+
+  m_lastAnnotation = "None";
 
   // initialize minimum jerk trajectory for the whole body
   yarp::os::Value *axesListYarp;
@@ -228,6 +249,9 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
     }
     if (m_useRightFootWrench) {
       features += "r_shoe_fx r_shoe_fy r_shoe_fz r_shoe_tx r_shoe_ty r_shoe_tz";
+    }
+    if (m_useForAnnotation) {
+      features += " label";
     }
     yInfo() << "features: " << features;
 
@@ -524,6 +548,62 @@ bool HumanDataAcquisitionModule::updateModule() {
   return true;
 }
 
+void HumanDataAcquisitionModule::keyboardHandler() {
+  constexpr std::chrono::microseconds keyboad_input_thread_period{10};
+  std::string lastAnnotation;
+  while (true) {
+    auto start = std::chrono::steady_clock::now();
+
+    // get the string from terminal
+    std::string input;
+    std::cin >> input;
+
+    // if the string is equal to the key the function is called
+    if (input == "s" || input == "S") {
+      this->close();
+      yInfo() << "input:" << input;
+      return;
+    } else {
+      unsigned int idx = -1; // so that by default returns None
+      if (m_annotationList.size() > 0) {
+        try {
+          idx = std::stoul(input);
+        } catch (std::exception &e) {
+          std::cout << "error converting input: " << input << '\n';
+        }
+        if (idx > 0 && idx <= m_annotationList.size()) {
+          lastAnnotation =
+              m_annotationList[idx - 1]; // since the index is srating from 1
+        } else {
+          lastAnnotation = "None";
+        }
+
+      } else {
+        lastAnnotation = input;
+      }
+      yInfo() << "input:" << input << ", logging annotation:" << lastAnnotation;
+    }
+    {
+      std::lock_guard<std::mutex> lock(m_mutex);
+      m_lastAnnotation = lastAnnotation;
+    }
+
+    // evaluate the time required for running the previous code
+    auto end = std::chrono::steady_clock::now();
+    auto elapsed = end - start;
+
+    // compute the time to wait
+    auto time_to_wait = keyboad_input_thread_period - elapsed;
+
+    // wait if required
+    if (time_to_wait > std::chrono::milliseconds::zero()) {
+      std::this_thread::sleep_for(time_to_wait);
+    }
+  }
+
+  return;
+}
+
 bool HumanDataAcquisitionModule::logData() {
   double time = yarp::os::Time::now();
   std::string features;
@@ -545,6 +625,10 @@ bool HumanDataAcquisitionModule::logData() {
     features += std::to_string(m_rightShoes(i));
     if (i < 5)
       features += " ";
+  }
+  if (m_useForAnnotation) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    features += " " + m_lastAnnotation;
   }
 
   m_logger << std::to_string(time) + " " + features + "\n";

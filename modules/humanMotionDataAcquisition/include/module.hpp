@@ -9,6 +9,7 @@
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 
@@ -86,6 +87,8 @@ private:
   bool m_logData;    /**< True to log human data*/
   bool m_streamData; /**< True to stream human data */
 
+  std::mutex m_mutex;
+
   std::ofstream m_logger;
 
   std::vector<std::string>
@@ -102,6 +105,13 @@ private:
   bool m_useJointVelocities;
   bool m_useLeftFootWrench;
   bool m_useRightFootWrench;
+
+  bool m_useForAnnotation;
+
+  std::string
+      m_lastAnnotation; /**< the last annotation to use when logging the data*/
+  std::vector<std::string> m_annotationList; /**< Vector containing the name of
+                                                the list of the annotations.*/
 
 public:
   HumanDataAcquisitionModule();
@@ -120,6 +130,10 @@ public:
   bool getBasePoseValues();
 
   bool logData();
+
+  bool dataHandler();
+
+  void keyboardHandler();
 
   /**
    * Get the period of the RFModule.

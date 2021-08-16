@@ -17,6 +17,8 @@ find_package(YARP REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(HumanDynamicsEstimation)
 find_package(iDynTree REQUIRED)
+find_package(Threads REQUIRED)
+
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 include(FindPackageHandleStandardArgs)
 
@@ -40,6 +42,7 @@ add_executable(${EXE_TARGET_NAME} ${${EXE_TARGET_NAME}_SRC} ${${EXE_TARGET_NAME}
 target_link_libraries(${EXE_TARGET_NAME} LINK_PUBLIC
   ${YARP_LIBRARIES}
   HumanDynamicsEstimation::HumanStateMsg
+  Threads::Threads
   )
 
 install(TARGETS ${EXE_TARGET_NAME} DESTINATION bin)
