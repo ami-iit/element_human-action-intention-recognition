@@ -26,6 +26,7 @@ HumanDataAcquisitionModule::~HumanDataAcquisitionModule(){};
 
 bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
   // check if the configuration file is empty
+  m_isClosed = false;
   if (rf.isNull()) {
     yError() << "[HumanDataAcquisition::configure] Empty configuration for the "
                 "OculusModule "
@@ -92,8 +93,9 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
   yInfo() << "HumanDataAcquisition::configure:  NoOfJoints: " << m_actuatedDOFs;
 
   std::string portNameIn, portNameOut;
-  portNameIn = rf.check("HDEJointsPortIn", yarp::os::Value("HDEJointsPortIn"))
-                   .asString();
+  portNameIn =
+      rf.check("HDEJointsPortIn", yarp::os::Value("/HumanStateWrapper/state:i"))
+          .asString();
 
   if (!m_wholeBodyHumanJointsPort.open("/" + getName() + portNameIn)) {
     yError() << "[HumanDataAcquisition::configure] " << portNameIn
@@ -101,15 +103,15 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
     return false;
   }
 
-  portNameOut =
-      rf.check("HDEJointsPortOut", yarp::os::Value("HDEJointsPortOut"))
-          .asString();
+  portNameOut = rf.check("HDEJointsPortOut",
+                         yarp::os::Value("/HDE/HumanStateWrapper/state:o"))
+                    .asString();
 
   yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
 
   //
   if (m_useLeftFootWrench) {
-    portNameIn = rf.check("WearablesLeftShoesPort",
+    portNameIn = rf.check("WearablesLeftShoesPortIn",
                           yarp::os::Value("/FTShoeLeft/WearableData/data:i"))
                      .asString();
     if (!m_leftShoesPort.open("/" + getName() + portNameIn)) {
@@ -117,13 +119,17 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
                << " port already open.";
       return false;
     }
-    yarp::os::Network::connect("/FTShoeLeft/WearableData/data:o",
-                               "/" + getName() + portNameIn);
+
+    portNameOut = rf.check("WearablesLeftShoesPortOut",
+                           yarp::os::Value("/FTShoeLeft/WearableData/data:o"))
+                      .asString();
+
+    yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
   }
 
   //
   if (m_useRightFootWrench) {
-    portNameIn = rf.check("WearablesRightShoesPort",
+    portNameIn = rf.check("WearablesRightShoesPortIn",
                           yarp::os::Value("/FTShoeRight/WearableData/data:i"))
                      .asString();
     if (!m_rightShoesPort.open("/" + getName() + portNameIn)) {
@@ -131,8 +137,11 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
                << " port already open.";
       return false;
     }
-    yarp::os::Network::connect("/FTShoeRight/WearableData/data:o",
-                               "/" + getName() + portNameIn);
+    portNameOut = rf.check("WearablesRightShoesPortOut",
+                           yarp::os::Value("/FTShoeRight/WearableData/data:o"))
+                      .asString();
+
+    yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
   }
   if (m_streamData) {
     portNameIn =
@@ -305,7 +314,6 @@ bool HumanDataAcquisitionModule::getJointValues() {
   m_baseValues(6) = newBaseOrientation.imaginary.z;
 
   if (!m_firstIteration) {
-    yInfo() << "[HumanDataAcquisition::getJointValues] Module is Running ...";
 
     for (unsigned j = 0; j < m_actuatedDOFs; j++) {
       // check for the spikes in joint values
@@ -322,6 +330,7 @@ bool HumanDataAcquisitionModule::getJointValues() {
       }
     }
   } else {
+
     m_firstIteration = false;
 
     /* We should do a maping between two vectors here: human and robot joint
@@ -362,6 +371,8 @@ bool HumanDataAcquisitionModule::getJointValues() {
       yInfo() << " robot initial joint value: (" << j
               << "): " << m_jointValues[j];
     }
+    yInfo() << " Module is Running ... ";
+    yInfo() << " Press `S` or `s` to exist safely.";
   }
 
   //    yInfo() << "joint [0]: " << m_robotJointsListNames[0] << " : "
@@ -376,9 +387,9 @@ bool HumanDataAcquisitionModule::getLeftShoesWrenches() {
   yarp::os::Bottle *leftShoeWrench = m_leftShoesPort.read(false);
 
   if (leftShoeWrench == NULL) {
+    //    yInfo() << "[getLeftShoesWrenches()] left shoes port is empty";
     return true;
   }
-  //    yInfo()<<"left shoes: leftShoeWrench size: "<<leftShoeWrench->size();
 
   // data are located in 5th element:
   yarp::os::Value list4 = leftShoeWrench->get(4);
@@ -400,8 +411,7 @@ bool HumanDataAcquisitionModule::getRightShoesWrenches() {
   yarp::os::Bottle *rightShoeWrench = m_rightShoesPort.read(false);
 
   if (rightShoeWrench == NULL) {
-    yInfo() << "[HumanDataAcquisitionModule::getRightShoesWrenches()] right "
-               "shoes port is empty";
+    //    yInfo() << "[getRightShoesWrenches()] right shoes port is empty";
     return true;
   }
   //    yInfo()<<"right shoes: rightShoeWrench size: "<<rightShoeWrench->size();
@@ -425,124 +435,143 @@ double HumanDataAcquisitionModule::getPeriod() { return m_dT; }
 
 bool HumanDataAcquisitionModule::updateModule() {
 
-  getJointValues();
-  if (m_useLeftFootWrench)
-    getLeftShoesWrenches();
-  if (m_useRightFootWrench)
-    getRightShoesWrenches();
+  while (!m_isClosed) {
+    auto start = std::chrono::steady_clock::now();
 
-  if (m_logData)
-    logData();
+    getJointValues();
+    if (m_useLeftFootWrench)
+      getLeftShoesWrenches();
+    if (m_useRightFootWrench)
+      getRightShoesWrenches();
 
-  if (m_wholeBodyHumanJointsPort.isClosed()) {
-    yError() << "[HumanDataAcquisition::updateModule] "
-                "m_wholeBodyHumanJointsPort port is closed";
-    return false;
-  }
-  if (m_useLeftFootWrench) {
-    if (m_leftShoesPort.isClosed()) {
-      yError() << "[HumanDataAcquisition::updateModule] m_leftShoesPort port "
-                  "is closed";
+    if (m_logData)
+      logData();
+
+    if (m_wholeBodyHumanJointsPort.isClosed()) {
+      yError() << "[HumanDataAcquisition::updateModule] "
+                  "m_wholeBodyHumanJointsPort port is closed";
       return false;
     }
-  }
-  if (m_useRightFootWrench) {
-    if (m_rightShoesPort.isClosed()) {
-      yError() << "[HumanDataAcquisition::updateModule] m_rightShoesPort port "
-                  "is closed";
-      return false;
+    if (m_useLeftFootWrench) {
+      if (m_leftShoesPort.isClosed()) {
+        yError() << "[HumanDataAcquisition::updateModule] m_leftShoesPort port "
+                    "is closed";
+        return false;
+      }
     }
-  }
-
-  if (m_streamData) {
-    if (m_wholeBodyJointsPort.isClosed()) {
-      yError() << "[HumanDataAcquisition::updateModule] m_wholeBodyJointsPort "
-                  "port is closed";
-      return false;
-    }
-
-    if (m_HumanCoMPort.isClosed()) {
-      yError() << "[HumanDataAcquisition::updateModule] m_HumanCoMPort port is "
-                  "closed";
-      return false;
+    if (m_useRightFootWrench) {
+      if (m_rightShoesPort.isClosed()) {
+        yError()
+            << "[HumanDataAcquisition::updateModule] m_rightShoesPort port "
+               "is closed";
+        return false;
+      }
     }
 
-    if (m_basePort.isClosed()) {
-      yError()
-          << "[HumanDataAcquisition::updateModule] m_basePort port is closed";
-      return false;
-    }
-    if (m_useLeftFootWrench || m_useRightFootWrench) {
-      if (m_wrenchPort.isClosed()) {
-        yError() << "[HumanDataAcquisition::updateModule] m_wrenchPort port is "
+    if (m_streamData) {
+      if (m_wholeBodyJointsPort.isClosed()) {
+        yError()
+            << "[HumanDataAcquisition::updateModule] m_wholeBodyJointsPort "
+               "port is closed";
+        return false;
+      }
+
+      if (m_HumanCoMPort.isClosed()) {
+        yError()
+            << "[HumanDataAcquisition::updateModule] m_HumanCoMPort port is "
+               "closed";
+        return false;
+      }
+
+      if (m_basePort.isClosed()) {
+        yError()
+            << "[HumanDataAcquisition::updateModule] m_basePort port is closed";
+        return false;
+      }
+      if (m_useLeftFootWrench || m_useRightFootWrench) {
+        if (m_wrenchPort.isClosed()) {
+          yError()
+              << "[HumanDataAcquisition::updateModule] m_wrenchPort port is "
+                 "closed";
+          return false;
+        }
+      }
+      if (m_KinDynPort.isClosed()) {
+        yError() << "[HumanDataAcquisition::updateModule] m_KinDynPort port is "
                     "closed";
         return false;
       }
     }
-    if (m_KinDynPort.isClosed()) {
-      yError()
-          << "[HumanDataAcquisition::updateModule] m_KinDynPort port is closed";
-      return false;
-    }
-  }
 
-  if (!m_firstIteration && m_streamData) {
-    // CoM
-    yarp::sig::Vector &CoMrefValues = m_HumanCoMPort.prepare();
-    CoMrefValues = m_CoMValues;
-    m_HumanCoMPort.write();
+    if (!m_firstIteration && m_streamData) {
+      // CoM
+      yarp::sig::Vector &CoMrefValues = m_HumanCoMPort.prepare();
+      CoMrefValues = m_CoMValues;
+      m_HumanCoMPort.write();
 
-    // Joints
-    yarp::sig::Vector &refValues = m_wholeBodyJointsPort.prepare();
+      // Joints
+      yarp::sig::Vector &refValues = m_wholeBodyJointsPort.prepare();
 
-    refValues = m_jointValues;
-    m_wholeBodyJointsPort.write();
+      refValues = m_jointValues;
+      m_wholeBodyJointsPort.write();
 
-    // Wrench vector
+      // Wrench vector
 
-    size_t wrenchCounter = 0;
-    if (m_useLeftFootWrench) {
-      for (size_t i = 0; i < m_leftShoes.size(); i++) {
-        m_wrenchValues(i) = m_leftShoes(i);
-        wrenchCounter++;
+      size_t wrenchCounter = 0;
+      if (m_useLeftFootWrench) {
+        for (size_t i = 0; i < m_leftShoes.size(); i++) {
+          m_wrenchValues(i) = m_leftShoes(i);
+          wrenchCounter++;
+        }
       }
-    }
-    if (m_useRightFootWrench) {
-      for (size_t i = 0; i < m_rightShoes.size(); i++) {
-        // if uses both wrenches, wrenchCounter is 6, otherwise it will 0.
-        m_wrenchValues(wrenchCounter + i) = m_rightShoes(i);
+      if (m_useRightFootWrench) {
+        for (size_t i = 0; i < m_rightShoes.size(); i++) {
+          // if uses both wrenches, wrenchCounter is 6, otherwise it will 0.
+          m_wrenchValues(wrenchCounter + i) = m_rightShoes(i);
+        }
       }
-    }
 
-    yarp::sig::Vector &wrenchValues = m_wrenchPort.prepare();
-    wrenchValues = m_wrenchValues;
-    m_wrenchPort.write();
+      yarp::sig::Vector &wrenchValues = m_wrenchPort.prepare();
+      wrenchValues = m_wrenchValues;
+      m_wrenchPort.write();
 
-    // base vector
-    yarp::sig::Vector &baseValues = m_basePort.prepare();
-    baseValues = m_baseValues;
-    m_basePort.write();
+      // base vector
+      yarp::sig::Vector &baseValues = m_basePort.prepare();
+      baseValues = m_baseValues;
+      m_basePort.write();
 
-    // joint values, velocities, left and right wrenchs vector
-    // size:  Joint values size, joint velocities, wrench values
-    size_t count = 0;
-    for (size_t i = 0; i < m_jointValues.size(); i++) {
-      if (m_useJointValues) {
-        m_kinDynValues(i) = m_jointValues(i);
-        count++;
+      // joint values, velocities, left and right wrenchs vector
+      // size:  Joint values size, joint velocities, wrench values
+      size_t count = 0;
+      for (size_t i = 0; i < m_jointValues.size(); i++) {
+        if (m_useJointValues) {
+          m_kinDynValues(i) = m_jointValues(i);
+          count++;
+        }
+        if (m_useJointVelocities) {
+          m_kinDynValues(m_jointValues.size() + i) = m_jointVelocities(i);
+          count++;
+        }
       }
-      if (m_useJointVelocities) {
-        m_kinDynValues(m_jointValues.size() + i) = m_jointVelocities(i);
-        count++;
+      for (size_t i = 0; i < m_wrenchValues.size(); i++) {
+        m_kinDynValues(count + i) = m_wrenchValues(i);
       }
-    }
-    for (size_t i = 0; i < m_wrenchValues.size(); i++) {
-      m_kinDynValues(count + i) = m_wrenchValues(i);
-    }
 
-    yarp::sig::Vector &kinDynValues = m_KinDynPort.prepare();
-    kinDynValues = m_kinDynValues;
-    m_KinDynPort.write();
+      yarp::sig::Vector &kinDynValues = m_KinDynPort.prepare();
+      kinDynValues = m_kinDynValues;
+      m_KinDynPort.write();
+    }
+    // evaluate the time required for running the previous code
+    auto end = std::chrono::steady_clock::now();
+    auto elapsed = end - start;
+
+    // compute the time to wait
+    auto time_to_wait = seconds_to_duration(this->getPeriod()) - elapsed;
+
+    // wait if required
+    if (time_to_wait > std::chrono::milliseconds::zero()) {
+      std::this_thread::sleep_for(time_to_wait);
+    }
   }
 
   return true;
@@ -636,6 +665,7 @@ bool HumanDataAcquisitionModule::logData() {
 }
 
 bool HumanDataAcquisitionModule::close() {
+  m_isClosed = true;
   if (m_logData)
     m_logger.close();
 

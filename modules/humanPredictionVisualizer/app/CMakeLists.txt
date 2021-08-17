@@ -7,6 +7,6 @@ file(GLOB scripts robots/*.ini)
 yarp_install(FILES ${scripts} DESTINATION bin)
 
 
-#file(GLOB scripts scripts/*.xml)
-#yarp_install(FILES ${scripts} DESTINATION ${YARP_APPLICATIONS_INSTALL_DIR})
+file(GLOB scripts scripts/*.xml)
+yarp_install(FILES ${scripts} DESTINATION bin})
 

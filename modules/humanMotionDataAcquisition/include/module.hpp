@@ -86,6 +86,7 @@ private:
   bool m_useXsens;   /**< True if the Xsens is used in the retargeting */
   bool m_logData;    /**< True to log human data*/
   bool m_streamData; /**< True to stream human data */
+  bool m_isClosed;   /**< True if the module is not closed*/
 
   std::mutex m_mutex;
 
@@ -183,6 +184,10 @@ inline bool yarpListToStringVector(yarp::os::Value *&input,
     output.push_back(bottle->get(i).asString());
   }
   return true;
+}
+
+template <typename T> auto seconds_to_duration(T seconds) {
+  return std::chrono::duration<T, std::ratio<1>>(seconds);
 }
 
 #endif // WHOLEBODYRETARGETING_H

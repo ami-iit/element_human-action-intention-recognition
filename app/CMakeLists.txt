@@ -20,13 +20,13 @@ subdirlist(subdirs ${CMAKE_CURRENT_SOURCE_DIR}/robots/)
 
 # Install each model
 foreach (dir ${subdirs})
-  file(GLOB scripts robots/${dir}/*.ini)
-  yarp_install(FILES ${scripts} DESTINATION ${YARP_ROBOTS_INSTALL_DIR}/${dir})
+  file(GLOB scripts config/*.ini)
+  yarp_install(FILES ${scripts} DESTINATION bin)
 endforeach ()
 
 file(GLOB scripts scripts/*.xml)
-yarp_install(FILES ${scripts} DESTINATION ${YARP_APPLICATIONS_INSTALL_DIR})
+yarp_install(FILES ${scripts} DESTINATION bin)
 
 if (MSVC)
-  yarp_install(DIRECTORY virtualizerRetargeting DESTINATION ${YARP_CONTEXTS_INSTALL_DIR})
+  yarp_install(DIRECTORY virtualizerRetargeting DESTINATION bin})
 endif (MSVC)
