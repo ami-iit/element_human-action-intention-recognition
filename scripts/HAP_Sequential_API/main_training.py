@@ -27,20 +27,21 @@ from Utilities import PlotLosses
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 DO_DATA_PREPROCESSING = False
-LEARN_DENSE_MODEL = True
-LEARN_CNN_MODEL = True
+LEARN_DENSE_MODEL = False
+LEARN_CNN_MODEL = False
 LEARN_LSTM_MODEL = True
-DO_PERFORMANCE_ANALYSIS = True
+DO_PERFORMANCE_ANALYSIS = False
 NORMALIZE_INPUT = True
 OUTPUT_CATEGORIAL = True
 NUMBER_CATEGORIES = 3
+SAVE_MODEL = True
 
 # def main():
 if __name__ == "__main__":
     # Download the dataset
 
     model_name = 'model'
-    models_path = 'models/models'
+    models_path = 'models'
     MAX_EPOCHS = 100 #Default: 20
     OUT_STEPS = 1 # only `1` is possible
     SHIFT = 1  # offset
@@ -319,6 +320,13 @@ if __name__ == "__main__":
         for name, value in multi_performance.items():
             print(f'{name:8s}: {value[1]:0.4f}')
 
+    if SAVE_MODEL:
+        if LEARN_DENSE_MODEL:
+            save_model(multi_dense_model, file_path=models_path, file_name=model_name + '_Dense')
+        if LEARN_CNN_MODEL:
+            save_model(multi_conv_model, file_path=models_path, file_name=model_name + '_CNN')
+        if LEARN_LSTM_MODEL:
+            save_model(multi_lstm_model, file_path=models_path, file_name=model_name + '_LSTM')
 
 # if __name__ == "__main__":
 #     main()

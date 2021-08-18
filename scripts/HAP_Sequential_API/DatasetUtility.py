@@ -98,40 +98,27 @@ def DatasetUtility(data_path='dataset.txt', OUT_STEPS=1, INPUT_WIDTH=1, features
         ax2 = sns.violinplot(x='Column', y='Normalized', data=df2)
         _ = ax2.set_xticklabels(df.keys(), rotation=90)
 
-    multi_window = WindowGenerator(input_width=INPUT_WIDTH,
-                                   label_width=OUT_STEPS,
-                                   shift=OUT_STEPS,
-                                   train_input_df=train_df, val_input_df=val_df, test_input_df=test_df)
-
-    multi_window.plot(max_subplots=MAX_SUBPLOTS)
-
-    return multi_window, train_mean, train_std, df
-
-
-def plot_prediction(time, inputs, labels, prediction, plot_index, PLOT_COL):
-    print('plot_prediction')
+    # multi_window = WindowGenerator(input_width=INPUT_WIDTH,
+    #                                label_width=OUT_STEPS,
+    #                                shift=OUT_STEPS,
+    #                                train_input_df=train_df, val_input_df=val_df, test_input_df=test_df)
     #
-    plt.title(" state: {}".format(PLOT_COL))
-    max_n = len(plot_index)
-    for n in range(max_n):
-        plt.subplot(max_n, 1, n + 1)
-        plt.ylabel(f'{PLOT_COL[n]} [normed]')
-        n_index = int(plot_index[n])
-        input_time = np.array(range(0, inputs.shape[1]))+ time
-        input_time = input_time.reshape(1, input_time.shape[0])
-        output_time = np.array(range(inputs.shape[1], inputs.shape[1] + labels.shape[0])) + time
-        output_time = output_time.reshape(1, output_time.shape[0])
-        plt.plot(input_time.transpose(), (inputs[:, :, n_index]).transpose(), 'b',
-             linewidth=5, label='Inputs', marker='.', zorder=10, alpha=0.7)
-        plt.scatter(output_time, prediction[:, :, n_index],
-                marker='X', edgecolors='k', label='Predictions',
-                c='#ff7f0e', s=64, zorder=-10, alpha=0.7)
-        plt.scatter(output_time, labels[:, n_index],
-                edgecolors='k', label='Labels', c='#2ca02c', s=64, zorder=5, alpha=0.7)
+    # multi_window.plot(max_subplots=MAX_SUBPLOTS)
 
-    # plt.legend()
-    plt.xlabel('Time [samples]')
-    plt.pause(0.02)
+    return train_mean, train_std, df
+
+
+def plot_prediction(prediction, labels):
+    print('plot_prediction')
+    # plt.xticks(range(np.size(labels)))
+    # plt.yticks([])
+    plt.bar(labels, prediction, width=0.5)
+    plt.ylim([0, 1])
+    plt.title("human action prediction")
+    plt.xlabel('human actions')
+    plt.ylabel('Probability')
+    plt.pause(0.2)
+    plt.clf()
 
 def current_milli_time():
     return round(time.time() * 1000)

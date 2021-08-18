@@ -41,8 +41,8 @@ def compile_and_fit(model, window, plot_losses, patience=2, MAX_EPOCHS=20):
 def save_model(model, file_path='', file_name='myModel'):
     Path(file_path).mkdir(parents=True, exist_ok=True)
     model.save('{}/{}.h5'.format(file_path, file_name))  # creates a HDF5 file 'my_model.h5'
+    print('the model is saved as: {}'.format('{}/{}.h5'.format(file_path, file_name)))
     return
-
 
 def visualize_model(model, file_path='', file_name='myModel'):
     plot_model(model, to_file='{}/{}.png'.format(file_path, file_name), show_shapes=True)
