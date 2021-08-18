@@ -41,13 +41,13 @@ if __name__ == "__main__":
 
     model_name = 'model'
     models_path = 'models/models'
-    MAX_EPOCHS = 50 #Default: 20
+    MAX_EPOCHS = 100 #Default: 20
     OUT_STEPS = 1 # only `1` is possible
     SHIFT = 1  # offset
-    INPUT_WIDTH = 10 #Default: 10
-    HIDDEN_LAYER_SIZE = 256 #Default: 256
-    PATIENCE = 4 #Default: 4
-    PLOT_COL = 'temperature'
+    INPUT_WIDTH = 25 #Default: 10
+    HIDDEN_LAYER_SIZE = 512 #Default: 256
+    PATIENCE = 5 #Default: 4
+    PLOT_COL = 'l_shoe_fz'
     MAX_SUBPLOTS = 5
     CONV_WIDTH = 10 #Default: 10
     TRAIN_PERCENTAGE = 0.7
@@ -57,13 +57,16 @@ if __name__ == "__main__":
     plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
 
     # features_list = ['jLeftKnee_roty_val', 'jRightKnee_roty_val', 'jLeftKnee_roty_vel', 'jRightKnee_roty_vel']
-    input_feature_list = ['temperature']
+    # input_feature_list = ['temperature']
+    input_feature_list = []
+
     output_feature_list = ['label']
-    pop_list = ['time']
-    data_path = '/home/kourosh/icub_ws/external/DataSet/TemperatureDataset/TemperatureClassification.txt'
+    pop_list = ['time', 'label'] # pop list for only input features list
+    data_path = '/home/kourosh/icub_ws/external/DataSet/HumanDataForActionMotionPrediction/' \
+                'ActionRecognition/Dataset_2021_08_17_16_32_23_RemovedNone.txt'
 
     # df: data frame
-    df_row = pd.read_csv(data_path, sep=' , ')
+    df_row = pd.read_csv(data_path, sep=' ')
 
     #     data_path = '/home/kourosh/icub_ws/external/element_human-action' \
     #                 '-intention-recognition/dataset/HumanActionIntentionPrediction/' \
@@ -250,7 +253,7 @@ if __name__ == "__main__":
         IPython.display.clear_output()
         multi_val_performance['Dense'] = multi_dense_model.evaluate(multi_window_cpy.val)
         multi_performance['Dense'] = multi_dense_model.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(multi_dense_model, max_subplots=4, output_labels=output_labels)
+        multi_window.plot(multi_dense_model, max_subplots=3, output_labels=output_labels)
 
     # ## CONV
     if LEARN_CNN_MODEL:
