@@ -146,6 +146,8 @@ private:
 
   std::vector<std::string> m_rightWrenchFeatuersName;
 
+  bool m_isPaused; /// to pause for specific time when annotating the code
+
 public:
   HumanDataAcquisitionModule();
   ~HumanDataAcquisitionModule();

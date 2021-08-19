@@ -80,6 +80,8 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
     yarpListToStringVector(annotationListYarp, m_annotationList);
   }
 
+  m_isPaused = false;
+
   m_latestAnnotation =
       rf.check("InitialAnnotation", yarp::os::Value("None")).asString();
 
@@ -516,9 +518,12 @@ bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
   }
 
   if (m_firstIteration && m_readDataFromFile) {
-    yInfo() << " Module is Running ... ";
-    yInfo() << " To do fast backward press `'` on the keyboard";
-    yInfo() << " IMPORTANT: Press `S` or `s` to exit safely.";
+    yInfo() << "\033[1;31m Module is Running ... \033[0m";
+    yInfo()
+        << "\033[1;31m To do fast backward press `'` on the keyboard\033[0m";
+    yInfo() << "\033[1;31m To pause press `p` or `P` on the keyboard\033[0m";
+    yInfo() << "\033[1;31m To return press `r` or `R` on the keyboard\033[0m";
+    yInfo() << "\033[1;31m IMPORTANT: Press `S` or `s` to exit safely\033[0m";
   }
   m_firstIteration = false;
 
@@ -595,6 +600,16 @@ bool HumanDataAcquisitionModule::updateModule() {
 
   while (!m_isClosed) {
     auto start = std::chrono::steady_clock::now();
+
+    if (m_isPaused) {
+      auto time_to_wait = seconds_to_duration(this->getPeriod());
+
+      // wait if required
+      if (time_to_wait > std::chrono::milliseconds::zero()) {
+        std::this_thread::sleep_for(time_to_wait);
+      }
+      continue;
+    }
 
     getVectorizeHumanStates();
     if (m_useLeftFootWrench)
@@ -782,7 +797,20 @@ void HumanDataAcquisitionModule::keyboardHandler() {
       m_DataLineIndex -= m_logBuffer.size();
       m_logBuffer.clear();
       m_annotationBuffer.clear();
-      yInfo() << "reseting logging annotation to:" << m_latestAnnotation;
+      yInfo() << "reseting logging annotation to:"
+              << ("\033[1;31m" + m_latestAnnotation + "\033[0m");
+
+    } else if (input == "p" || input == "P") {
+
+      m_isPaused = true;
+      yInfo() << "[keyboardHandler] prgrammed is paused. ";
+      yInfo() << "[keyboardHandler] latest annotation is:"
+              << m_latestAnnotation;
+
+    } else if (input == "r" || input == "R") {
+
+      m_isPaused = false;
+      yInfo() << "[keyboardHandler] prgrammed is returned. ";
 
     } else {
       unsigned int idx = -1; // so that by default returns None
@@ -802,7 +830,8 @@ void HumanDataAcquisitionModule::keyboardHandler() {
       } else {
         lastAnnotation = input;
       }
-      yInfo() << "input:" << input << ", logging annotation:" << lastAnnotation;
+      yInfo() << "input:" << input << ", logging annotation:"
+              << ("\033[1;31m" + lastAnnotation + "\033[0m");
 
       {
         std::lock_guard<std::mutex> lock(m_mutex);
