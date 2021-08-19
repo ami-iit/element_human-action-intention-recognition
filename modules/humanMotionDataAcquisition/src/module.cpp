@@ -1,5 +1,6 @@
 //#include "yarp/ HumanState.h"
 #include <chrono>
+#include <fstream>
 #include <thread>
 
 #include <module.hpp>
@@ -45,6 +46,11 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
 
   m_logData = rf.check("logData", yarp::os::Value(true)).asBool();
 
+  m_readDataFromFile = rf.check("readFromFile", yarp::os::Value(true)).asBool();
+
+  m_DataLineIndex = 0;
+  m_time = 0.0;
+
   m_useJointValues =
       rf.check("useJointValues", yarp::os::Value(false)).asBool();
   m_useJointVelocities =
@@ -53,6 +59,8 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
       rf.check("useLeftFootWrench", yarp::os::Value(false)).asBool();
   m_useRightFootWrench =
       rf.check("useRightFootWrench", yarp::os::Value(false)).asBool();
+  m_useBaseValues = rf.check("useBaseValues", yarp::os::Value(false)).asBool();
+  m_useComValues = rf.check("useCOMValues", yarp::os::Value(false)).asBool();
 
   m_streamData = rf.check("streamData", yarp::os::Value(true)).asBool();
 
@@ -72,7 +80,8 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
     yarpListToStringVector(annotationListYarp, m_annotationList);
   }
 
-  m_lastAnnotation = "None";
+  m_latestAnnotation =
+      rf.check("InitialAnnotation", yarp::os::Value("None")).asString();
 
   // initialize minimum jerk trajectory for the whole body
   yarp::os::Value *axesListYarp;
@@ -93,56 +102,71 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
   yInfo() << "HumanDataAcquisition::configure:  NoOfJoints: " << m_actuatedDOFs;
 
   std::string portNameIn, portNameOut;
-  portNameIn =
-      rf.check("HDEJointsPortIn", yarp::os::Value("/HumanStateWrapper/state:i"))
-          .asString();
 
-  if (!m_wholeBodyHumanJointsPort.open("/" + getName() + portNameIn)) {
-    yError() << "[HumanDataAcquisition::configure] " << portNameIn
-             << " port already open.";
-    return false;
-  }
-
-  portNameOut = rf.check("HDEJointsPortOut",
-                         yarp::os::Value("/HDE/HumanStateWrapper/state:o"))
-                    .asString();
-
-  yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
-
-  //
-  if (m_useLeftFootWrench) {
-    portNameIn = rf.check("WearablesLeftShoesPortIn",
-                          yarp::os::Value("/FTShoeLeft/WearableData/data:i"))
+  // when reading data from yarp port:
+  if (!m_readDataFromFile) {
+    portNameIn = rf.check("HDEJointsPortIn",
+                          yarp::os::Value("/HumanStateWrapper/state:i"))
                      .asString();
-    if (!m_leftShoesPort.open("/" + getName() + portNameIn)) {
+
+    if (!m_wholeBodyHumanJointsPort.open("/" + getName() + portNameIn)) {
       yError() << "[HumanDataAcquisition::configure] " << portNameIn
                << " port already open.";
       return false;
     }
 
-    portNameOut = rf.check("WearablesLeftShoesPortOut",
-                           yarp::os::Value("/FTShoeLeft/WearableData/data:o"))
+    portNameOut = rf.check("HDEJointsPortOut",
+                           yarp::os::Value("/HDE/HumanStateWrapper/state:o"))
                       .asString();
 
     yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
-  }
 
-  //
-  if (m_useRightFootWrench) {
-    portNameIn = rf.check("WearablesRightShoesPortIn",
-                          yarp::os::Value("/FTShoeRight/WearableData/data:i"))
-                     .asString();
-    if (!m_rightShoesPort.open("/" + getName() + portNameIn)) {
-      yError() << "[HumanDataAcquisition::configure] " << portNameIn
-               << " port already open.";
-      return false;
+    //
+    if (m_useLeftFootWrench) {
+      portNameIn = rf.check("WearablesLeftShoesPortIn",
+                            yarp::os::Value("/FTShoeLeft/WearableData/data:i"))
+                       .asString();
+      if (!m_leftShoesPort.open("/" + getName() + portNameIn)) {
+        yError() << "[HumanDataAcquisition::configure] " << portNameIn
+                 << " port already open.";
+        return false;
+      }
+
+      portNameOut = rf.check("WearablesLeftShoesPortOut",
+                             yarp::os::Value("/FTShoeLeft/WearableData/data:o"))
+                        .asString();
+
+      yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
     }
-    portNameOut = rf.check("WearablesRightShoesPortOut",
-                           yarp::os::Value("/FTShoeRight/WearableData/data:o"))
-                      .asString();
 
-    yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
+    //
+    if (m_useRightFootWrench) {
+      portNameIn = rf.check("WearablesRightShoesPortIn",
+                            yarp::os::Value("/FTShoeRight/WearableData/data:i"))
+                       .asString();
+      if (!m_rightShoesPort.open("/" + getName() + portNameIn)) {
+        yError() << "[HumanDataAcquisition::configure] " << portNameIn
+                 << " port already open.";
+        return false;
+      }
+      portNameOut =
+          rf.check("WearablesRightShoesPortOut",
+                   yarp::os::Value("/FTShoeRight/WearableData/data:o"))
+              .asString();
+
+      yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
+    }
   }
+
+  if (m_readDataFromFile) {
+    std::string fileNameToRead =
+        rf.check("filePathToRead", yarp::os::Value("")).asString();
+
+    m_readDataMapVector.resize(0);
+
+    this->readDataFile(fileNameToRead);
+  }
+
   if (m_streamData) {
     portNameIn =
         rf.check("humanJointsPort", yarp::os::Value("/jointPosition:o"))
@@ -229,8 +253,54 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
   m_baseValues.resize(7, 0.0);
 
   //***********************
+
+  std::string features = "time ";
+  if (m_useJointValues) {
+    for (size_t i = 0; i < m_robotJointsListNames.size(); i++) {
+      features += (m_robotJointsListNames[i]) + "_val ";
+    }
+  }
+
+  if (m_useJointVelocities) {
+    for (size_t i = 0; i < m_robotJointsListNames.size(); i++) {
+      features += (m_robotJointsListNames[i]) + "_vel ";
+      m_jointVelocitiesFeatuersName.push_back((m_robotJointsListNames[i]) +
+                                              "_vel");
+    }
+  }
+
+  if (m_useLeftFootWrench) {
+    features += "l_shoe_fx l_shoe_fy l_shoe_fz l_shoe_tx l_shoe_ty l_shoe_tz ";
+  }
+
+  if (m_useRightFootWrench) {
+    features += "r_shoe_fx r_shoe_fy r_shoe_fz r_shoe_tx r_shoe_ty r_shoe_tz ";
+  }
+
+  if (m_useBaseValues) {
+    features += "base_pos_x base_pos_y base_pos_z base_quat_w base_quat_x "
+                "base_quat_y base_quat_z ";
+  }
+  if (m_useComValues) {
+    features += "com_x com_y com_z ";
+  }
+
+  if (m_useForAnnotation) {
+    features += "label ";
+  }
+  if (features.back() == ' ')
+    features.pop_back();
+
+  yInfo() << "features: " << features;
+
   // Chose an unique filename
   if (m_logData) {
+    m_logBuffer.resize(0);
+    m_annotationBuffer.resize(0);
+
+    m_fastBackwardSteps =
+        rf.check("FastBackwardsSteps", yarp::os::Value(1)).asInt();
+
     std::time_t t = std::time(nullptr);
     std::tm tm = *std::localtime(&t);
     std::stringstream fileName;
@@ -240,32 +310,32 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
     m_logger.open(fileName.str().c_str());
     yInfo() << "data will save in: " << fileName.str();
 
-    std::string features = "time ";
-    if (m_useJointValues) {
-      for (size_t i = 0; i < m_robotJointsListNames.size(); i++) {
-        features += (m_robotJointsListNames[i]) + "_val ";
-      }
-    }
-    if (m_useJointVelocities) {
-      for (size_t i = 0; i < m_robotJointsListNames.size(); i++) {
-        features += (m_robotJointsListNames[i]) + "_vel ";
-      }
-    }
-
-    if (m_useLeftFootWrench) {
-      features +=
-          "l_shoe_fx l_shoe_fy l_shoe_fz l_shoe_tx l_shoe_ty l_shoe_tz ";
-    }
-    if (m_useRightFootWrench) {
-      features += "r_shoe_fx r_shoe_fy r_shoe_fz r_shoe_tx r_shoe_ty r_shoe_tz";
-    }
-    if (m_useForAnnotation) {
-      features += " label";
-    }
-    yInfo() << "features: " << features;
-
     m_logger << features + "\n";
   }
+  // add the names when reading the data
+  m_jointValuesFeatuersName.resize(0);
+  m_jointVelocitiesFeatuersName.resize(0);
+
+  for (size_t i = 0; i < m_robotJointsListNames.size(); i++) {
+    m_jointVelocitiesFeatuersName.push_back((m_robotJointsListNames[i]) +
+                                            "_vel");
+  }
+
+  for (size_t i = 0; i < m_robotJointsListNames.size(); i++) {
+    m_jointValuesFeatuersName.push_back((m_robotJointsListNames[i]) + "_val");
+  }
+
+  m_baseFeatuersName = {"base_pos_x",  "base_pos_y",  "base_pos_z",
+                        "base_quat_w", "base_quat_x", "base_quat_y",
+                        "base_quat_z"};
+
+  m_comFeatuersName = {"com_x", "com_y", "com_z"};
+
+  m_leftWrenchFeatuersName = {"l_shoe_fx", "l_shoe_fy", "l_shoe_fz",
+                              "l_shoe_tx", "l_shoe_ty", "l_shoe_tz"};
+
+  m_rightWrenchFeatuersName = {"r_shoe_fx", "r_shoe_fy", "r_shoe_fz",
+                               "r_shoe_tx", "r_shoe_ty", "r_shoe_tz"};
 
   //***********************
 
@@ -279,154 +349,242 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
   yInfo() << " [HumanDataAcquisition::configure] done!";
   return true;
 }
-bool HumanDataAcquisitionModule::getJointValues() {
 
-  hde::msgs::HumanState *desiredHumanStates =
-      m_wholeBodyHumanJointsPort.read(false);
+bool HumanDataAcquisitionModule::readDataFile(std::string fileName) {
+  std::string delimiter = " ";
+  std::vector<std::string> columnTags;
+  bool firstLine = true; // since the column tags are there
+  std::ifstream file(fileName);
+  if (file.is_open()) {
+    std::string line;
 
-  if (desiredHumanStates == nullptr) {
-    return true;
+    while (std::getline(file, line)) { // read one by one the lines of the file
+      // using printf() in all tests for consistency
+      // printf("%s\n", line.c_str());
+      std::unordered_map<std::string, double> lineTokens;
+
+      // parse each line to tokens:
+      size_t pos = 0;
+      std::string token;
+      size_t count = 0;
+      while ((pos = line.find(delimiter)) != std::string::npos) {
+        token = line.substr(0, pos);
+        //        std::cout << token << std::endl;
+        // get the column tags which is located in the first row
+        if (firstLine) {
+          columnTags.push_back(token);
+        } else {
+          // make the key and unordered map
+          lineTokens.insert(
+              std::make_pair(columnTags[count], std::stod(token)));
+        }
+        count++;
+        line.erase(0, pos + delimiter.length());
+      }
+      if (!firstLine) {
+        m_readDataMapVector.push_back(lineTokens);
+      }
+      firstLine = false;
+    }
+    file.close();
   }
+  return true;
+}
 
-  // get the new joint values
-  std::vector<double> newHumanjointsValues = desiredHumanStates->positions;
-  std::vector<double> newHumanjointsVelocities = desiredHumanStates->velocities;
+bool HumanDataAcquisitionModule::readDataLineAtMoment() {
+  // read data from the matrix
+  return true;
+}
+bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
 
-  // get the new CoM positions
-  hde::msgs::Vector3 CoMValues = desiredHumanStates->CoMPositionWRTGlobal;
+  if (!m_readDataFromFile) {
+    hde::msgs::HumanState *desiredHumanStates =
+        m_wholeBodyHumanJointsPort.read(false);
 
-  m_CoMValues(0) = CoMValues.x;
-  m_CoMValues(1) = CoMValues.y;
-  m_CoMValues(2) = CoMValues.z;
+    if (desiredHumanStates == nullptr) {
+      return true;
+    }
 
-  // get base values
-  hde::msgs::Vector3 newBasePosition = desiredHumanStates->baseOriginWRTGlobal;
-  hde::msgs::Quaternion newBaseOrientation =
-      desiredHumanStates->baseOrientationWRTGlobal;
+    // get the new joint values
+    std::vector<double> newHumanjointsValues = desiredHumanStates->positions;
+    std::vector<double> newHumanjointsVelocities =
+        desiredHumanStates->velocities;
 
-  m_baseValues(0) = newBasePosition.x;
-  m_baseValues(1) = newBasePosition.y;
-  m_baseValues(2) = newBasePosition.z;
+    // get the new CoM positions
+    hde::msgs::Vector3 CoMValues = desiredHumanStates->CoMPositionWRTGlobal;
 
-  m_baseValues(3) = newBaseOrientation.w;
-  m_baseValues(4) = newBaseOrientation.imaginary.x;
-  m_baseValues(5) = newBaseOrientation.imaginary.y;
-  m_baseValues(6) = newBaseOrientation.imaginary.z;
+    m_CoMValues(0) = CoMValues.x;
+    m_CoMValues(1) = CoMValues.y;
+    m_CoMValues(2) = CoMValues.z;
 
-  if (!m_firstIteration) {
+    // get base values
+    hde::msgs::Vector3 newBasePosition =
+        desiredHumanStates->baseOriginWRTGlobal;
+    hde::msgs::Quaternion newBaseOrientation =
+        desiredHumanStates->baseOrientationWRTGlobal;
 
-    for (unsigned j = 0; j < m_actuatedDOFs; j++) {
-      // check for the spikes in joint values
-      if (std::abs(newHumanjointsValues[m_humanToRobotMap[j]] -
-                   m_jointValues(j)) < m_jointDiffThreshold) {
+    m_baseValues(0) = newBasePosition.x;
+    m_baseValues(1) = newBasePosition.y;
+    m_baseValues(2) = newBasePosition.z;
+
+    m_baseValues(3) = newBaseOrientation.w;
+    m_baseValues(4) = newBaseOrientation.imaginary.x;
+    m_baseValues(5) = newBaseOrientation.imaginary.y;
+    m_baseValues(6) = newBaseOrientation.imaginary.z;
+
+    if (!m_firstIteration) {
+
+      for (unsigned j = 0; j < m_actuatedDOFs; j++) {
+        // check for the spikes in joint values
+        if (std::abs(newHumanjointsValues[m_humanToRobotMap[j]] -
+                     m_jointValues(j)) < m_jointDiffThreshold) {
+          m_jointValues(j) = newHumanjointsValues[m_humanToRobotMap[j]];
+          m_jointVelocities(j) = newHumanjointsVelocities[m_humanToRobotMap[j]];
+
+        } else {
+          yWarning() << "spike in data: joint : " << j << " , "
+                     << m_robotJointsListNames[j]
+                     << " ; old data: " << m_jointValues(j) << " ; new data:"
+                     << newHumanjointsValues[m_humanToRobotMap[j]];
+        }
+      }
+    } else {
+
+      /* We should do a maping between two vectors here: human and robot joint
+       vectors, since their order are not the same! */
+
+      // check the human joints name list
+      m_humanJointsListName = desiredHumanStates->jointNames;
+
+      /* print human and robot joint name list */
+      yInfo()
+          << "Human joints name list: [human joints list] [robot joints list]"
+          << m_humanJointsListName.size() << " , "
+          << m_robotJointsListNames.size();
+
+      for (size_t i = 0; i < m_humanJointsListName.size(); i++) {
+        if (i < m_robotJointsListNames.size())
+          yInfo() << "(" << i << "): " << m_humanJointsListName[i] << " , "
+                  << m_robotJointsListNames[i];
+        else {
+          yInfo() << "(" << i << "): " << m_humanJointsListName[i] << " , --";
+        }
+      }
+      /* find the map between the human and robot joint list orders*/
+      if (!pImpl->mapJointsHDE2Controller(m_robotJointsListNames,
+                                          m_humanJointsListName,
+                                          m_humanToRobotMap)) {
+        yError() << "[HumanDataAcquisition::getJointValues()] mapping is not "
+                    "possible";
+        return false;
+      }
+      if (m_humanToRobotMap.size() == 0) {
+        yError() << "[HumanDataAcquisition::getJointValues()] "
+                    "m_humanToRobotMap.size is zero";
+      }
+
+      /* fill the robot joint list values*/
+      for (unsigned j = 0; j < m_actuatedDOFs; j++) {
         m_jointValues(j) = newHumanjointsValues[m_humanToRobotMap[j]];
         m_jointVelocities(j) = newHumanjointsVelocities[m_humanToRobotMap[j]];
-
-      } else {
-        yWarning() << "spike in data: joint : " << j << " , "
-                   << m_robotJointsListNames[j]
-                   << " ; old data: " << m_jointValues(j) << " ; new data:"
-                   << newHumanjointsValues[m_humanToRobotMap[j]];
+        yInfo() << " robot initial joint value: (" << j
+                << "): " << m_jointValues[j];
       }
     }
+
+    //    yInfo() << "joint [0]: " << m_robotJointsListNames[0] << " : "
+    //            << newHumanjointsValues[m_humanToRobotMap[0]] << " , " <<
+    //            m_jointValues(0) <<" , "<<m_jointVelocities(0);
   } else {
 
-    m_firstIteration = false;
+    m_time = (m_readDataMapVector[m_DataLineIndex])["time"];
+    for (size_t i = 0; i < m_jointValuesFeatuersName.size(); i++)
+      m_jointValues(i) =
+          (m_readDataMapVector[m_DataLineIndex])[m_jointValuesFeatuersName[i]];
 
-    /* We should do a maping between two vectors here: human and robot joint
-     vectors, since their order are not the same! */
+    for (size_t i = 0; i < m_jointVelocitiesFeatuersName.size(); i++)
+      m_jointVelocities(i) = (m_readDataMapVector[m_DataLineIndex])
+          [m_jointVelocitiesFeatuersName[i]];
 
-    // check the human joints name list
-    m_humanJointsListName = desiredHumanStates->jointNames;
+    for (size_t i = 0; i < 7; i++)
+      m_baseValues(i) =
+          (m_readDataMapVector[m_DataLineIndex])[m_baseFeatuersName[i]];
 
-    /* print human and robot joint name list */
-    yInfo() << "Human joints name list: [human joints list] [robot joints list]"
-            << m_humanJointsListName.size() << " , "
-            << m_robotJointsListNames.size();
-
-    for (size_t i = 0; i < m_humanJointsListName.size(); i++) {
-      if (i < m_robotJointsListNames.size())
-        yInfo() << "(" << i << "): " << m_humanJointsListName[i] << " , "
-                << m_robotJointsListNames[i];
-      else {
-        yInfo() << "(" << i << "): " << m_humanJointsListName[i] << " , --";
-      }
-    }
-    /* find the map between the human and robot joint list orders*/
-    if (!pImpl->mapJointsHDE2Controller(
-            m_robotJointsListNames, m_humanJointsListName, m_humanToRobotMap)) {
-      yError()
-          << "[HumanDataAcquisition::getJointValues()] mapping is not possible";
-      return false;
-    }
-    if (m_humanToRobotMap.size() == 0) {
-      yError() << "[HumanDataAcquisition::getJointValues()] "
-                  "m_humanToRobotMap.size is zero";
-    }
-
-    /* fill the robot joint list values*/
-    for (unsigned j = 0; j < m_actuatedDOFs; j++) {
-      m_jointValues(j) = newHumanjointsValues[m_humanToRobotMap[j]];
-      m_jointVelocities(j) = newHumanjointsVelocities[m_humanToRobotMap[j]];
-      yInfo() << " robot initial joint value: (" << j
-              << "): " << m_jointValues[j];
-    }
-    yInfo() << " Module is Running ... ";
-    yInfo() << " Press `S` or `s` to exist safely.";
+    for (size_t i = 0; i < 3; i++)
+      m_CoMValues(i) =
+          (m_readDataMapVector[m_DataLineIndex])[m_comFeatuersName[i]];
   }
 
-  //    yInfo() << "joint [0]: " << m_robotJointsListNames[0] << " : "
-  //            << newHumanjointsValues[m_humanToRobotMap[0]] << " , " <<
-  //            m_jointValues(0) <<" , "<<m_jointVelocities(0);
+  if (m_firstIteration && m_readDataFromFile) {
+    yInfo() << " Module is Running ... ";
+    yInfo() << " To do fast backward press `'` on the keyboard";
+    yInfo() << " IMPORTANT: Press `S` or `s` to exit safely.";
+  }
+  m_firstIteration = false;
 
   return true;
 }
 
 bool HumanDataAcquisitionModule::getLeftShoesWrenches() {
 
-  yarp::os::Bottle *leftShoeWrench = m_leftShoesPort.read(false);
+  if (!m_readDataFromFile) {
+    yarp::os::Bottle *leftShoeWrench = m_leftShoesPort.read(false);
 
-  if (leftShoeWrench == NULL) {
-    //    yInfo() << "[getLeftShoesWrenches()] left shoes port is empty";
-    return true;
+    if (leftShoeWrench == NULL) {
+      //    yInfo() << "[getLeftShoesWrenches()] left shoes port is empty";
+      return true;
+    }
+
+    // data are located in 5th element:
+    yarp::os::Value list4 = leftShoeWrench->get(4);
+
+    yarp::os::Bottle *tmp1 = list4.asList();
+    yarp::os::Bottle *tmp2 = tmp1->get(0).asList();
+    yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
+
+    for (size_t i = 0; i < 6; i++)
+      m_leftShoes(i) = tmp3->get(i + 2).asDouble();
+
+    //    yInfo()<<"m_leftShoes: "<<m_leftShoes.toString();
+  } else {
+
+    for (size_t i = 0; i < m_leftWrenchFeatuersName.size(); i++)
+      m_leftShoes(i) =
+          (m_readDataMapVector[m_DataLineIndex])[m_leftWrenchFeatuersName[i]];
   }
-
-  // data are located in 5th element:
-  yarp::os::Value list4 = leftShoeWrench->get(4);
-
-  yarp::os::Bottle *tmp1 = list4.asList();
-  yarp::os::Bottle *tmp2 = tmp1->get(0).asList();
-  yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
-
-  for (size_t i = 0; i < 6; i++)
-    m_leftShoes(i) = tmp3->get(i + 2).asDouble();
-
-  //    yInfo()<<"m_leftShoes: "<<m_leftShoes.toString();
 
   return true;
 }
 
 bool HumanDataAcquisitionModule::getRightShoesWrenches() {
 
-  yarp::os::Bottle *rightShoeWrench = m_rightShoesPort.read(false);
+  if (!m_readDataFromFile) {
+    yarp::os::Bottle *rightShoeWrench = m_rightShoesPort.read(false);
 
-  if (rightShoeWrench == NULL) {
-    //    yInfo() << "[getRightShoesWrenches()] right shoes port is empty";
-    return true;
+    if (rightShoeWrench == NULL) {
+      //    yInfo() << "[getRightShoesWrenches()] right shoes port is empty";
+      return true;
+    }
+    //    yInfo()<<"right shoes: rightShoeWrench size:
+    //    "<<rightShoeWrench->size();
+
+    // data are located in 5th element:
+    yarp::os::Value list4 = rightShoeWrench->get(4);
+
+    yarp::os::Bottle *tmp1 = list4.asList();
+    yarp::os::Bottle *tmp2 = tmp1->get(0).asList();
+    yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
+
+    for (size_t i = 0; i < 6; i++)
+      m_rightShoes(i) = tmp3->get(i + 2).asDouble();
+
+    //    yInfo()<<"m_rightShoes: "<<m_rightShoes.toString();
+  } else {
+    // to fill: read from file
+    for (size_t i = 0; i < m_rightWrenchFeatuersName.size(); i++)
+      m_rightShoes(i) =
+          (m_readDataMapVector[m_DataLineIndex])[m_rightWrenchFeatuersName[i]];
   }
-  //    yInfo()<<"right shoes: rightShoeWrench size: "<<rightShoeWrench->size();
-
-  // data are located in 5th element:
-  yarp::os::Value list4 = rightShoeWrench->get(4);
-
-  yarp::os::Bottle *tmp1 = list4.asList();
-  yarp::os::Bottle *tmp2 = tmp1->get(0).asList();
-  yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
-
-  for (size_t i = 0; i < 6; i++)
-    m_rightShoes(i) = tmp3->get(i + 2).asDouble();
-
-  //    yInfo()<<"m_rightShoes: "<<m_rightShoes.toString();
 
   return true;
 }
@@ -438,7 +596,7 @@ bool HumanDataAcquisitionModule::updateModule() {
   while (!m_isClosed) {
     auto start = std::chrono::steady_clock::now();
 
-    getJointValues();
+    getVectorizeHumanStates();
     if (m_useLeftFootWrench)
       getLeftShoesWrenches();
     if (m_useRightFootWrench)
@@ -447,24 +605,27 @@ bool HumanDataAcquisitionModule::updateModule() {
     if (m_logData)
       logData();
 
-    if (m_wholeBodyHumanJointsPort.isClosed()) {
-      yError() << "[HumanDataAcquisition::updateModule] "
-                  "m_wholeBodyHumanJointsPort port is closed";
-      return false;
-    }
-    if (m_useLeftFootWrench) {
-      if (m_leftShoesPort.isClosed()) {
-        yError() << "[HumanDataAcquisition::updateModule] m_leftShoesPort port "
-                    "is closed";
+    if (!m_readDataFromFile) {
+      if (m_wholeBodyHumanJointsPort.isClosed()) {
+        yError() << "[HumanDataAcquisition::updateModule] "
+                    "m_wholeBodyHumanJointsPort port is closed";
         return false;
       }
-    }
-    if (m_useRightFootWrench) {
-      if (m_rightShoesPort.isClosed()) {
-        yError()
-            << "[HumanDataAcquisition::updateModule] m_rightShoesPort port "
-               "is closed";
-        return false;
+      if (m_useLeftFootWrench) {
+        if (m_leftShoesPort.isClosed()) {
+          yError()
+              << "[HumanDataAcquisition::updateModule] m_leftShoesPort port "
+                 "is closed";
+          return false;
+        }
+      }
+      if (m_useRightFootWrench) {
+        if (m_rightShoesPort.isClosed()) {
+          yError()
+              << "[HumanDataAcquisition::updateModule] m_rightShoesPort port "
+                 "is closed";
+          return false;
+        }
       }
     }
 
@@ -484,8 +645,8 @@ bool HumanDataAcquisitionModule::updateModule() {
       }
 
       if (m_basePort.isClosed()) {
-        yError()
-            << "[HumanDataAcquisition::updateModule] m_basePort port is closed";
+        yError() << "[HumanDataAcquisition::updateModule] m_basePort port is "
+                    "closed";
         return false;
       }
       if (m_useLeftFootWrench || m_useRightFootWrench) {
@@ -561,6 +722,17 @@ bool HumanDataAcquisitionModule::updateModule() {
       kinDynValues = m_kinDynValues;
       m_KinDynPort.write();
     }
+
+    if (m_DataLineIndex % 500 == 0)
+      yInfo() << "[update] index of the data: " << m_DataLineIndex;
+
+    if (m_DataLineIndex == m_readDataMapVector.size() - 1) {
+      yInfo() << "[update] all data in the file is read and streamed.";
+      yInfo() << "[update] closing ...";
+      this->close();
+    }
+
+    m_DataLineIndex++;
     // evaluate the time required for running the previous code
     auto end = std::chrono::steady_clock::now();
     auto elapsed = end - start;
@@ -580,18 +752,38 @@ bool HumanDataAcquisitionModule::updateModule() {
 void HumanDataAcquisitionModule::keyboardHandler() {
   constexpr std::chrono::microseconds keyboad_input_thread_period{10};
   std::string lastAnnotation;
-  while (true) {
+  while (m_readDataFromFile) {
     auto start = std::chrono::steady_clock::now();
 
     // get the string from terminal
     std::string input;
-    std::cin >> input;
+    std::cin >> input; // most of the time, this thread is blocked here, waiting
+                       // for the input
+
+    if (m_isClosed) {
+      yInfo() << "[keyboardHandler] module is closed.";
+      return;
+    }
 
     // if the string is equal to the key the function is called
     if (input == "s" || input == "S") {
-      this->close();
       yInfo() << "input:" << input;
+      yInfo() << "[keyboardHandler] closing ... ";
+      this->close();
       return;
+    } else if (input == "'") {
+      std::lock_guard<std::mutex> lock(m_mutex);
+      yInfo() << " current time of the data: " << std::to_string(m_time);
+      yInfo() << "Fast Backward by by" << m_fastBackwardSteps << " steps";
+      yInfo() << "log buffer size" << m_logBuffer.size();
+      if (m_annotationBuffer.size() > 0)
+        m_latestAnnotation = m_annotationBuffer[0];
+
+      m_DataLineIndex -= m_logBuffer.size();
+      m_logBuffer.clear();
+      m_annotationBuffer.clear();
+      yInfo() << "reseting logging annotation to:" << m_latestAnnotation;
+
     } else {
       unsigned int idx = -1; // so that by default returns None
       if (m_annotationList.size() > 0) {
@@ -611,10 +803,11 @@ void HumanDataAcquisitionModule::keyboardHandler() {
         lastAnnotation = input;
       }
       yInfo() << "input:" << input << ", logging annotation:" << lastAnnotation;
-    }
-    {
-      std::lock_guard<std::mutex> lock(m_mutex);
-      m_lastAnnotation = lastAnnotation;
+
+      {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_latestAnnotation = lastAnnotation;
+      }
     }
 
     // evaluate the time required for running the previous code
@@ -634,44 +827,99 @@ void HumanDataAcquisitionModule::keyboardHandler() {
 }
 
 bool HumanDataAcquisitionModule::logData() {
-  double time = yarp::os::Time::now();
+  if (!m_readDataFromFile) {
+    m_time = yarp::os::Time::now();
+  } else {
+    // updated in another method
+  }
   std::string features;
 
-  for (size_t i = 0; i < m_actuatedDOFs; i++) {
-    features += std::to_string(m_jointValues(i)) + " ";
-  }
+  if (m_useJointValues)
+    for (size_t i = 0; i < m_actuatedDOFs; i++) {
+      features += std::to_string(m_jointValues(i)) + " ";
+    }
 
-  for (size_t i = 0; i < m_actuatedDOFs; i++) {
-    features += std::to_string(m_jointVelocities(i)) + " ";
-  }
+  if (m_useJointVelocities)
+    for (size_t i = 0; i < m_actuatedDOFs; i++) {
+      features += std::to_string(m_jointVelocities(i)) + " ";
+    }
 
-  for (size_t i = 0; i < 6; i++) {
-    features += std::to_string(m_leftShoes(i)) + " ";
-  }
+  if (m_useLeftFootWrench)
+    for (size_t i = 0; i < 6; i++) {
+      features += std::to_string(m_leftShoes(i)) + " ";
+    }
 
-  for (size_t i = 0; i < 6; i++) {
+  if (m_useRightFootWrench)
+    for (size_t i = 0; i < 6; i++) {
+      features += std::to_string(m_rightShoes(i)) + " ";
+    }
 
-    features += std::to_string(m_rightShoes(i));
-    if (i < 5)
-      features += " ";
-  }
+  if (m_useBaseValues)
+    for (size_t i = 0; i < m_baseValues.size(); i++) {
+      features += std::to_string(m_baseValues(i)) + " ";
+    }
+
+  if (m_useComValues)
+    for (size_t i = 0; i < m_CoMValues.size(); i++) {
+      features += std::to_string(m_CoMValues(i)) + " ";
+    }
+
   if (m_useForAnnotation) {
     std::lock_guard<std::mutex> lock(m_mutex);
-    features += " " + m_lastAnnotation;
+    features += m_latestAnnotation;
   }
 
-  m_logger << std::to_string(time) + " " + features + "\n";
+  if (features.back() == ' ')
+    features.pop_back();
+
+  features = std::to_string(m_time) + " " + features + "\n";
+
+  // if this condition is true, it means another thread emptied m_logBuffer, so
+  // we should avoid adding to the buffer and we should wait for the update
+  // method to be called
+  if (m_readDataFromFile)
+    if (m_time != (m_readDataMapVector[m_DataLineIndex])["time"]) {
+      yInfo() << "[logData] avoid adding to the buffer, wait to call for "
+                 "update.";
+      yInfo() << "[logData] logBuffer size should be zero"
+              << m_logBuffer.size();
+      return true;
+    }
+
+  std::lock_guard<std::mutex> lock(m_mutex);
+  m_logBuffer.push_back(features);
+  m_annotationBuffer.push_back(m_latestAnnotation);
+
+  // m_logBuffer can have maximum size of m_fastBackwardsSteps
+  if (m_logBuffer.size() == m_fastBackwardSteps) {
+    m_logger << m_logBuffer[0];
+
+    m_logBuffer.erase(m_logBuffer.begin());
+    m_annotationBuffer.erase(m_annotationBuffer.begin());
+  }
   return true;
 }
 
 bool HumanDataAcquisitionModule::close() {
   m_isClosed = true;
-  if (m_logData)
+  if (m_logData) {
+    if (m_logBuffer.size() > 0) {
+      yInfo() << "[close] log buffer size is" << m_logBuffer.size();
+      yInfo() << "[close] it is going to be emptied before closing the "
+                 "application ...";
+
+      m_logger << m_logBuffer[0];
+      m_logBuffer.erase(m_logBuffer.begin());
+      return this->close(); // add the recursion here in order to ensure that
+                            // all the data are saved.
+    }
+    yInfo() << "[close] log buffer is empty.";
     m_logger.close();
 
-  yInfo() << "Data saved with the following order.";
-  yInfo() << "<yarp time (s)>,<data>";
-  yInfo() << "closing ...";
+    yInfo() << "Data saved with the following order.";
+    yInfo() << "<yarp time (s)>,<data>";
+  }
+  yInfo() << " [close] closing ...";
 
   return true;
 }
