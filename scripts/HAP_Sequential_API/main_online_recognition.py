@@ -78,20 +78,21 @@ class GetHumanData(threading.Thread):
 if __name__ == "__main__":
     # parameters
 
-    model_name = 'model_LSTM'
+    model_name = 'model_Dense'
     model_path = 'models'
     data_path = '/home/kourosh/icub_ws/external/DataSet/HumanDataForActionMotionPrediction/' \
-                'ActionRecognition/Dataset_2021_08_17_16_32_23_RemovedNone.txt'
+                'ActionRecognition/carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
 
     pop_list = ['time', 'label']
     features_list = []
 
     OUT_STEPS = 1
-    INPUT_WIDTH = 25
+    INPUT_WIDTH = 15
     PLOT_COL = ['l_shoe_fz', 'r_shoe_fz', 'jLeftKnee_roty_val', 'jRightKnee_roty_val']
     MAX_SUBPLOTS = 5
     INPUT_FEATURE_SIZE = 144
-    labels = ['Rotating', 'Standing', 'Walking']
+    labels = ['None', 'Rotating', 'Standing', 'Walking']
+    PLOT_PREDICTION = True
 
     # *** Create new threads ***
     # inferenceThread = Inference()
@@ -168,11 +169,11 @@ if __name__ == "__main__":
             human_data[i] = (human_kin_dyn.get(i).asFloat64() - train_mean[i]) / train_std[i]
         # human_data_std = (human_data - train_mean) / train_std
         data_Tx.append(human_data)
-        print(np.shape(data_Tx))
+        # print(np.shape(data_Tx))
         if np.shape(data_Tx)[0] == INPUT_WIDTH:
 
             # data_Tx= np.delete(data_Tx, 0, axis=0)
-            print(np.shape(data_Tx))
+            # print(np.shape(data_Tx))
             human_data_Tx = np.array(data_Tx)
             # input array size: (batch_size, Tx, nx) // batch_size=1
             human_data_Tx = np.reshape(human_data_Tx, (1, INPUT_WIDTH, INPUT_FEATURE_SIZE))
@@ -181,8 +182,8 @@ if __name__ == "__main__":
             prediction = model.predict(human_data_Tx, use_multiprocessing=True)
             tok = current_milli_time()
 
-            print('prediction time: {} ms', tok - tik)
-            print('prediction: {}', prediction)
+            # print('prediction time: {} ms', tok - tik)
+            # print('prediction: {}', prediction)
 
 
             ## STREAM DATA
@@ -193,17 +194,21 @@ if __name__ == "__main__":
                 pred = np.reshape(pred, (pred.shape[1] * pred.shape[2]))
             else:
                 pred = np.reshape(pred, (pred.shape[0] * pred.shape[1]))
-            print("pred[0]: ", pred[0])
+            # print("pred[0]: ", pred[0])
             for i in range(pred.size):
                 bottle.push_back(pred[i])
-            print("Sending ...")
+            # print("Sending ...")
             prediction_port.write()
 
             data_Tx.pop(0)
-            plot_prediction(pred, labels=labels)
-        print("----------")
+            # argMax = np.argmax(pred)
+            print("----- Predicted Action :{} ------, inference time[ms]: {}".format(labels[np.argmax(pred)], tok - tik))
 
-        print("human_data shape: ", human_data.shape)
+            if PLOT_PREDICTION:
+                plot_prediction(pred, labels=labels)
+        # print("----------")
+
+        # print("human_data shape: ", human_data.shape)
         count += 1
 
         yarp.delay(0.01)

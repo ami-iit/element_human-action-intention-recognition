@@ -27,13 +27,13 @@ from Utilities import PlotLosses
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 DO_DATA_PREPROCESSING = False
-LEARN_DENSE_MODEL = False
-LEARN_CNN_MODEL = False
+LEARN_DENSE_MODEL = True
+LEARN_CNN_MODEL = True
 LEARN_LSTM_MODEL = True
-DO_PERFORMANCE_ANALYSIS = False
+DO_PERFORMANCE_ANALYSIS = True
 NORMALIZE_INPUT = True
 OUTPUT_CATEGORIAL = True
-NUMBER_CATEGORIES = 3
+NUMBER_CATEGORIES = 4
 SAVE_MODEL = True
 
 # def main():
@@ -45,8 +45,8 @@ if __name__ == "__main__":
     MAX_EPOCHS = 100 #Default: 20
     OUT_STEPS = 1 # only `1` is possible
     SHIFT = 1  # offset
-    INPUT_WIDTH = 25 #Default: 10
-    HIDDEN_LAYER_SIZE = 512 #Default: 256
+    INPUT_WIDTH = 15 #Default: 10
+    HIDDEN_LAYER_SIZE = 64 #Default: 256
     PATIENCE = 5 #Default: 4
     PLOT_COL = 'l_shoe_fz'
     MAX_SUBPLOTS = 5
@@ -62,9 +62,10 @@ if __name__ == "__main__":
     input_feature_list = []
 
     output_feature_list = ['label']
-    pop_list = ['time', 'label'] # pop list for only input features list
-    data_path = '/home/kourosh/icub_ws/external/DataSet/HumanDataForActionMotionPrediction/' \
-                'ActionRecognition/Dataset_2021_08_17_16_32_23_RemovedNone.txt'
+    pop_list = ['time', 'label']  # pop list for only input features list
+    data_path = '/home/kourosh/icub_ws/external/DataSet/' \
+                'HumanDataForActionMotionPrediction/ActionRecognition/' \
+                'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
 
     # df: data frame
     df_row = pd.read_csv(data_path, sep=' ')

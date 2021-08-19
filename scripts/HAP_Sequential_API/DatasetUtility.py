@@ -117,7 +117,7 @@ def plot_prediction(prediction, labels):
     plt.title("human action prediction")
     plt.xlabel('human actions')
     plt.ylabel('Probability')
-    plt.pause(0.2)
+    plt.pause(0.01)
     plt.clf()
 
 def current_milli_time():
