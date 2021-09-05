@@ -79,7 +79,7 @@ if __name__ == "__main__":
     # parameters
 
     model_name = 'model_Dense'
-    model_path = 'models'
+    model_path = 'models/goodResults/2'
     data_path = '/home/kourosh/icub_ws/external/DataSet/HumanDataForActionMotionPrediction/' \
                 'ActionRecognition/carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
 
@@ -179,7 +179,9 @@ if __name__ == "__main__":
             human_data_Tx = np.reshape(human_data_Tx, (1, INPUT_WIDTH, INPUT_FEATURE_SIZE))
             # output array size: (batch_size, Ty, nx) // batch_size=1
             tik = current_milli_time()
-            prediction = model.predict(human_data_Tx, use_multiprocessing=True)
+            # prediction = model.predict(human_data_Tx, workers=1, use_multiprocessing=True)
+            prediction = model(human_data_Tx, training=False)
+
             tok = current_milli_time()
 
             # print('prediction time: {} ms', tok - tik)
@@ -211,7 +213,7 @@ if __name__ == "__main__":
         # print("human_data shape: ", human_data.shape)
         count += 1
 
-        yarp.delay(0.01)
+        yarp.delay(0.001)
 
     # n = 0
     # mean_computation_time = 0.0

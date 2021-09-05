@@ -18,44 +18,47 @@ from ResidualWrapper import ResidualWrapper
 from MultiStepLastBaseline import MultiStepLastBaseline
 from RepeatBaseline import RepeatBaseline
 from FeedBack import FeedBack
-from Utilities import compile_and_fit
+from Utilities import get_dense_model, get_cnn_model, get_lstm_model, compile_model, fit_model, plot_losses, plot_accuracy
 from Utilities import save_model
 from Utilities import visualize_model
-from Utilities import PlotLosses
-
 
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 DO_DATA_PREPROCESSING = False
-LEARN_DENSE_MODEL = True
-LEARN_CNN_MODEL = True
+LEARN_DENSE_MODEL = False
+LEARN_CNN_MODEL = False
 LEARN_LSTM_MODEL = True
 DO_PERFORMANCE_ANALYSIS = True
 NORMALIZE_INPUT = True
 OUTPUT_CATEGORIAL = True
 NUMBER_CATEGORIES = 4
 SAVE_MODEL = True
+MORE_PLOTS = False
+model_name = 'model'
+models_path = 'models'
+
+MAX_EPOCHS = 100  # Default: 20
+OUT_STEPS = 1  # only `1` is possible
+SHIFT = 1  # offset
+INPUT_WIDTH = 15  # Default: 10
+HIDDEN_LAYER_SIZE = 64  # Default: 256
+PATIENCE = 10  # Default: 4
+PLOT_COL = 'l_shoe_fz'
+MAX_SUBPLOTS = 5
+CONV_WIDTH = 10  # Default: 10
+TRAIN_PERCENTAGE = 0.7
+VAL_PERCENTAGE = 0.2
+TEST_PERCENTAGE = 1.0 - (TRAIN_PERCENTAGE + VAL_PERCENTAGE)
+
+regularization_l2 = 1e-3
+dropout_rate = 0.3
+
 
 # def main():
 if __name__ == "__main__":
     # Download the dataset
 
-    model_name = 'model'
-    models_path = 'models'
-    MAX_EPOCHS = 100 #Default: 20
-    OUT_STEPS = 1 # only `1` is possible
-    SHIFT = 1  # offset
-    INPUT_WIDTH = 15 #Default: 10
-    HIDDEN_LAYER_SIZE = 64 #Default: 256
-    PATIENCE = 5 #Default: 4
-    PLOT_COL = 'l_shoe_fz'
-    MAX_SUBPLOTS = 5
-    CONV_WIDTH = 10 #Default: 10
-    TRAIN_PERCENTAGE = 0.7
-    VAL_PERCENTAGE = 0.2
-    TEST_PERCENTAGE = 1.0 - (TRAIN_PERCENTAGE + VAL_PERCENTAGE)
-
-    plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
+    # plot_losses = PlotLosses(file_path=models_path, file_name=model_name)
 
     # features_list = ['jLeftKnee_roty_val', 'jRightKnee_roty_val', 'jLeftKnee_roty_vel', 'jRightKnee_roty_vel']
     # input_feature_list = ['temperature']
@@ -92,7 +95,6 @@ if __name__ == "__main__":
         output_labels = df_output.keys()
 
     print('01: output_labels', output_labels)
-
 
     # start the time from the zero, depends on the application
     if 'time' in df_row:
@@ -230,85 +232,110 @@ if __name__ == "__main__":
 
     multi_window.train
     print('02: output_labels', output_labels)
-    multi_window.plot(max_subplots=3,  output_labels=output_labels)
+    if MORE_PLOTS:
+        multi_window.plot(max_subplots=3,  output_labels=output_labels)
+
     multi_window_cpy = copy.deepcopy(multi_window)
 
+    input_data_example, __ = multi_window_cpy.example
+    input_shape = (input_data_example.shape[1], input_data_example.shape[2])
     multi_val_performance = {}
     multi_performance = {}
 
     # DENSE
-    if LEARN_DENSE_MODEL:
-        multi_dense_model = tf.keras.Sequential([
-            # Take the last time step.
-            # Shape [batch, time, features] => [batch, 1, features]
-            tf.keras.layers.Lambda(lambda x: x[:, -1:, :]),
-            # Shape => [batch, 1, dense_units]
-            tf.keras.layers.Dense(512, activation='relu'),
-            # Shape => [batch, out_steps*features]
-            tf.keras.layers.Dense(OUT_STEPS*NUMBER_CATEGORIES, activation='softmax'),
-            tf.keras.layers.Reshape([OUT_STEPS*NUMBER_CATEGORIES]),
-        ])
 
-        history = compile_and_fit(multi_dense_model, multi_window_cpy, plot_losses=plot_losses,
-                              patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
+    if LEARN_DENSE_MODEL:
+
+        model_dense = get_dense_model(NUMBER_CATEGORIES, input_shape, regularization_l2, dropout_rate)
+        model_dense = compile_model(model_dense)
+        history_dense = fit_model(model_dense,
+                                  multi_window_cpy,
+                                  PATIENCE,
+                                  MAX_EPOCHS,
+                                  model_path=models_path,
+                                  model_name=model_name + '_Dense_Best')
+        plot_losses(history_dense)
+        plot_accuracy(history_dense)
+
+        # history = compile_and_fit(multi_dense_model, multi_window_cpy, plot_losses=plot_losses,
+        #                       patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
 
         IPython.display.clear_output()
-        multi_val_performance['Dense'] = multi_dense_model.evaluate(multi_window_cpy.val)
-        multi_performance['Dense'] = multi_dense_model.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(multi_dense_model, max_subplots=3, output_labels=output_labels)
+        multi_val_performance['Dense'] = model_dense.evaluate(multi_window_cpy.val)
+        multi_performance['Dense'] = model_dense.evaluate(multi_window_cpy.test, verbose=0)
+        if MORE_PLOTS:
+            multi_window.plot(model_dense, max_subplots=3, output_labels=output_labels)
 
     # ## CONV
     if LEARN_CNN_MODEL:
-        multi_conv_model = tf.keras.Sequential([
-            # Shape [batch, time, features] => [batch, CONV_WIDTH, features]
-            tf.keras.layers.Lambda(lambda x: x[:, -CONV_WIDTH:, :]),
-            # Shape => [batch, 1, conv_units]
-            tf.keras.layers.Conv1D(HIDDEN_LAYER_SIZE, activation='relu', kernel_size=(CONV_WIDTH)),
-            # Shape => [batch, 1,  out_steps*features]
-            tf.keras.layers.Dense(OUT_STEPS * NUMBER_CATEGORIES,
-                                  kernel_initializer=tf.initializers.zeros(), activation='softmax'),
-            # Shape => [batch, out_steps, features]
-            tf.keras.layers.Reshape([OUT_STEPS*NUMBER_CATEGORIES])
-        ])
-        multi_conv_model._name = 'multi_conv_model'
-
-        history = compile_and_fit(multi_conv_model, multi_window_cpy, plot_losses=plot_losses,
-                                  patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
+        # multi_conv_model = tf.keras.Sequential([
+        #     # Shape [batch, time, features] => [batch, CONV_WIDTH, features]
+        #     tf.keras.layers.Lambda(lambda x: x[:, -CONV_WIDTH:, :]),
+        #     # Shape => [batch, 1, conv_units]
+        #     tf.keras.layers.Conv1D(HIDDEN_LAYER_SIZE, activation='relu', kernel_size=(CONV_WIDTH), input_shape=()),
+        #     # Shape => [batch, 1,  out_steps*features]
+        #     tf.keras.layers.Dense(OUT_STEPS * NUMBER_CATEGORIES,
+        #                           kernel_initializer=tf.initializers.zeros(), activation='softmax'),
+        #     # Shape => [batch, out_steps, features]
+        #     tf.keras.layers.Reshape([OUT_STEPS*NUMBER_CATEGORIES])
+        # ])
+        # multi_conv_model._name = 'multi_conv_model'
+        #
+        # history = compile_and_fit(multi_conv_model, multi_window_cpy, plot_losses=plot_losses,
+        #                           patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
+        model_cnn = get_cnn_model(NUMBER_CATEGORIES, input_shape, regularization_l2, dropout_rate)
+        model_cnn.summary()
+        model_cnn = compile_model(model_cnn)
+        history_cnn = fit_model(model_cnn,
+                                multi_window_cpy,
+                                PATIENCE,
+                                MAX_EPOCHS,
+                                model_path=models_path,
+                                model_name=model_name + '_CNN_Best')
+        plot_losses(history_cnn)
+        plot_accuracy(history_cnn)
 
         IPython.display.clear_output()
 
-        multi_val_performance['Conv'] = multi_conv_model.evaluate(multi_window_cpy.val)
-        multi_performance['Conv'] = multi_conv_model.evaluate(multi_window_cpy.test, verbose=0)
-        multi_window.plot(multi_conv_model, max_subplots=MAX_SUBPLOTS,  output_labels=output_labels)
+        multi_val_performance['Conv'] = model_cnn.evaluate(multi_window_cpy.val)
+        multi_performance['Conv'] = model_cnn.evaluate(multi_window_cpy.test, verbose=0)
+        if MORE_PLOTS:
+            multi_window.plot(model_cnn, max_subplots=MAX_SUBPLOTS,  output_labels=output_labels)
 
     # RNN
     if LEARN_LSTM_MODEL:
-        multi_lstm_model = tf.keras.Sequential([
-            # Shape [batch, time, features] => [batch, lstm_units]
-            # Adding more `lstm_units` just overfits more quickly.
-            tf.keras.layers.LSTM(HIDDEN_LAYER_SIZE, return_sequences=False),
-            # Shape => [batch, out_steps*features]
-            tf.keras.layers.Dense(OUT_STEPS * NUMBER_CATEGORIES,
-                                  kernel_initializer=tf.initializers.zeros(), activation='softmax'),
-            # Shape => [batch, out_steps, features]
-            tf.keras.layers.Reshape([OUT_STEPS * NUMBER_CATEGORIES])
-        ])
-        multi_lstm_model._name = 'multi_LSTM_model'
-
-        history = compile_and_fit(multi_lstm_model, multi_window_cpy, plot_losses=plot_losses, patience=5, MAX_EPOCHS=MAX_EPOCHS)
+        model_lstm = get_lstm_model(NUMBER_CATEGORIES, input_shape, regularization_l2, dropout_rate)
+        model_lstm.summary()
+        model_lstm = compile_model(model_lstm)
+        history_lstm = fit_model(model_lstm,
+                                 multi_window_cpy,
+                                 PATIENCE,
+                                 MAX_EPOCHS,
+                                 model_path=models_path,
+                                 model_name=model_name + '_LSTM_Best')
+        plot_losses(history_lstm)
+        plot_accuracy(history_lstm)
 
         IPython.display.clear_output()
-        multi_val_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.val)
-        multi_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.test, verbose=0)
+        multi_val_performance['LSTM'] = model_lstm.evaluate(multi_window_cpy.val)
+        multi_performance['LSTM'] = model_lstm.evaluate(multi_window_cpy.test, verbose=0)
 
-        multi_window.plot(multi_lstm_model, max_subplots=MAX_SUBPLOTS, output_labels=output_labels)
+        if MORE_PLOTS:
+            multi_window.plot(model_lstm, max_subplots=MAX_SUBPLOTS, output_labels=output_labels)
+
     # performances
     if DO_PERFORMANCE_ANALYSIS:
         x = np.arange(len(multi_performance))
         width = 0.3
 
         metric_name = 'accuracy'
-        metric_index = multi_lstm_model.metrics_names.index('accuracy')
+        if LEARN_LSTM_MODEL:
+            metric_index = model_lstm.metrics_names.index('accuracy')
+        elif LEARN_DENSE_MODEL:
+            metric_index = model_dense.metrics_names.index('accuracy')
+        elif LEARN_CNN_MODEL:
+            metric_index = model_cnn.metrics_names.index('accuracy')
+
         val_mae = [v[metric_index] for v in multi_val_performance.values()]
         test_mae = [v[metric_index] for v in multi_performance.values()]
         plt.figure(figsize=(12, 8))
@@ -323,11 +350,11 @@ if __name__ == "__main__":
 
     if SAVE_MODEL:
         if LEARN_DENSE_MODEL:
-            save_model(multi_dense_model, file_path=models_path, file_name=model_name + '_Dense')
+            save_model(model_dense, file_path=models_path, file_name=model_name + '_Dense')
         if LEARN_CNN_MODEL:
-            save_model(multi_conv_model, file_path=models_path, file_name=model_name + '_CNN')
+            save_model(model_cnn, file_path=models_path, file_name=model_name + '_CNN')
         if LEARN_LSTM_MODEL:
-            save_model(multi_lstm_model, file_path=models_path, file_name=model_name + '_LSTM')
+            save_model(model_lstm, file_path=models_path, file_name=model_name + '_LSTM')
 
 # if __name__ == "__main__":
 #     main()
