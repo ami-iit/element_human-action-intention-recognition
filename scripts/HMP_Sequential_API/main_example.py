@@ -55,7 +55,9 @@ if __name__ == "__main__":
     # features_list = ['jLeftKnee_roty_val', 'jRightKnee_roty_val', 'jLeftKnee_roty_vel', 'jRightKnee_roty_vel']
     features_list = []
     pop_list = ['time']
-    data_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition/dataset/HumanActionIntentionPrediction/RawData/Dataset01/Dataset_2021_03_23_13_45_06.txt'
+    data_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition' \
+                '/dataset/HumanMotionPrediction/RawData/Dataset01' \
+                '/Dataset_2021_03_23_13_45_06.txt'
 
     df_row = pd.read_csv(data_path, sep=' ')
     # slice [start:stop:step], starting from index 5 take every 6th record.

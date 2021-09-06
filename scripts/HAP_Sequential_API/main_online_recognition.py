@@ -21,7 +21,6 @@ from FeedBack import FeedBack
 from Utilities import compile_and_fit
 from Utilities import visualize_model
 from Utilities import load_model_from_file
-from Utilities import PlotLosses
 from DatasetUtility import DatasetUtility
 from DatasetUtility import plot_prediction
 from DatasetUtility import current_milli_time
@@ -78,8 +77,8 @@ class GetHumanData(threading.Thread):
 if __name__ == "__main__":
     # parameters
 
-    model_name = 'model_Dense'
-    model_path = 'models/goodResults/2'
+    model_name = 'model_Dense_Best'
+    model_path = 'models'
     data_path = '/home/kourosh/icub_ws/external/DataSet/HumanDataForActionMotionPrediction/' \
                 'ActionRecognition/carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
 
@@ -87,7 +86,7 @@ if __name__ == "__main__":
     features_list = []
 
     OUT_STEPS = 1
-    INPUT_WIDTH = 15
+    INPUT_WIDTH = 16
     PLOT_COL = ['l_shoe_fz', 'r_shoe_fz', 'jLeftKnee_roty_val', 'jRightKnee_roty_val']
     MAX_SUBPLOTS = 5
     INPUT_FEATURE_SIZE = 144

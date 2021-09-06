@@ -102,8 +102,8 @@ def DatasetUtility(data_path='dataset.txt', OUT_STEPS=1, INPUT_WIDTH=1, features
                                    label_width=OUT_STEPS,
                                    shift=OUT_STEPS,
                                    train_df=train_df, val_df=val_df, test_df=test_df)
-
-    multi_window.plot(max_subplots=MAX_SUBPLOTS)
+    if plot_figures:
+        multi_window.plot(max_subplots=MAX_SUBPLOTS)
 
     return multi_window, train_mean, train_std, df
 
