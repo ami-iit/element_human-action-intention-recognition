@@ -526,7 +526,6 @@ bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
     yInfo() << "\033[1;31m IMPORTANT: Press `S` or `s` to exit safely\033[0m";
   }
   m_firstIteration = false;
-
   return true;
 }
 
@@ -611,7 +610,11 @@ bool HumanDataAcquisitionModule::updateModule() {
       continue;
     }
 
-    getVectorizeHumanStates();
+    if (!getVectorizeHumanStates()) {
+      yError() << "[updateModule] cannot get human states.";
+      return false;
+    }
+
     if (m_useLeftFootWrench)
       getLeftShoesWrenches();
     if (m_useRightFootWrench)

@@ -77,7 +77,7 @@ class GetHumanData(threading.Thread):
 if __name__ == "__main__":
     # parameters
 
-    model_name = 'model_Dense_Best'
+    model_name = 'model_CNN'
     model_path = 'models'
     data_path = '/home/kourosh/icub_ws/external/DataSet/HumanDataForActionMotionPrediction/' \
                 'ActionRecognition/carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
@@ -167,7 +167,7 @@ if __name__ == "__main__":
         for i in range(INPUT_FEATURE_SIZE):
             human_data[i] = (human_kin_dyn.get(i).asFloat64() - train_mean[i]) / train_std[i]
         # human_data_std = (human_data - train_mean) / train_std
-        data_Tx.append(human_data)
+        data_Tx.append(human_data.copy())
         # print(np.shape(data_Tx))
         if np.shape(data_Tx)[0] == INPUT_WIDTH:
 
