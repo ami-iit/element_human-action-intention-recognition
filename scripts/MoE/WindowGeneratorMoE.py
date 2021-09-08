@@ -10,7 +10,7 @@ class WindowGeneratorMoE:
     def __init__(self, input_width, label_width, shift,
                  train_input_df, val_input_df, test_input_df,
                  train_target_df, val_target_df, test_target_df,
-                 label_columns=None):
+                 label_columns=None, output_labels=None):
         # Store the raw data.
         self.train_input_df = train_input_df
         self.val_input_df = val_input_df
@@ -23,10 +23,8 @@ class WindowGeneratorMoE:
         # Work out the label column indices.
         self.label_columns = label_columns
         if label_columns is not None:
-        self.label_columns_indices = {name: i for i, name in
-                                    enumerate(label_columns)}
-        self.column_indices = {name: i for i, name in
-                           enumerate(train_input_df.columns)}
+            self.label_columns_indices = {name: i for i, name in enumerate(label_columns)}
+        self.column_indices = {name: i for i, name in enumerate(train_input_df.columns)}
 
         # Work out the window parameters.
         self.input_width = input_width
@@ -117,7 +115,7 @@ class WindowGeneratorMoE:
                 label = np.argmax(labels[n, :])
                 plt.xlabel("({})".format(output_labels[label]), color='blue')
 
-    def make_dataset(self, input_data, target_data):
+    def make_gate_dataset(self, input_data, target_data):
         input_data = np.array(input_data, dtype=np.float32)
         target_data = np.array(target_data, dtype=np.float32)
         input_data = input_data[:-self.total_window_size]
@@ -139,17 +137,31 @@ class WindowGeneratorMoE:
 
         return ds
 
+    def make_dataset(self, data):
+        data = np.array(data, dtype=np.float32)
+        ds = tf.keras.preprocessing.timeseries_dataset_from_array(
+            data=data,
+            targets=None,
+            sequence_length=self.total_window_size,
+            sequence_stride=1,
+            shuffle=True,
+            batch_size=32, )
+
+        ds = ds.map(self.split_window)
+
+        return ds
+
     @property
     def train(self):
-        return self.make_dataset(self.train_input_df, self.train_target_df)
+        return self.make_gate_dataset(self.train_input_df, self.train_target_df)
 
     @property
     def val(self):
-        return self.make_dataset(self.val_input_df, self.val_target_df)
+        return self.make_gate_dataset(self.val_input_df, self.val_target_df)
 
     @property
     def test(self):
-        return self.make_dataset(self.test_input_df, self.test_target_df)
+        return self.make_gate_dataset(self.test_input_df, self.test_target_df)
 
     @property
     def example(self):

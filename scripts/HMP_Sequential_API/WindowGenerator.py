@@ -45,17 +45,12 @@ class WindowGenerator():
       inputs = features[:, self.input_slice, :]
       labels = features[:, self.labels_slice, :]
       if self.label_columns is not None:
-          labels = tf.stack(
-              [labels[:, :, self.column_indices[name]] for name in self.label_columns],
-              axis=-1)
+          labels = tf.stack([labels[:, :, self.column_indices[name]] for name in self.label_columns], axis=-1)
 
       # Slicing doesn't preserve static shape information, so set the shapes
       # manually. This way the `tf.data.Datasets` are easier to inspect.
-      inputs.set_shape([None, self.input_width, None])
-      labels.set_shape([None, self.label_width, None])
-
-      # input         shape: (batch_size, Tx, nx)
-      # label(output) shape: (batch_size, Ty, ny)
+      inputs.set_shape([None, self.input_width, None])  # ! shape: (batch_size, Tx, nx)
+      labels.set_shape([None, self.label_width, None])  # ! shape: (batch_size, Ty, ny)
 
       self._example = inputs, labels
       return inputs, labels
@@ -132,5 +127,3 @@ class WindowGenerator():
           # And cache it for next time
           self._example = result
       return result
-
-

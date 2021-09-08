@@ -8,6 +8,7 @@ import copy
 
 # functions and classes to import
 from WindowGeneratorMoE import WindowGeneratorMoE
+from WindowGenerator import WindowGenerator
 from Utilities import get_dense_model, get_cnn_model, get_lstm_model, compile_model, fit_model, \
     plot_losses, plot_accuracy
 from Utilities import save_nn_model
@@ -20,9 +21,9 @@ if __name__ == "__main__":
     # =====================
 
     # high level flags for training
-    learn_dense_model = False
+    learn_dense_model = True
     learn_cnn_model = False
-    learn_lstm_model = True
+    learn_lstm_model = False
     do_performance_analysis = True
     normalize_input = True
     output_categorical = True
@@ -30,20 +31,20 @@ if __name__ == "__main__":
     verbose = False
 
     # configurations for the datasets
-    model_name = 'model'
+    model_name = 'gate_model_trial'
     models_path = 'models'
     data_path = '/home/kourosh/icub_ws/external/DataSet/' \
                 'HumanDataForActionMotionPrediction/ActionRecognition/' \
                 'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
     user_mass = 79.0
 
-    output_steps = 1  # ! at the moment only the value `1` is possible
-    shift = 1  # ! offset
-    input_width = 15  # ! default: 10
-    patience = 10  # ! default: 4
+    output_steps = 25  # ! at the moment only the value `1` is possible
+    shift = 25  # ! offset
+    input_width = 5  # ! default: 10
+    patience = 5  # ! default: 4
     max_subplots = 5
     train_percentage = 0.7  # ! the percentage of of the time series data from starting  for training
-    val_percentage = 0.2    # ! the percentage of the time series data after training data for validation
+    val_percentage = 0.2  # ! the percentage of the time series data after training data for validation
     test_percentage = 1.0 - (train_percentage + val_percentage)  # ! the amount of data at end for testing
 
     # general configurations for the neural networks
@@ -64,14 +65,14 @@ if __name__ == "__main__":
     df_raw = pd.read_csv(data_path, sep=' ')  # ! raw data frame
 
     if input_feature_list:  # ! define the input feature list
-        df_input = df_raw[input_feature_list]
+        df_input = df_raw[input_feature_list].copy()
     else:
-        df_input = df_raw
+        df_input = df_raw.copy()
 
     if output_feature_list:  # ! define the output feature list
-        df_output = df_raw[output_feature_list]
+        df_output = df_raw[output_feature_list].copy()
     else:
-        df_output = df_raw
+        df_output = df_raw.copy()
 
     if output_categorical:  # ! get the output label in case of categorical ouputs
         df_output = pd.get_dummies(df_output)
@@ -97,13 +98,13 @@ if __name__ == "__main__":
     gravity = 9.81
     df_input_weight_normalized = df_input
     for key in wrench_keys:
-        df_input_weight_normalized[key] = df_input[key]/(user_mass * gravity)
+        df_input_weight_normalized[key] = df_input[key] / (user_mass * gravity)
 
     # ! divide the data to training, validation, test sets
     n = len(df_input_weight_normalized)
-    train_input_df = df_input_weight_normalized[0:int(n * train_percentage)]
-    val_input_df = df_input_weight_normalized[int(n * train_percentage):int(n * (train_percentage + val_percentage))]
-    test_input_df = df_input_weight_normalized[int(n * (train_percentage + val_percentage)):]
+    train_input_df = df_input_weight_normalized[0:int(n * train_percentage)].copy()
+    val_input_df = df_input_weight_normalized[int(n * train_percentage):int(n * (train_percentage + val_percentage))].copy()
+    test_input_df = df_input_weight_normalized[int(n * (train_percentage + val_percentage)):].copy()
 
     train_target_df = df_output[0:int(n * train_percentage)]
     val_target_df = df_output[int(n * train_percentage):int(n * (train_percentage + val_percentage))]
@@ -122,20 +123,36 @@ if __name__ == "__main__":
         df_std = (df_input_weight_normalized - train_input_mean) / train_input_std
         df_std = df_std.melt(var_name='Column', value_name='Normalized')
 
-    multi_window = WindowGeneratorMoE(input_width=input_width,
-                                      label_width=output_steps,
-                                      shift=shift,
-                                      train_input_df=train_input_df, val_input_df=val_input_df,
-                                      test_input_df=test_input_df,
-                                      train_target_df=train_target_df, val_target_df=val_target_df,
-                                      test_target_df=test_target_df)
+    # ! concatenate the two datasets to have one df
+    train_df = pd.concat([train_input_df, train_target_df], axis=1)
+    val_df = pd.concat([val_input_df, val_target_df], axis=1)
+    test_df = pd.concat([test_input_df, test_target_df], axis=1)
+
+    # multi_window = WindowGeneratorMoE(input_width=input_width,
+    #                                   label_width=output_steps,
+    #                                   shift=shift,
+    #                                   train_input_df=train_input_df,
+    #                                   val_input_df=val_input_df,
+    #                                   test_input_df=test_input_df,
+    #                                   train_target_df=train_target_df,
+    #                                   val_target_df=val_target_df,
+    #                                   test_target_df=test_target_df)
+    #
+    multi_window = WindowGenerator(input_width=input_width,
+                                   label_width=output_steps,
+                                   shift=shift,
+                                   train_df=train_df,
+                                   val_df=val_df,
+                                   test_df=test_df,
+                                   output_labels=output_labels)
 
     multi_window.train
-    print('02: output_labels', output_labels)
+
     if verbose:
         multi_window.plot(max_subplots=3, output_labels=output_labels)
 
-    multi_window_cpy = copy.deepcopy(multi_window)
+    # multi_window_cpy = copy.deepcopy(multi_window)
+    multi_window_cpy = multi_window
 
     input_data_example, __ = multi_window_cpy.example
     input_shape = (input_data_example.shape[1], input_data_example.shape[2])
@@ -146,7 +163,7 @@ if __name__ == "__main__":
 
     if learn_dense_model:
 
-        model_dense = get_dense_model(number_categories, input_shape, regularization_l2, dropout_rate)
+        model_dense = get_dense_model(number_categories, output_steps, input_shape, regularization_l2, dropout_rate)
         model_dense = compile_model(model_dense)
         history_dense = fit_model(model_dense,
                                   multi_window_cpy,
@@ -154,8 +171,9 @@ if __name__ == "__main__":
                                   max_epochs,
                                   model_path=models_path,
                                   model_name=model_name + '_Dense_Best')
-        plot_losses(history_dense)
-        plot_accuracy(history_dense)
+        if verbose:
+            plot_losses(history_dense)
+            plot_accuracy(history_dense)
 
         # history = compile_and_fit(multi_dense_model, multi_window_cpy, plot_losses=plot_losses,
         #                       patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
@@ -191,8 +209,10 @@ if __name__ == "__main__":
                                 max_epochs,
                                 model_path=models_path,
                                 model_name=model_name + '_CNN_Best')
-        plot_losses(history_cnn)
-        plot_accuracy(history_cnn)
+
+        if verbose:
+            plot_losses(history_cnn)
+            plot_accuracy(history_cnn)
 
         multi_val_performance['Conv'] = model_cnn.evaluate(multi_window_cpy.val)
         multi_performance['Conv'] = model_cnn.evaluate(multi_window_cpy.test, verbose=0)
@@ -210,8 +230,10 @@ if __name__ == "__main__":
                                  max_epochs,
                                  model_path=models_path,
                                  model_name=model_name + '_LSTM_Best')
-        plot_losses(history_lstm)
-        plot_accuracy(history_lstm)
+
+        if verbose:
+            plot_losses(history_lstm)
+            plot_accuracy(history_lstm)
 
         multi_val_performance['LSTM'] = model_lstm.evaluate(multi_window_cpy.val)
         multi_performance['LSTM'] = model_lstm.evaluate(multi_window_cpy.test, verbose=0)

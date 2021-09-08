@@ -9,13 +9,13 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import Accuracy, CategoricalAccuracy
-from tensorflow.keras.layers import Lambda, Dense, Flatten, LSTM, Reshape, Dropout, BatchNormalization, Conv1D, MaxPooling1D
+from tensorflow.keras.layers import Lambda, Dense, Flatten, LSTM, Reshape, Dropout, BatchNormalization, Conv1D, MaxPooling1D, Softmax
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import ModelCheckpoint
 
 
-def get_dense_model(number_categories, input_shape, reg_l2, dp_rate):
+def get_dense_model(number_categories, output_steps, input_shape=None, reg_l2=None, dp_rate=None):
     model = Sequential([
         # Take the last time step.
         # Shape [batch, time, features] => [batch, 1, features]
@@ -24,12 +24,12 @@ def get_dense_model(number_categories, input_shape, reg_l2, dp_rate):
         # Shape => [batch, 1, dense_units]
         # tf.keras.layers.Dense(512, activation='relu'),
         # tf.keras.layers.Dense(256, activation='relu'),
-        Dense(512, activation='relu', kernel_regularizer=regularizers.l2(reg_l2), bias_regularizer=regularizers.l2(reg_l2)),
-        BatchNormalization(),
-        Dropout(dp_rate),
-        Dense(128, activation='relu', kernel_regularizer=regularizers.l2(reg_l2), bias_regularizer=regularizers.l2(reg_l2)),
-        BatchNormalization(),
-        Dropout(dp_rate),
+        # Dense(512, activation='relu', kernel_regularizer=regularizers.l2(reg_l2), bias_regularizer=regularizers.l2(reg_l2)),
+        # BatchNormalization(),
+        # Dropout(dp_rate),
+        # Dense(128, activation='relu', kernel_regularizer=regularizers.l2(reg_l2), bias_regularizer=regularizers.l2(reg_l2)),
+        # BatchNormalization(),
+        # Dropout(dp_rate),
         Dense(64, activation='relu', kernel_regularizer=regularizers.l2(reg_l2), bias_regularizer=regularizers.l2(reg_l2)),
         BatchNormalization(),
         Dropout(dp_rate),
@@ -39,7 +39,9 @@ def get_dense_model(number_categories, input_shape, reg_l2, dp_rate):
         Dense(16, activation='relu', kernel_regularizer=regularizers.l2(reg_l2), bias_regularizer=regularizers.l2(reg_l2)),
         BatchNormalization(),
         Dropout(dp_rate),
-        Dense(number_categories, activation='softmax')
+        Dense(number_categories*output_steps),
+        Reshape([output_steps, number_categories]),
+        Softmax()
     ])
     return model
 
