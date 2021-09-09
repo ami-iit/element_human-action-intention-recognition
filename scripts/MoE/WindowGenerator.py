@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-
+from copy import deepcopy
 import matplotlib.pyplot as plt
 
 
@@ -21,7 +21,18 @@ class WindowGenerator:
         self.test_df = test_df
 
         self.output_labels = output_labels
-        self._example = None
+
+        # define datasets
+        self._gate_example = None
+        self._experts_example = None
+
+        self.gate_train_ds = None
+        self.gate_val_ds = None
+        self.gate_test_ds = None
+
+        self.experts_train_ds = None
+        self.experts_val_ds = None
+        self.experts_test_ds = None
 
         # Work out the label column indices.
         self.label_columns = label_columns
@@ -36,15 +47,18 @@ class WindowGenerator:
         self.label_width = label_width
         self.shift = shift
         self.total_window_size = input_width + shift
-        self.input_slice = slice(0, input_width)
-        self.input_indices = np.arange(self.total_window_size)[self.input_slice]
         self.label_start = self.total_window_size - self.label_width
+
+        self.input_slice = slice(0, input_width)
         self.labels_slice = slice(self.label_start, None)
+
+        self.input_indices = np.arange(self.total_window_size)[self.input_slice]
         self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
 
         # work out for input and output label indices
         self.input_label_slice = slice(None, None)
-        self.output_label_slice = slice(None, None)
+        self.gate_output_label_slice = slice(None, None)
+        self.experts_output_label_slice = slice(None, None)
 
         if output_labels is not None:
             df_keys = np.array(train_df.keys())
@@ -54,7 +68,8 @@ class WindowGenerator:
                 first_idx = int(first_idx_array[0])
 
                 self.input_label_slice = slice(0, first_idx)
-                self.output_label_slice = slice(first_idx, None)
+                self.gate_output_label_slice = slice(first_idx, None)
+                self.experts_output_label_slice = slice(0, first_idx)  # ! currently all features : to update later
 
     def __repr__(self):
         return '\n'.join([
@@ -63,11 +78,11 @@ class WindowGenerator:
             f'Label indices: {self.label_indices}',
             f'Label column name(s): {self.label_columns}'])
 
-    def split_window(self, features):
+    def experts_split_window(self, features):
         print('type(feature): {}'.format(type(features)))
 
         inputs = features[:, self.input_slice, self.input_label_slice]
-        labels = features[:, self.labels_slice, self.output_label_slice]
+        labels = features[:, self.labels_slice, self.experts_output_label_slice]
         if self.label_columns is not None:
             labels = tf.stack([labels[:, :, self.column_indices[name]] for name in self.label_columns], axis=-1)
 
@@ -76,12 +91,52 @@ class WindowGenerator:
         inputs.set_shape([None, self.input_width, None])  # ! shape: (batch_size, Tx, nx)
         labels.set_shape([None, self.label_width, None])  # ! shape: (batch_size, Ty, ny)
 
-        self._example = inputs, labels
+        self._experts_example = inputs, labels
         return inputs, labels
+
+    def gate_split_window(self, features):
+        print('type(feature): {}'.format(type(features)))
+
+        inputs = features[:, self.input_slice, self.input_label_slice]
+        labels = features[:, self.labels_slice, self.gate_output_label_slice]
+        if self.label_columns is not None:
+            labels = tf.stack([labels[:, :, self.column_indices[name]] for name in self.label_columns], axis=-1)
+
+        # Slicing doesn't preserve static shape information, so set the shapes
+        # manually. This way the `tf.data.Datasets` are easier to inspect.
+        inputs.set_shape([None, self.input_width, None])  # ! shape: (batch_size, Tx, nx)
+        labels.set_shape([None, self.label_width, None])  # ! shape: (batch_size, Ty, ny)
+
+        self._gate_example = inputs, labels
+        return inputs, labels
+
+    def split_window(self, features):
+        print('type(feature): {}'.format(type(features)))
+
+        inputs = features[:, self.input_slice, self.input_label_slice]
+        gate_labels = features[:, self.labels_slice, self.gate_output_label_slice]
+        experts_labels = features[:, self.labels_slice, self.experts_output_label_slice]
+
+        if self.label_columns is not None:
+            gate_labels = tf.stack([gate_labels[:, :, self.column_indices[name]] for name in self.label_columns],
+                                   axis=-1)
+            experts_labels = tf.stack([experts_labels[:, :, self.column_indices[name]] for name in self.label_columns],
+                                      axis=-1)
+
+        # Slicing doesn't preserve static shape information, so set the shapes
+        # manually. This way the `tf.data.Datasets` are easier to inspect.
+        inputs.set_shape([None, self.input_width, None])  # ! shape: (batch_size, Tx, nx)
+        gate_labels.set_shape([None, self.label_width, None])  # ! shape: (batch_size, Ty, ny)
+        experts_labels.set_shape([None, self.label_width, None])  # ! shape: (batch_size, Ty, ny)
+
+        self._gate_example = inputs, gate_labels
+        self._experts_example = inputs, experts_labels
+
+        return inputs, {"gate_output": gate_labels, "moe_output": experts_labels}
 
     def plot(self, model=None, plot_col='jLeftKnee_roty_val', max_subplots=3):
         print('plot')
-        inputs, labels = self.example
+        inputs, labels = self.gate_example
         plt.figure(figsize=(12, 8))
         plt.title(" state: {}".format(plot_col))
         plot_col_index = self.column_indices[plot_col]
@@ -122,32 +177,89 @@ class WindowGenerator:
             sequence_length=self.total_window_size,
             sequence_stride=1,
             shuffle=True,
-            batch_size=32, )
+            batch_size=32)
+        print('ds: {}'.format(ds))
+        print('type(ds): {}'.format(type(ds)))
+
+        # gate_ds = tf.data.Dataset()
+        # gate_ds = tf.identity(ds)
+        # experts_ds = tf.identity(ds)
+        #
+        # gate_ds = gate_ds.map(self.gate_split_window)
+        # experts_ds = experts_ds.map(self.experts_split_window)
 
         ds = ds.map(self.split_window)
 
-        return ds
+        #
+        # gate_ds = inputs, gate_labels
+        # experts_ds = inputs, experts_labels
+
+        return ds, ds
 
     @property
-    def train(self):
-        return self.make_dataset(self.train_df)
-
-    @property
-    def val(self):
-        return self.make_dataset(self.val_df)
-
-    @property
-    def test(self):
-        return self.make_dataset(self.test_df)
-
-    @property
-    def example(self):
-        """Get and cache an example batch of `inputs, labels` for plotting."""
-        result = getattr(self, '_example', None)
+    def gate_train(self):
+        result = getattr(self, 'gate_train_ds', None)
         if result is None:
-            print('example is empty, feeding with test set')
+            print('gate_train_ds is not defined, retrieving it ...')
+            self.gate_train_ds, self.experts_train_ds = self.make_dataset(self.train_df)
+        return self.gate_train_ds
+
+    @property
+    def experts_train(self):
+        result = getattr(self, 'experts_train_ds', None)
+        if result is None:
+            print('experts_train_ds is not defined, retrieving it ...')
+            self.gate_train_ds, self.experts_train_ds = self.make_dataset(self.train_df)
+        return self.experts_train_ds
+
+    @property
+    def gate_val(self):
+        result = getattr(self, 'gate_val_ds', None)
+        if result is None:
+            self.gate_val_ds, self.experts_val_ds = self.make_dataset(self.val_df)
+        return self.gate_val_ds
+
+    @property
+    def experts_val(self):
+        result = getattr(self, 'experts_val_ds', None)
+        if result is None:
+            self.gate_val_ds, self.experts_val_ds = self.make_dataset(self.val_df)
+        return self.experts_val_ds
+
+    @property
+    def gate_test(self):
+        result = getattr(self, 'gate_test_ds', None)
+        if result is None:
+            self.gate_test_ds, self.experts_test_ds = self.make_dataset(self.test_df)
+        return self.gate_test_ds
+
+    @property
+    def experts_test(self):
+        result = getattr(self, 'experts_test_ds', None)
+        if result is None:
+            self.gate_test_ds, self.experts_test_ds = self.make_dataset(self.test_df)
+        return self.experts_test_ds
+
+    @property
+    def gate_example(self):
+        """Get and cache an example batch of `inputs, labels` for plotting."""
+        result = getattr(self, '_gate_example', None)
+        if result is None:
+            print('gate_example is empty, feeding with test set')
             # No example batch was found, so get one from the `.train` dataset
-            result = next(iter(self.test))
+            result = next(iter(self.gate_test))
             # And cache it for next time
-            self._example = result
+            self._gate_example = result
+        return result
+
+    @property
+    def experts_example(self):
+        """Get and cache an example batch of `inputs, labels` for plotting."""
+        result = getattr(self, '_experts_example', None)
+        if result is None:
+            print('experts_example is empty, feeding with test set')
+            # No example batch was found, so get one from the `.train` dataset
+            result = next(iter(self.experts_test))
+            # And cache it for next time
+            self._experts_example = result
         return result
