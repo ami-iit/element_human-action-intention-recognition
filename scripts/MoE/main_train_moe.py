@@ -9,8 +9,15 @@ import copy
 # functions and classes to import
 from WindowGeneratorMoE import WindowGeneratorMoE
 from WindowGenerator import WindowGenerator
-from Utilities import get_dense_model, get_cnn_model, get_lstm_model, compile_model, fit_model, \
-    plot_losses, plot_accuracy
+from Utilities import get_dense_model_classification,\
+    get_cnn_model,\
+    get_lstm_model,\
+    compile_model,\
+    fit_model, \
+    plot_losses,\
+    plot_accuracy,\
+    get_moe_model
+
 from Utilities import save_nn_model
 
 # def main():
@@ -39,9 +46,8 @@ if __name__ == "__main__":
     user_mass = 79.0
 
     output_steps = 25  # ! at the moment only the value `1` is possible
-    shift = 25  # ! offset
+    shift = output_steps  # ! offset, e.g., 10
     input_width = 5  # ! default: 10
-    patience = 5  # ! default: 4
     max_subplots = 5
     train_percentage = 0.7  # ! the percentage of of the time series data from starting  for training
     val_percentage = 0.2  # ! the percentage of the time series data after training data for validation
@@ -51,6 +57,7 @@ if __name__ == "__main__":
     regularization_l2 = 1e-3
     dropout_rate = 0.3
     max_epochs = 100  # Default: 20
+    patience = 5  # ! default: 4
 
     # =====================
     # ====== DATASET ======
@@ -124,9 +131,13 @@ if __name__ == "__main__":
         df_std = df_std.melt(var_name='Column', value_name='Normalized')
 
     # ! concatenate the two datasets to have one df
-    train_df = pd.concat([train_input_df, train_target_df], axis=1)
-    val_df = pd.concat([val_input_df, val_target_df], axis=1)
-    test_df = pd.concat([test_input_df, test_target_df], axis=1)
+    gate_train_df = pd.concat([train_input_df, train_target_df].copy(), axis=1)
+    gate_val_df = pd.concat([val_input_df, val_target_df].copy(), axis=1)
+    gate_test_df = pd.concat([test_input_df, test_target_df].copy(), axis=1)
+
+    expert_train_df = train_input_df.copy()
+    expert_val_df = val_input_df.copy()
+    expert_test_df = test_input_df.copy()
 
     # multi_window = WindowGeneratorMoE(input_width=input_width,
     #                                   label_width=output_steps,
@@ -141,21 +152,21 @@ if __name__ == "__main__":
     multi_window = WindowGenerator(input_width=input_width,
                                    label_width=output_steps,
                                    shift=shift,
-                                   train_df=train_df,
-                                   val_df=val_df,
-                                   test_df=test_df,
+                                   train_df=gate_train_df,
+                                   val_df=gate_val_df,
+                                   test_df=gate_test_df,
                                    output_labels=output_labels)
 
-    multi_window.train
+    multi_window.gate_train
+    multi_window.experts_train
+
+    # print(asghar)
 
     if verbose:
         multi_window.plot(max_subplots=3, output_labels=output_labels)
 
-    # multi_window_cpy = copy.deepcopy(multi_window)
-    multi_window_cpy = multi_window
-
-    input_data_example, __ = multi_window_cpy.example
-    input_shape = (input_data_example.shape[1], input_data_example.shape[2])
+    gate_input_data_example, __ = multi_window.gate_example
+    gate_input_shape = (gate_input_data_example.shape[1], gate_input_data_example.shape[2])
     multi_val_performance = {}
     multi_performance = {}
 
@@ -163,14 +174,16 @@ if __name__ == "__main__":
 
     if learn_dense_model:
 
-        model_dense = get_dense_model(number_categories, output_steps, input_shape, regularization_l2, dropout_rate)
+        model_dense = get_moe_model(number_categories, 144, output_steps, gate_input_shape,
+                                    regularization_l2, dropout_rate)
         model_dense = compile_model(model_dense)
         history_dense = fit_model(model_dense,
-                                  multi_window_cpy,
+                                  multi_window,
                                   patience,
                                   max_epochs,
                                   model_path=models_path,
                                   model_name=model_name + '_Dense_Best')
+
         if verbose:
             plot_losses(history_dense)
             plot_accuracy(history_dense)
@@ -178,8 +191,8 @@ if __name__ == "__main__":
         # history = compile_and_fit(multi_dense_model, multi_window_cpy, plot_losses=plot_losses,
         #                       patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
 
-        multi_val_performance['Dense'] = model_dense.evaluate(multi_window_cpy.val)
-        multi_performance['Dense'] = model_dense.evaluate(multi_window_cpy.test, verbose=0)
+        multi_val_performance['MoE'] = model_dense.evaluate(multi_window.gate_val)
+        multi_performance['MoE'] = model_dense.evaluate(multi_window.gate_test, verbose=0)
         if verbose:
             multi_window.plot(model_dense, max_subplots=3, output_labels=output_labels)
 
@@ -200,11 +213,11 @@ if __name__ == "__main__":
         #
         # history = compile_and_fit(multi_conv_model, multi_window_cpy, plot_losses=plot_losses,
         #                           patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
-        model_cnn = get_cnn_model(number_categories, input_shape, regularization_l2, dropout_rate)
+        model_cnn = get_cnn_model(number_categories, gate_input_shape, regularization_l2, dropout_rate)
         model_cnn.summary()
         model_cnn = compile_model(model_cnn)
         history_cnn = fit_model(model_cnn,
-                                multi_window_cpy,
+                                multi_window,
                                 patience,
                                 max_epochs,
                                 model_path=models_path,
@@ -214,18 +227,18 @@ if __name__ == "__main__":
             plot_losses(history_cnn)
             plot_accuracy(history_cnn)
 
-        multi_val_performance['Conv'] = model_cnn.evaluate(multi_window_cpy.val)
-        multi_performance['Conv'] = model_cnn.evaluate(multi_window_cpy.test, verbose=0)
+        multi_val_performance['Conv'] = model_cnn.evaluate(multi_window.gate_val)
+        multi_performance['Conv'] = model_cnn.evaluate(multi_window.gate_test, verbose=0)
         if verbose:
             multi_window.plot(model_cnn, max_subplots=max_subplots, output_labels=output_labels)
 
     # RNN
     if learn_lstm_model:
-        model_lstm = get_lstm_model(number_categories, input_shape, regularization_l2, dropout_rate)
+        model_lstm = get_lstm_model(number_categories, gate_input_shape, regularization_l2, dropout_rate)
         model_lstm.summary()
         model_lstm = compile_model(model_lstm)
         history_lstm = fit_model(model_lstm,
-                                 multi_window_cpy,
+                                 multi_window,
                                  patience,
                                  max_epochs,
                                  model_path=models_path,
@@ -235,8 +248,8 @@ if __name__ == "__main__":
             plot_losses(history_lstm)
             plot_accuracy(history_lstm)
 
-        multi_val_performance['LSTM'] = model_lstm.evaluate(multi_window_cpy.val)
-        multi_performance['LSTM'] = model_lstm.evaluate(multi_window_cpy.test, verbose=0)
+        multi_val_performance['LSTM'] = model_lstm.evaluate(multi_window.gate_val)
+        multi_performance['LSTM'] = model_lstm.evaluate(multi_window.gate_test, verbose=0)
 
         if verbose:
             multi_window.plot(model_lstm, max_subplots=max_subplots, output_labels=output_labels)
@@ -246,25 +259,26 @@ if __name__ == "__main__":
         x = np.arange(len(multi_performance))
         width = 0.3
 
-        metric_name = 'accuracy'
-        if learn_lstm_model:
-            metric_index = model_lstm.metrics_names.index('accuracy')
-        elif learn_dense_model:
-            metric_index = model_dense.metrics_names.index('accuracy')
-        elif learn_cnn_model:
-            metric_index = model_cnn.metrics_names.index('accuracy')
+        metrics_list = ['gate_output_accuracy', 'moe_output_mae']
+        for metrics_name in metrics_list:
+            if learn_lstm_model:
+                metric_index = model_lstm.metrics_names.index(metrics_name)
+            elif learn_dense_model:
+                metric_index = model_dense.metrics_names.index(metrics_name)
+            elif learn_cnn_model:
+                metric_index = model_cnn.metrics_names.index(metrics_name)
 
-        val_mae = [v[metric_index] for v in multi_val_performance.values()]
-        test_mae = [v[metric_index] for v in multi_performance.values()]
-        plt.figure(figsize=(12, 8))
-        plt.bar(x - 0.17, val_mae, width, label='Validation')
-        plt.bar(x + 0.17, test_mae, width, label='Test')
-        plt.xticks(ticks=x, labels=multi_performance.keys(),
-                   rotation=45)
-        plt.ylabel(f'MAE (average over all times and outputs)')
-        _ = plt.legend()
-        for name, value in multi_performance.items():
-            print(f'{name:8s}: {value[1]:0.4f}')
+            val_mae = [v[metric_index] for v in multi_val_performance.values()]
+            test_mae = [v[metric_index] for v in multi_performance.values()]
+            plt.figure(figsize=(12, 8))
+            plt.bar(x - 0.17, val_mae, width, label='Validation')
+            plt.bar(x + 0.17, test_mae, width, label='Test')
+            plt.xticks(ticks=x, labels=multi_performance.keys(),
+                       rotation=45)
+            plt.ylabel('{}'.format(metrics_name))
+            _ = plt.legend()
+            for name, value in multi_performance.items():
+                print(f'{name:8s}: {value[1]:0.4f}')
 
     if save_model:
         if learn_dense_model:
