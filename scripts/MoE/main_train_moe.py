@@ -157,21 +157,17 @@ if __name__ == "__main__":
                                    test_df=gate_test_df,
                                    output_labels=output_labels)
 
-    multi_window.gate_train
-    multi_window.experts_train
-
-    # print(asghar)
+    multi_window.train
 
     if verbose:
         multi_window.plot(max_subplots=3, output_labels=output_labels)
 
-    gate_input_data_example, __ = multi_window.gate_example
+    gate_input_data_example, __ = multi_window.example
     gate_input_shape = (gate_input_data_example.shape[1], gate_input_data_example.shape[2])
     multi_val_performance = {}
     multi_performance = {}
 
     # DENSE
-
     if learn_dense_model:
 
         model_dense = get_moe_model(number_categories, 144, output_steps, gate_input_shape,
@@ -191,8 +187,8 @@ if __name__ == "__main__":
         # history = compile_and_fit(multi_dense_model, multi_window_cpy, plot_losses=plot_losses,
         #                       patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
 
-        multi_val_performance['MoE'] = model_dense.evaluate(multi_window.gate_val)
-        multi_performance['MoE'] = model_dense.evaluate(multi_window.gate_test, verbose=0)
+        multi_val_performance['MoE'] = model_dense.evaluate(multi_window.val)
+        multi_performance['MoE'] = model_dense.evaluate(multi_window.test, verbose=0)
         if verbose:
             multi_window.plot(model_dense, max_subplots=3, output_labels=output_labels)
 
@@ -227,8 +223,8 @@ if __name__ == "__main__":
             plot_losses(history_cnn)
             plot_accuracy(history_cnn)
 
-        multi_val_performance['Conv'] = model_cnn.evaluate(multi_window.gate_val)
-        multi_performance['Conv'] = model_cnn.evaluate(multi_window.gate_test, verbose=0)
+        multi_val_performance['Conv'] = model_cnn.evaluate(multi_window.val)
+        multi_performance['Conv'] = model_cnn.evaluate(multi_window.test, verbose=0)
         if verbose:
             multi_window.plot(model_cnn, max_subplots=max_subplots, output_labels=output_labels)
 
@@ -248,8 +244,8 @@ if __name__ == "__main__":
             plot_losses(history_lstm)
             plot_accuracy(history_lstm)
 
-        multi_val_performance['LSTM'] = model_lstm.evaluate(multi_window.gate_val)
-        multi_performance['LSTM'] = model_lstm.evaluate(multi_window.gate_test, verbose=0)
+        multi_val_performance['LSTM'] = model_lstm.evaluate(multi_window.val)
+        multi_performance['LSTM'] = model_lstm.evaluate(multi_window.test, verbose=0)
 
         if verbose:
             multi_window.plot(model_lstm, max_subplots=max_subplots, output_labels=output_labels)

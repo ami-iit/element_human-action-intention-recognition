@@ -269,9 +269,9 @@ def fit_model(model, window, patience=2, max_epochs=20, model_path='', model_nam
                                       verbose=1,
                                       shuffle=True)
 
-    history = model.fit(window.gate_train,
+    history = model.fit(window.train,
                         epochs=max_epochs,
-                        validation_data=window.gate_val,
+                        validation_data=window.val,
                         callbacks=[early_stopping, callback_loss_accuracy_plot, checkpoint_best],
                         verbose=0)
     return history
@@ -310,8 +310,8 @@ def compile_and_fit(model, window, plot_losses, ):
     #               optimizer=tf.optimizers.Adam(),
     #               metrics=[tf.metrics.Accuracy()])
 
-    history = model.fit(window.gate_train, epochs=MAX_EPOCHS,
-                        validation_data=window.gate_val
+    history = model.fit(window.train, epochs=MAX_EPOCHS,
+                        validation_data=window.val
                         , callbacks=[early_stopping
                                      # , plot_losses
                                      ],
