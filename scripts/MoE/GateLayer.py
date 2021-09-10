@@ -57,11 +57,11 @@ class GateLayer(Layer):
         gate_shape = input_shape[0]
         categories_size = gate_shape[-1]
         print('[build] categories_size: {} '.format(categories_size, ))
-        if categories_size+1 != len(input_shape):
+        if categories_size + 1 != len(input_shape):
             raise ValueError(
                 'Gate layer should have similar number of categories and input experts.'
                 'Got categories size of : ' + str(categories_size) +
-                ' , Got number of experts: ' + str(len(input_shape)-1) +
+                ' , Got number of experts: ' + str(len(input_shape) - 1) +
                 ' Total number of input tensors: ' + str(len(input_shape)))
 
         if input_shape[1] is None:
@@ -84,8 +84,8 @@ class GateLayer(Layer):
         num_output_features = inputs[1].shape[-1]
         print('number of output features: {}, dtype: {}'.format(num_output_features, type(num_output_features)))
         # ! gate shape [No. samples, No of Time Steps (Ty), 1, No. categories]
-        gate_ = inputs[0]
-        print('gate_ shape: {}, dtype: {}'.format(gate_.shape, type(gate_)))
+        gate_output = inputs[0]
+        print('gate_ shape: {}, dtype: {}'.format(gate_output.shape, type(gate_output)))
 
         reshaped_gate = tf.reshape(inputs[0], [gate_shape[0], gate_shape[1], 1, gate_shape[2]])
         new_gate_shape = reshaped_gate.shape
@@ -103,10 +103,37 @@ class GateLayer(Layer):
         return output
 
 
-gate_ = tf.constant([ [[1, 2], [3, 4], [5, 6]], [[10, 20], [30, 40], [50, 60]]])  # 2 batches, 3 time steps, 2 categories
+class ReducedSum(Layer):
 
-e1 = tf.constant([ [[1, 2, 1, 2], [3, 4, 3, 4], [5, 6, 5, 6]], [[10, 20, 10, 20], [30, 40, 30, 40], [50, 60, 50, 60]]])  # 2 batches, 3 time steps, 4 features
-e2 = tf.constant([ [[100, 200, 100, 200], [300, 400, 300, 400], [500, 600, 500, 600]], [[1000, 2000, 1000, 2000], [3000, 4000, 3000, 4000], [5000, 6000, 5000, 6000]]])  # 2 batches, 3 time steps, 4 features
+    def __init__(self, axis=None, **kwargs):
+        super(ReducedSum, self).__init__(**kwargs)
+        print(['__init__'])
+        self.axis = axis
+
+    def build(self, input_shape):
+
+        print('[build] input_shape: {}'.format(input_shape))
+        print('[build] input_shape[0]: {}'.format(input_shape[0]))
+
+    def call(self, inputs):
+        # return tf.matmul(inputs, self.w) + self.b
+        print('__call__')
+        print('input tensor shape: {}'.format(inputs.shape))
+        output = tf.reduce_sum(inputs, axis=self.axis)
+        print('output tensor shape: {}'.format(output.shape))
+        return output
+
+    def get_config(self):
+        return {"axis": self.axis}
+
+
+gate_ = tf.constant([[[1, 2], [3, 4], [5, 6]], [[10, 20], [30, 40], [50, 60]]])  # 2 batches, 3 time steps, 2 categories
+
+e1 = tf.constant([[[1, 2, 1, 2], [3, 4, 3, 4], [5, 6, 5, 6]],
+                  [[10, 20, 10, 20], [30, 40, 30, 40], [50, 60, 50, 60]]])  # 2 batches, 3 time steps, 4 features
+e2 = tf.constant([[[100, 200, 100, 200], [300, 400, 300, 400], [500, 600, 500, 600]],
+                  [[1000, 2000, 1000, 2000], [3000, 4000, 3000, 4000],
+                   [5000, 6000, 5000, 6000]]])  # 2 batches, 3 time steps, 4 features
 
 gl = GateLayer()
 gl([gate_, e1, e2])

@@ -10,11 +10,11 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import Accuracy, CategoricalAccuracy
 from tensorflow.keras.layers import Input, Lambda, Dense, Flatten, LSTM, Reshape, Dropout, BatchNormalization, Conv1D, \
-    MaxPooling1D, Softmax, Multiply, Add, Layer
+    MaxPooling1D, Softmax, Multiply, Add, Layer, Concatenate
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import ModelCheckpoint
-from GateLayer import GateLayer
+from GateLayer import GateLayer, ReducedSum
 
 
 def get_moe_model(number_categories, number_outputs, output_steps, input_shape=None, reg_l2=None, dp_rate=None):
@@ -23,7 +23,7 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
 
     #############
     # gate NN
-    h_gate = Flatten()(inputs)
+    h_gate = Flatten(name='gate_nn')(inputs)
 
     h_gate = Dense(64, activation='relu',
                    kernel_regularizer=regularizers.l2(reg_l2),
@@ -51,15 +51,17 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
 
     h_gate = Dense(number_categories * output_steps)(h_gate)
 
-    h_gate = Softmax()(h_gate)
-
+    # ! default: axis=-1, normalization is done over last axis
     h_gate = Reshape([output_steps, number_categories])(h_gate)
+
+    h_gate = Softmax()(h_gate)
 
     gate_output = Layer(name='gate_output')(h_gate)
 
     #############
     # expert 1
     h_expert1 = LSTM(64,
+                     name='expert1_nn',
                      return_sequences=True,
                      activation='relu',
                      kernel_regularizer=regularizers.l2(reg_l2),
@@ -86,6 +88,7 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
     #############
     # expert 2
     h_expert2 = LSTM(64,
+                     name='expert2_nn',
                      return_sequences=True,
                      activation='relu',
                      kernel_regularizer=regularizers.l2(reg_l2),
@@ -98,7 +101,7 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
 
     h_expert2 = Flatten()(h_expert2)
 
-    h_expert2 = Dense(output_steps*number_outputs,
+    h_expert2 = Dense(output_steps * number_outputs,
                       activation='relu',
                       kernel_regularizer=regularizers.l2(reg_l2),
                       bias_regularizer=regularizers.l2(reg_l2))(h_expert2)
@@ -110,6 +113,7 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
     #############
     # expert 3
     h_expert3 = LSTM(64,
+                     name='expert3_nn',
                      return_sequences=True,
                      activation='relu',
                      kernel_regularizer=regularizers.l2(reg_l2),
@@ -122,7 +126,7 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
 
     h_expert3 = Flatten()(h_expert3)
 
-    h_expert3 = Dense(output_steps*number_outputs,
+    h_expert3 = Dense(output_steps * number_outputs,
                       activation='relu',
                       kernel_regularizer=regularizers.l2(reg_l2),
                       bias_regularizer=regularizers.l2(reg_l2))(h_expert3)
@@ -132,6 +136,7 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
     #############
     # expert 4
     h_expert4 = LSTM(64,
+                     name='expert4_nn',
                      return_sequences=True,
                      activation='relu',
                      kernel_regularizer=regularizers.l2(reg_l2),
@@ -144,7 +149,7 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
 
     h_expert4 = Flatten()(h_expert4)
 
-    h_expert4 = Dense(output_steps*number_outputs,
+    h_expert4 = Dense(output_steps * number_outputs,
                       activation='relu',
                       kernel_regularizer=regularizers.l2(reg_l2),
                       bias_regularizer=regularizers.l2(reg_l2))(h_expert4)
@@ -154,9 +159,23 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
     #############
     # Gate Layer
     # h_gate_expert1 = Multiply ([h_gate, h_expert1])
+    h_expert1 = Reshape([output_steps, number_outputs, 1])(h_expert1)
+    h_expert2 = Reshape([output_steps, number_outputs, 1])(h_expert2)
+    h_expert3 = Reshape([output_steps, number_outputs, 1])(h_expert3)
+    h_expert4 = Reshape([output_steps, number_outputs, 1])(h_expert4)
+    experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4])
+    print('experts shape: {}'.format(experts.shape))
+
+    h_gate = Reshape([output_steps, 1, number_categories])(h_gate)
+    print('h_gate shape: {}'.format(h_gate.shape))
+
+    moe_output_ = Multiply()([experts, h_gate])
+    print('moe_output_ shape: {}'.format(moe_output_.shape))
+    moe_output = ReducedSum(name='moe_output', axis=3)(moe_output_)
+    print('moe_output shape: {}'.format(moe_output.shape))
 
     # moe_output = Layer(name='moe_output')(h_expert1)
-    moe_output = GateLayer(name='moe_output')([h_gate, h_expert1, h_expert2, h_expert3, h_expert4])
+    # moe_output = GateLayer(name='moe_output')([h_gate, h_expert1, h_expert2, h_expert3, h_expert4])
 
     model = Model(inputs=inputs, outputs=[gate_output, moe_output])
 

@@ -16,7 +16,8 @@ from Utilities import get_dense_model_classification,\
     fit_model, \
     plot_losses,\
     plot_accuracy,\
-    get_moe_model
+    get_moe_model,\
+    visualize_model
 
 from Utilities import save_nn_model
 
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     # =====================
 
     # high level flags for training
-    learn_dense_model = True
+    learn_moe_model = True
     learn_cnn_model = False
     learn_lstm_model = False
     do_performance_analysis = True
@@ -168,12 +169,12 @@ if __name__ == "__main__":
     multi_performance = {}
 
     # DENSE
-    if learn_dense_model:
+    if learn_moe_model:
 
-        model_dense = get_moe_model(number_categories, 144, output_steps, gate_input_shape,
-                                    regularization_l2, dropout_rate)
-        model_dense = compile_model(model_dense)
-        history_dense = fit_model(model_dense,
+        model_moe = get_moe_model(number_categories, 144, output_steps, gate_input_shape,
+                                  regularization_l2, dropout_rate)
+        model_moe = compile_model(model_moe)
+        history_dense = fit_model(model_moe,
                                   multi_window,
                                   patience,
                                   max_epochs,
@@ -187,10 +188,10 @@ if __name__ == "__main__":
         # history = compile_and_fit(multi_dense_model, multi_window_cpy, plot_losses=plot_losses,
         #                       patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
 
-        multi_val_performance['MoE'] = model_dense.evaluate(multi_window.val)
-        multi_performance['MoE'] = model_dense.evaluate(multi_window.test, verbose=0)
+        multi_val_performance['MoE'] = model_moe.evaluate(multi_window.val)
+        multi_performance['MoE'] = model_moe.evaluate(multi_window.test, verbose=0)
         if verbose:
-            multi_window.plot(model_dense, max_subplots=3, output_labels=output_labels)
+            multi_window.plot(model_moe, max_subplots=3, output_labels=output_labels)
 
     # ## CONV
     if learn_cnn_model:
@@ -259,8 +260,8 @@ if __name__ == "__main__":
         for metrics_name in metrics_list:
             if learn_lstm_model:
                 metric_index = model_lstm.metrics_names.index(metrics_name)
-            elif learn_dense_model:
-                metric_index = model_dense.metrics_names.index(metrics_name)
+            elif learn_moe_model:
+                metric_index = model_moe.metrics_names.index(metrics_name)
             elif learn_cnn_model:
                 metric_index = model_cnn.metrics_names.index(metrics_name)
 
@@ -277,12 +278,16 @@ if __name__ == "__main__":
                 print(f'{name:8s}: {value[1]:0.4f}')
 
     if save_model:
-        if learn_dense_model:
-            save_nn_model(model_dense, file_path=models_path, file_name=model_name + '_Dense')
+        if learn_moe_model:
+            save_nn_model(model_moe, file_path=models_path, file_name=model_name + '_MoE')
+            visualize_model(model_moe, file_path=models_path, file_name=model_name + '_MoE')
         if learn_cnn_model:
             save_nn_model(model_cnn, file_path=models_path, file_name=model_name + '_CNN')
+            visualize_model(model_cnn, file_path=models_path, file_name=model_name + '_MoE')
         if learn_lstm_model:
             save_nn_model(model_lstm, file_path=models_path, file_name=model_name + '_LSTM')
+            visualize_model(model_cnn, file_path=models_path, file_name=model_name + '_MoE')
+
 
 # if __name__ == "__main__":
 #     main()
