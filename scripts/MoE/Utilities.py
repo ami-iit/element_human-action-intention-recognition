@@ -14,12 +14,14 @@ from tensorflow.keras.layers import Input, Lambda, Dense, Flatten, LSTM, Reshape
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import ModelCheckpoint
+from GateLayer import GateLayer
 
 
 def get_moe_model(number_categories, number_outputs, output_steps, input_shape=None, reg_l2=None, dp_rate=None):
     # input
     inputs = Input(shape=input_shape)
 
+    #############
     # gate NN
     h_gate = Flatten()(inputs)
 
@@ -49,12 +51,13 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
 
     h_gate = Dense(number_categories * output_steps)(h_gate)
 
-    h_gate = Reshape([output_steps, number_categories])(h_gate)
-
     h_gate = Softmax()(h_gate)
+
+    h_gate = Reshape([output_steps, number_categories])(h_gate)
 
     gate_output = Layer(name='gate_output')(h_gate)
 
+    #############
     # expert 1
     h_expert1 = LSTM(64,
                      return_sequences=True,
@@ -80,60 +83,80 @@ def get_moe_model(number_categories, number_outputs, output_steps, input_shape=N
 
     h_expert1 = Reshape([output_steps, number_outputs])(h_expert1)
 
-    #
-    # # expert 2
-    # h_expert2 = LSTM(64,
-    #                  return_sequences=True,
-    #                  activation='relu',
-    #                  kernel_regularizer=regularizers.l2(reg_l2),
-    #                  bias_regularizer=regularizers.l2(reg_l2),
-    #                  recurrent_regularizer=regularizers.l2(reg_l2),
-    #                  dropout=dp_rate,
-    #                  recurrent_dropout=dp_rate)(inputs)
-    # h_expert2 = BatchNormalization()(h_expert2)
-    # h_expert2 = Dense(output_steps*number_outputs,
-    #                   activation='relu',
-    #                   kernel_regularizer=regularizers.l2(reg_l2),
-    #                   bias_regularizer=regularizers.l2(reg_l2))(h_expert2)
-    # h_expert2 = Reshape([output_steps, number_outputs])(h_expert2)
-    #
-    # # expert 3
-    # h_expert3 = LSTM(64,
-    #                  return_sequences=True,
-    #                  activation='relu',
-    #                  kernel_regularizer=regularizers.l2(reg_l2),
-    #                  bias_regularizer=regularizers.l2(reg_l2),
-    #                  recurrent_regularizer=regularizers.l2(reg_l2),
-    #                  dropout=dp_rate,
-    #                  recurrent_dropout=dp_rate)(inputs)
-    # h_expert3 = BatchNormalization()(h_expert3)
-    # h_expert3 = Dense(output_steps*number_outputs,
-    #                   activation='relu',
-    #                   kernel_regularizer=regularizers.l2(reg_l2),
-    #                   bias_regularizer=regularizers.l2(reg_l2))(h_expert3)
-    # h_expert3 = Reshape([output_steps, number_outputs])(h_expert3)
-    #
-    #
-    # # expert 4
-    # h_expert4 = LSTM(64,
-    #                  return_sequences=True,
-    #                  activation='relu',
-    #                  kernel_regularizer=regularizers.l2(reg_l2),
-    #                  bias_regularizer=regularizers.l2(reg_l2),
-    #                  recurrent_regularizer=regularizers.l2(reg_l2),
-    #                  dropout=dp_rate,
-    #                  recurrent_dropout=dp_rate)(inputs)
-    # h_expert4 = BatchNormalization()(h_expert4)
-    # h_expert4 = Dense(output_steps*number_outputs,
-    #                   activation='relu',
-    #                   kernel_regularizer=regularizers.l2(reg_l2),
-    #                   bias_regularizer=regularizers.l2(reg_l2))(h_expert4)
-    # h_expert4 = Reshape([output_steps, number_outputs])(h_expert4)
-    #
-    # # h_gate_expert1
+    #############
+    # expert 2
+    h_expert2 = LSTM(64,
+                     return_sequences=True,
+                     activation='relu',
+                     kernel_regularizer=regularizers.l2(reg_l2),
+                     bias_regularizer=regularizers.l2(reg_l2),
+                     recurrent_regularizer=regularizers.l2(reg_l2),
+                     dropout=dp_rate,
+                     recurrent_dropout=dp_rate)(inputs)
+
+    h_expert2 = BatchNormalization()(h_expert2)
+
+    h_expert2 = Flatten()(h_expert2)
+
+    h_expert2 = Dense(output_steps*number_outputs,
+                      activation='relu',
+                      kernel_regularizer=regularizers.l2(reg_l2),
+                      bias_regularizer=regularizers.l2(reg_l2))(h_expert2)
+    print('model: output_steps : {}, number_outputs: {}, h_expert2.shape {} '.format(output_steps, number_outputs,
+                                                                                     h_expert2.shape))
+
+    h_expert2 = Reshape([output_steps, number_outputs])(h_expert2)
+
+    #############
+    # expert 3
+    h_expert3 = LSTM(64,
+                     return_sequences=True,
+                     activation='relu',
+                     kernel_regularizer=regularizers.l2(reg_l2),
+                     bias_regularizer=regularizers.l2(reg_l2),
+                     recurrent_regularizer=regularizers.l2(reg_l2),
+                     dropout=dp_rate,
+                     recurrent_dropout=dp_rate)(inputs)
+
+    h_expert3 = BatchNormalization()(h_expert3)
+
+    h_expert3 = Flatten()(h_expert3)
+
+    h_expert3 = Dense(output_steps*number_outputs,
+                      activation='relu',
+                      kernel_regularizer=regularizers.l2(reg_l2),
+                      bias_regularizer=regularizers.l2(reg_l2))(h_expert3)
+
+    h_expert3 = Reshape([output_steps, number_outputs])(h_expert3)
+
+    #############
+    # expert 4
+    h_expert4 = LSTM(64,
+                     return_sequences=True,
+                     activation='relu',
+                     kernel_regularizer=regularizers.l2(reg_l2),
+                     bias_regularizer=regularizers.l2(reg_l2),
+                     recurrent_regularizer=regularizers.l2(reg_l2),
+                     dropout=dp_rate,
+                     recurrent_dropout=dp_rate)(inputs)
+
+    h_expert4 = BatchNormalization()(h_expert4)
+
+    h_expert4 = Flatten()(h_expert4)
+
+    h_expert4 = Dense(output_steps*number_outputs,
+                      activation='relu',
+                      kernel_regularizer=regularizers.l2(reg_l2),
+                      bias_regularizer=regularizers.l2(reg_l2))(h_expert4)
+
+    h_expert4 = Reshape([output_steps, number_outputs])(h_expert4)
+
+    #############
+    # Gate Layer
     # h_gate_expert1 = Multiply ([h_gate, h_expert1])
 
-    moe_output = Layer(name='moe_output')(h_expert1)
+    # moe_output = Layer(name='moe_output')(h_expert1)
+    moe_output = GateLayer(name='moe_output')([h_gate, h_expert1, h_expert2, h_expert3, h_expert4])
 
     model = Model(inputs=inputs, outputs=[gate_output, moe_output])
 
@@ -301,7 +324,7 @@ def plot_accuracy(history):
     return
 
 
-def compile_and_fit(model, window, plot_losses, ):
+def compile_and_fit(model, window, patience, max_epochs):
     early_stopping = EarlyStopping(monitor='val_loss',
                                    patience=patience,
                                    mode='min')
@@ -310,7 +333,7 @@ def compile_and_fit(model, window, plot_losses, ):
     #               optimizer=tf.optimizers.Adam(),
     #               metrics=[tf.metrics.Accuracy()])
 
-    history = model.fit(window.train, epochs=MAX_EPOCHS,
+    history = model.fit(window.train, epochs=max_epochs,
                         validation_data=window.val
                         , callbacks=[early_stopping
                                      # , plot_losses
