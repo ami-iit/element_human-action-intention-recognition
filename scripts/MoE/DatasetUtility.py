@@ -7,8 +7,14 @@ import time
 from WindowGenerator import WindowGenerator
 
 
-def DatasetUtility(data_path='dataset.txt', OUT_STEPS=1, INPUT_WIDTH=1, features_list=[],
-                   pop_list=['time'], plot_figures=False, MAX_SUBPLOTS=3):
+def dataset_utility(data_path='dataset.txt',
+                    output_steps=1,
+                    input_width=1,
+                    features_list=[],
+                    pop_list=['time'],
+                    plot_figures=False,
+                    max_subplots=3,
+                    user_weight=100):
     df_row = pd.read_csv(data_path, sep=' ')
     # slice [start:stop:step], starting from index 5 take every 6th record.
     if features_list:
@@ -69,12 +75,22 @@ def DatasetUtility(data_path='dataset.txt', OUT_STEPS=1, INPUT_WIDTH=1, features
 
     column_indices = {name: i for i, name in enumerate(df.columns)}
 
-    n = len(df)
-    train_df = df[0:int(n * 0.7)]
-    val_df = df[int(n * 0.7):int(n * 0.9)]
-    test_df = df[int(n * 0.9):]
+    # ! normalize the force/torque values with the user weight
+    wrench_keys = [key for key in df.keys() if 'shoe' in key.lower()]
+    wrench_indices = [int(np.where(df.keys() == key)[0]) for key in df.keys() if 'shoe' in key.lower()]
+    df_input_weight_normalized = df
+    for key in wrench_keys:
+        df_input_weight_normalized[key] = df[key] / user_weight
 
-    num_features = df.shape[1]
+    # print('wrench_keys: {}'.format(wrench_keys))
+    # print('wrench_indices: {}'.format(wrench_indices))
+
+    n = len(df_input_weight_normalized)
+    train_df = df_input_weight_normalized[0:int(n * 0.7)]
+    val_df = df_input_weight_normalized[int(n * 0.7):int(n * 0.9)]
+    test_df = df_input_weight_normalized[int(n * 0.9):]
+
+    num_features = df_input_weight_normalized.shape[1]
 
     # normalize the data:
     train_mean = train_df.mean()
@@ -97,28 +113,30 @@ def DatasetUtility(data_path='dataset.txt', OUT_STEPS=1, INPUT_WIDTH=1, features
         ax2 = sns.violinplot(x='Column', y='Normalized', data=df2)
         _ = ax2.set_xticklabels(df.keys(), rotation=90)
 
-    multi_window = WindowGenerator(input_width=INPUT_WIDTH,
-                                   label_width=OUT_STEPS,
-                                   shift=OUT_STEPS,
-                                   train_df=train_df, val_df=val_df, test_df=test_df)
+    multi_window = WindowGenerator(input_width=input_width,
+                                   label_width=output_steps,
+                                   shift=output_steps,
+                                   train_df=train_df,
+                                   val_df=val_df,
+                                   test_df=test_df)
     if plot_figures:
-        multi_window.plot(max_subplots=MAX_SUBPLOTS)
+        multi_window.plot(max_subplots=max_subplots)
 
-    return multi_window, train_mean, train_std, df
+    return multi_window, train_mean, train_std, wrench_indices, df
 
 
-def plot_prediction(time, inputs, labels, prediction, plot_index, PLOT_COL):
+def plot_motion_prediction_data(time_, inputs, labels, prediction, plot_index, plot_columns):
     print('plot_prediction')
     #
-    plt.title(" state: {}".format(PLOT_COL))
+    plt.title(" state: {}".format(plot_columns))
     max_n = len(plot_index)
     for n in range(max_n):
         plt.subplot(max_n, 1, n + 1)
-        plt.ylabel(f'{PLOT_COL[n]} [normed]')
+        plt.ylabel(f'{plot_columns[n]} [normed]')
         n_index = int(plot_index[n])
-        input_time = np.array(range(0, inputs.shape[1])) + time
+        input_time = np.array(range(0, inputs.shape[1])) + time_
         input_time = input_time.reshape(1, input_time.shape[0])
-        output_time = np.array(range(inputs.shape[1], inputs.shape[1] + labels.shape[0])) + time
+        output_time = np.array(range(inputs.shape[1], inputs.shape[1] + labels.shape[0])) + time_
         output_time = output_time.reshape(1, output_time.shape[0])
         plt.plot(input_time.transpose(), (inputs[:, :, n_index]).transpose(), 'b',
                  linewidth=5, label='Inputs', marker='.', zorder=10, alpha=0.7)
@@ -131,6 +149,34 @@ def plot_prediction(time, inputs, labels, prediction, plot_index, PLOT_COL):
     # plt.legend()
     plt.xlabel('Time [samples]')
     plt.pause(0.02)
+
+
+def plot_action_recognition_prediction(prediction, labels, prediction_time_idx):
+    print('plot_prediction')
+    bars = []
+    colors = []
+    for i in prediction_time_idx:
+        bars.append(prediction[i, :])
+        colors.append((0, 0, 1, (1/(i+1))**(1/4)))
+    print('prediction bars: {}'.format(bars))
+    width = 0.25
+    sampling_time = 0.04
+    x0 = np.arange(0, 2*len(labels), 2)
+    x = x0 - (len(prediction_time_idx)//2) * width
+
+    for i in range(len(prediction_time_idx)):
+        plt.bar(x, bars[i], width=width, color=colors[i],
+                label='t + {} [sec]'.format(prediction_time_idx[i]*sampling_time))
+        x = x + width
+
+    plt.xticks(x0, labels)
+    plt.ylim([0, 1])
+    plt.title("human action prediction")
+    plt.xlabel('human actions')
+    plt.ylabel('Probability')
+    plt.legend()
+    plt.pause(0.001)
+    plt.clf()
 
 
 def current_milli_time():

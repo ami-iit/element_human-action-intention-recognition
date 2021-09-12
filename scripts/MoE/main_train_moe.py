@@ -40,11 +40,12 @@ if __name__ == "__main__":
 
     # configurations for the datasets
     model_name = 'gate_model_trial'
-    models_path = 'models'
+    models_path = '__untrack/models'
     data_path = '/home/kourosh/icub_ws/external/DataSet/' \
                 'HumanDataForActionMotionPrediction/ActionRecognition/' \
                 'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
     user_mass = 79.0
+    gravity = 9.81
 
     output_steps = 25  # ! at the moment only the value `1` is possible
     shift = output_steps  # ! offset, e.g., 10
@@ -103,7 +104,6 @@ if __name__ == "__main__":
 
     # ! normalize the force/torque values with the user weight
     wrench_keys = [key for key in df_input.keys() if 'shoe' in key.lower()]
-    gravity = 9.81
     df_input_weight_normalized = df_input
     for key in wrench_keys:
         df_input_weight_normalized[key] = df_input[key] / (user_mass * gravity)
