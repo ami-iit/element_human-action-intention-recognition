@@ -96,7 +96,7 @@ class WindowGenerator:
 
         return inputs, {"gate_output": gate_labels, "moe_output": experts_labels}
 
-    def plot(self, model=None, plot_col='jLeftKnee_roty_val', max_subplots=3):
+    def plot(self, model=None, max_subplots=3, plot_col='jLeftKnee_roty_val'):
         print('plot')
         inputs, labels = self.example
         plt.figure(figsize=(12, 8))

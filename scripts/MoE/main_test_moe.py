@@ -52,7 +52,7 @@ def get_denormalized_features(normalized_data, wrench_indices, user_weight, data
 if __name__ == "__main__":
     # parameters
     model_name = 'gate_model_trial_MoE'
-    model_path = 'models'
+    model_path = '__untrack/models'
     data_path = '/home/kourosh/icub_ws/external/DataSet/' \
                 'HumanDataForActionMotionPrediction/ActionRecognition/' \
                 'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
@@ -78,12 +78,12 @@ if __name__ == "__main__":
     # visualization information
     plot_prediction = True
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
-    motion_prediction_time_idx = 5  # ! indexes that have been used for the prediciotn timings
+    motion_prediction_time_idx = 1  # ! indexes that have been used for the prediciotn timings
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
     plot_indices = np.array([])
 
     if plot_prediction:
-        plot_prediction = PlotInferenceResults()
+        plot_prediction_result = PlotInferenceResults()
 
     # ! YARP
     if not yarp.Network.checkNetwork():
@@ -106,7 +106,6 @@ if __name__ == "__main__":
     motion_prediction_port = yarp.BufferedPortVector()
     motion_prediction_port.open("/motionPrediction:o")
 
-
     ## model, data
     model = load_model_from_file(file_path=model_path, file_name=model_name)
 
@@ -127,6 +126,7 @@ if __name__ == "__main__":
     data_Tx = []
     count = 0
     while True:
+        tik_total = current_milli_time()
         human_kin_dyn = human_kin_dyn_port.read(False)
         # bot = yarp.Bottle(human_kin_dyn)
         # print(human_kin_dyn)
@@ -166,7 +166,7 @@ if __name__ == "__main__":
             predicted_motion = get_denormalized_features(
                 np.float64(np.array(predictions[1]))[:, motion_prediction_time_idx, :],
                 wrench_indices=wrench_indices,
-                user_weight=user_mass*gravity,
+                user_weight=user_mass * gravity,
                 data_mean=train_mean,
                 data_std=train_std)
 
@@ -192,21 +192,19 @@ if __name__ == "__main__":
 
             data_Tx.pop(0)
             # argMax = np.argmax(pred)
-            print('inference time[ms]: {}'.
-                  format(tok - tik))
 
             if plot_prediction:
-                # plot_prediction.action(prediction=predicted_actions,
-                #                        labels=labels,
-                #                        prediction_time_idx=action_prediction_time_idx)
-                plot_prediction.motion(time=count,
-                                       inputs=human_data_Tx,
-                                       prediction=predictions[1],
-                                       plot_indices=plot_indices,
-                                       plot_columns=plot_keys)
-
-                if count > 20:
-                    print(asghar)
+                # plot_prediction_result.action(prediction=predicted_actions,
+                #                               labels=labels,
+                #                               prediction_time_idx=action_prediction_time_idx)
+                # plot_prediction_result.motion(time=count,
+                #                               inputs=human_data_Tx,
+                #                               prediction=predictions[1],
+                #                               plot_indices=plot_indices,
+                #                               plot_columns=plot_keys)
+                # if count > 50 :
+                #     print(asghar)
+                pass
 
                 # plot_motion_prediction_data(plt_=plot_motions,
                 #                             time=count,
@@ -215,7 +213,8 @@ if __name__ == "__main__":
                 #                             plot_indices=plot_indices,
                 #                             plot_columns=plot_keys)
 
-        # print("----------")
+            tok_total = current_milli_time()
+            print('inference time[ms]: {} , total time[ms]: {}'.format((tok - tik), (tok_total - tik_total)))
 
         # print("human_data shape: ", human_data.shape)
         count += 1

@@ -11,13 +11,15 @@ from WindowGeneratorMoE import WindowGeneratorMoE
 from WindowGenerator import WindowGenerator
 from Utilities import get_dense_model_classification,\
     get_cnn_model,\
-    get_lstm_model,\
+    get_lstm_regression_model_sequential,\
     compile_model,\
     fit_model, \
     plot_losses,\
     plot_accuracy,\
-    get_moe_model,\
-    visualize_model
+    get_moe_model_four_experts,\
+    visualize_model,\
+    compile_and_fit_regression,\
+    get_moe_model_one_expert
 
 from Utilities import save_nn_model
 
@@ -47,7 +49,7 @@ if __name__ == "__main__":
     user_mass = 79.0
     gravity = 9.81
 
-    output_steps = 25  # ! at the moment only the value `1` is possible
+    output_steps = 60  # ! at the moment only the value `1` is possible
     shift = output_steps  # ! offset, e.g., 10
     input_width = 5  # ! default: 10
     max_subplots = 5
@@ -56,8 +58,8 @@ if __name__ == "__main__":
     test_percentage = 1.0 - (train_percentage + val_percentage)  # ! the amount of data at end for testing
 
     # general configurations for the neural networks
-    regularization_l2 = 1e-3
-    dropout_rate = 0.3
+    regularization_l2 = 1.0e-2
+    dropout_rate = 0.5
     max_epochs = 100  # Default: 20
     patience = 5  # ! default: 4
 
@@ -163,27 +165,32 @@ if __name__ == "__main__":
     if verbose:
         multi_window.plot(max_subplots=3, output_labels=output_labels)
 
-    gate_input_data_example, __ = multi_window.example
-    gate_input_shape = (gate_input_data_example.shape[1], gate_input_data_example.shape[2])
+    input_data_example, __ = multi_window.example
+    input_shape = (input_data_example.shape[1], input_data_example.shape[2])
     multi_val_performance = {}
     multi_performance = {}
 
-    # DENSE
+    # MoE
     if learn_moe_model:
+        model_moe = get_moe_model_one_expert(number_categories=number_categories,
+                                             number_outputs=144,
+                                             output_steps=output_steps,
+                                             input_shape=input_shape,
+                                             reg_l2=regularization_l2,
+                                             dp_rate=dropout_rate)
 
-        model_moe = get_moe_model(number_categories, 144, output_steps, gate_input_shape,
-                                  regularization_l2, dropout_rate)
         model_moe = compile_model(model_moe)
-        history_dense = fit_model(model_moe,
-                                  multi_window,
-                                  patience,
-                                  max_epochs,
-                                  model_path=models_path,
-                                  model_name=model_name + '_Dense_Best')
+
+        history_moe = fit_model(model=model_moe,
+                                window=multi_window,
+                                patience=patience,
+                                max_epochs=max_epochs,
+                                model_path=models_path,
+                                model_name=model_name + '_MoE_Best')
 
         if verbose:
-            plot_losses(history_dense)
-            plot_accuracy(history_dense)
+            plot_losses(history_moe)
+            plot_accuracy(history_moe)
 
         # history = compile_and_fit(multi_dense_model, multi_window_cpy, plot_losses=plot_losses,
         #                       patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
@@ -191,7 +198,7 @@ if __name__ == "__main__":
         multi_val_performance['MoE'] = model_moe.evaluate(multi_window.val)
         multi_performance['MoE'] = model_moe.evaluate(multi_window.test, verbose=0)
         if verbose:
-            multi_window.plot(model_moe, max_subplots=3, output_labels=output_labels)
+            multi_window.plot(model_moe, max_subplots=2, plot_col='jRightHip_roty_val')
 
     # ## CONV
     if learn_cnn_model:
@@ -210,7 +217,7 @@ if __name__ == "__main__":
         #
         # history = compile_and_fit(multi_conv_model, multi_window_cpy, plot_losses=plot_losses,
         #                           patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
-        model_cnn = get_cnn_model(number_categories, gate_input_shape, regularization_l2, dropout_rate)
+        model_cnn = get_cnn_model(number_categories, input_shape, regularization_l2, dropout_rate)
         model_cnn.summary()
         model_cnn = compile_model(model_cnn)
         history_cnn = fit_model(model_cnn,
@@ -231,19 +238,22 @@ if __name__ == "__main__":
 
     # RNN
     if learn_lstm_model:
-        model_lstm = get_lstm_model(number_categories, gate_input_shape, regularization_l2, dropout_rate)
+        model_lstm = get_lstm_regression_model_sequential(number_outputs=144,
+                                                          output_steps=output_steps,
+                                                          input_shape=input_shape,
+                                                          reg_l2=regularization_l2,
+                                                          dp_rate=dropout_rate)
+            # (number_categories, input_shape, regularization_l2, dropout_rate)
         model_lstm.summary()
-        model_lstm = compile_model(model_lstm)
-        history_lstm = fit_model(model_lstm,
-                                 multi_window,
-                                 patience,
-                                 max_epochs,
-                                 model_path=models_path,
-                                 model_name=model_name + '_LSTM_Best')
-
+        # model_lstm = compile_model(model_lstm)
+        history_lstm = compile_and_fit_regression(model=model_lstm,
+                                                  window=multi_window,
+                                                  patience=patience,
+                                                  max_epochs=max_epochs)
         if verbose:
-            plot_losses(history_lstm)
             plot_accuracy(history_lstm)
+
+        plot_losses(history_lstm)
 
         multi_val_performance['LSTM'] = model_lstm.evaluate(multi_window.val)
         multi_performance['LSTM'] = model_lstm.evaluate(multi_window.test, verbose=0)
@@ -283,10 +293,10 @@ if __name__ == "__main__":
             visualize_model(model_moe, file_path=models_path, file_name=model_name + '_MoE')
         if learn_cnn_model:
             save_nn_model(model_cnn, file_path=models_path, file_name=model_name + '_CNN')
-            visualize_model(model_cnn, file_path=models_path, file_name=model_name + '_MoE')
+            visualize_model(model_cnn, file_path=models_path, file_name=model_name + '_CNN')
         if learn_lstm_model:
             save_nn_model(model_lstm, file_path=models_path, file_name=model_name + '_LSTM')
-            visualize_model(model_cnn, file_path=models_path, file_name=model_name + '_MoE')
+            visualize_model(model_cnn, file_path=models_path, file_name=model_name + '_LSTM')
 
 
 # if __name__ == "__main__":

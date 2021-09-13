@@ -31,9 +31,11 @@ LEARN_LINEAR_MODEL = False
 LEARN_DENSE_MODEL = False
 LEARN_CNN_MODEL = False
 LEARN_LSTM_MODEL = True
+LEARN_LSTM_MODEL_Functional = False
 LEARN_RESIDUAL_MODEL = False
 LEARN_AUTOREGRESSIVE_LSTM_MODEL = False
 DO_PERFORMANCE_ANALYSIS = False
+
 
 # def main():
 if __name__ == "__main__":
@@ -42,8 +44,8 @@ if __name__ == "__main__":
     model_name = 'model'
     models_path = 'models/models'
     MAX_EPOCHS = 20 #Default: 20
-    OUT_STEPS = 240 #Default: 240
-    INPUT_WIDTH = 10 #Default: 10
+    OUT_STEPS = 60 #Default: 240
+    INPUT_WIDTH = 5 #Default: 10
     HIDDEN_LAYER_SIZE = 256 #Default: 256
     PATIENCE = 4 #Default: 4
     PLOT_COL = 'r_shoe_ty'
@@ -54,11 +56,10 @@ if __name__ == "__main__":
 
     # features_list = ['jLeftKnee_roty_val', 'jRightKnee_roty_val', 'jLeftKnee_roty_vel', 'jRightKnee_roty_vel']
     features_list = []
-    pop_list = ['time']
-    data_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition' \
-                '/dataset/HumanMotionPrediction/RawData/Dataset01' \
-                '/Dataset_2021_03_23_13_45_06.txt'
-
+    pop_list = ['time', 'label']
+    data_path = '/home/kourosh/icub_ws/external/DataSet/' \
+                'HumanDataForActionMotionPrediction/ActionRecognition/' \
+                'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
     df_row = pd.read_csv(data_path, sep=' ')
     # slice [start:stop:step], starting from index 5 take every 6th record.
     if features_list:
@@ -586,6 +587,24 @@ if __name__ == "__main__":
         multi_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.test, verbose=0)
 
         multi_window.plot(multi_lstm_model, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
+
+    if LEARN_LSTM_MODEL_Functional:
+        input_shape_ = [np.array(multi_window_cpy.example[0].shape)[1],np.array(multi_window_cpy.example[0].shape)[2]]
+
+        inputs = tf.keras.layers.Input(shape=input_shape_)
+        hidden = tf.keras.layers.LSTM(HIDDEN_LAYER_SIZE, return_sequences=False)(inputs)
+        hidden = tf.keras.layers.Dense(OUT_STEPS * num_features, kernel_initializer=tf.initializers.zeros())(hidden)
+        outputs = tf.keras.layers.Reshape([OUT_STEPS, num_features])(hidden)
+        multi_lstm_model = tf.keras.models.Model(inputs=inputs, outputs=outputs, name='multi_LSTM_model_functional')
+
+        history = compile_and_fit(multi_lstm_model, multi_window_cpy, plot_losses=plot_losses, patience=5, MAX_EPOCHS=MAX_EPOCHS)
+
+        IPython.display.clear_output()
+        multi_val_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.val)
+        multi_performance['LSTM'] = multi_lstm_model.evaluate(multi_window_cpy.test, verbose=0)
+
+        multi_window.plot(multi_lstm_model, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
+
 
     # Residual Net
     if LEARN_RESIDUAL_MODEL:

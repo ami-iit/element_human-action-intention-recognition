@@ -244,8 +244,8 @@ class PlotInferenceResults:
     def motion(self, time, inputs, prediction, plot_indices, plot_columns):
         # data processing
         # inputs = inputs.tolist()
-        print('inputs type: {} , shape : {}'.format(type(inputs), np.shape(inputs)))
-        print('prediction type: {} , shape : {}'.format(type(prediction), np.shape(prediction)))
+        # print('inputs type: {} , shape : {}'.format(type(inputs), np.shape(inputs)))
+        # print('prediction type: {} , shape : {}'.format(type(prediction), np.shape(prediction)))
 
         prediction = np.float64(np.array(prediction))
         t_x = np.shape(inputs)[1]
@@ -258,7 +258,10 @@ class PlotInferenceResults:
             self.input_time = [i+time+1 for i in range(-t_x, 0)]   # ! time: (-Tx + time, time)
             self.input_states = (inputs[:, :, int(plot_indices[0])].transpose()).tolist()
 
+        # print('output times before appending; current time: {}, future horizon: {}'.format(time, self.output_time))
         self.output_time.append([i+time for i in range(1, t_y+1)])
+        # print('output times after appending; current time: {}, future horizon: {}'.format(time, self.output_time))
+
         self.output_prediction.append(np.reshape(prediction[:, :, int(plot_indices[0])], t_y))
         # if not self.input_time:
         #     np.array(range(-t_x, 0)) + time + 1  # ! time: (-Tx + time, time)
@@ -278,12 +281,15 @@ class PlotInferenceResults:
             # input_time = input_time.reshape(t_x, 1)
             # # output_time = np.array(range(1, t_y + 1)) + time
             # output_time = output_time.reshape(t_y, 1)
-
-            self.axs_motion[n].plot(self.input_time, self.input_states, 'b', linewidth=2, markersize=12)
+            self.axs_motion[n].plot(self.input_time, self.input_states, 'b', linewidth=4, markersize=12)
 
             for i in range(np.shape(self.output_time)[0]):
-                if self.output_time[i][-1] > time:
-                    self.axs_motion[n].plot(self.output_time[i], self.output_prediction[i], 'r')
+                if True:  # self.output_time[i][-1] > time:
+                    # self.axs_motion[n].plot(self.output_time[i], self.output_prediction[i], 'r')
+                    # print('output timings: current time: {}, future horizon: {}'.format(time, self.output_time[i]))
+                    self.axs_motion[n].scatter(self.output_time[i], self.output_prediction[i],
+                                               marker='X', edgecolors='k', label='Predictions',
+                                               c='#ff7f0e', s=64, zorder=-10, alpha=0.7)
 
             # plt.scatter(output_time, prediction[:, :, n_index],
             #             marker='X', edgecolors='k', label='Predictions',
@@ -298,8 +304,8 @@ class PlotInferenceResults:
         for ax in self.axs_motion.flat:
             ax.label_outer()
 
-        plt.show()
-        plt.pause(0.001)
+        plt.show(block=False)
+        plt.pause(0.0001)
         plt.tight_layout()
 
         return
