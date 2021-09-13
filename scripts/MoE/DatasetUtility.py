@@ -125,33 +125,40 @@ def dataset_utility(data_path='dataset.txt',
     return multi_window, train_mean, train_std, wrench_indices, df
 
 
-def plot_motion_prediction_data(time_, inputs, labels, prediction, plot_index, plot_columns):
-    print('plot_prediction')
-    #
-    plt.title(" state: {}".format(plot_columns))
-    max_n = len(plot_index)
+def plot_motion_prediction_data(plt_, time, inputs, prediction, plot_indices, plot_columns):
+    plt.title('state prediction')
+    prediction = np.float64(np.array(prediction))
+    Tx= np.shape(inputs)[1]
+    print('input shape: {}'.format(np.shape(inputs)))
+    Ty= np.shape(prediction)[1]
+    max_n = len(plot_indices)
+    axs_loss = plt_.subplots(max_n)
+
     for n in range(max_n):
-        plt.subplot(max_n, 1, n + 1)
-        plt.ylabel(f'{plot_columns[n]} [normed]')
-        n_index = int(plot_index[n])
-        input_time = np.array(range(0, inputs.shape[1])) + time_
-        input_time = input_time.reshape(1, input_time.shape[0])
-        output_time = np.array(range(inputs.shape[1], inputs.shape[1] + labels.shape[0])) + time_
-        output_time = output_time.reshape(1, output_time.shape[0])
-        plt.plot(input_time.transpose(), (inputs[:, :, n_index]).transpose(), 'b',
+        # plt_.subplot(max_n, 1, n + 1)
+        axs_loss[n].set(ylabel=f'{plot_columns[n]}')
+        n_index = int(plot_indices[n])
+        input_time = np.array(range(-Tx, 0)) + time + 1  # ! time: (-Tx + time, time)
+        input_time = input_time.reshape(Tx, 1)
+        print(input_time)
+        output_time = np.array(range(1, Ty+1)) + time
+        output_time = output_time.reshape(Ty, 1)
+        axs_loss[n].plot(input_time, inputs[:, :, n_index].transpose(), 'b',
                  linewidth=5, label='Inputs', marker='.', zorder=10, alpha=0.7)
-        plt.scatter(output_time, prediction[:, :, n_index],
-                    marker='X', edgecolors='k', label='Predictions',
-                    c='#ff7f0e', s=64, zorder=-10, alpha=0.7)
-        plt.scatter(output_time, labels[:, n_index],
-                    edgecolors='k', label='Labels', c='#2ca02c', s=64, zorder=5, alpha=0.7)
+        axs_loss[n].plot(output_time, prediction[:, :, n_index].transpose(), 'r',
+                 linewidth=5, label='prediction', marker='.', zorder=10, alpha=0.6)
+        # plt.scatter(output_time, prediction[:, :, n_index],
+        #             marker='X', edgecolors='k', label='Predictions',
+        #             c='#ff7f0e', s=64, zorder=-10, alpha=0.7)
 
-    # plt.legend()
+        # plt.scatter(output_time, labels[:, n_index],
+        #             edgecolors='k', label='Labels', c='#2ca02c', s=64, zorder=5, alpha=0.7)
+    plt.legend()
     plt.xlabel('Time [samples]')
-    plt.pause(0.02)
+    plt.pause(0.001)
 
 
-def plot_action_recognition_prediction(prediction, labels, prediction_time_idx):
+def plot_action_recognition_prediction(plt_, prediction, labels, prediction_time_idx):
     print('plot_prediction')
     bars = []
     colors = []
@@ -181,3 +188,123 @@ def plot_action_recognition_prediction(prediction, labels, prediction_time_idx):
 
 def current_milli_time():
     return round(time.time() * 1000)
+
+
+class PlotInferenceResults:
+    def __init__(self):
+        self.plot_action = plt.figure(1, figsize=(8, 6))
+        self.axs_action = self.plot_action.subplots(1)
+
+        self.plot_motion = plt.figure(2, figsize=(8, 8))
+        self.axs_motion = self.plot_motion.subplots(2)
+
+        self.input_time = []
+        self.output_time = []
+        self.input_states = []
+        self.output_prediction = []
+        return
+
+    def action(self, prediction, labels, prediction_time_idx):
+
+        plt.figure(1, figsize=(8, 6))
+        self.plot_action.clf()
+        self.axs_action = self.plot_action.subplots(1)
+
+        bars = []
+        colors = []
+        for i in prediction_time_idx:
+            bars.append(prediction[i, :])
+            colors.append((0, 0, 1, (1 / (i + 1)) ** (1 / 4)))
+        print('prediction bars: {}'.format(bars))
+        width = 0.25
+        sampling_time = 0.04
+        x0 = np.arange(0, 2 * len(labels), 2)
+        x = x0 - (len(prediction_time_idx) // 2) * width
+
+        for i in range(len(prediction_time_idx)):
+            self.axs_action.bar(x, bars[i], width=width, color=colors[i],
+                                   label='t + {} [sec]'.format(prediction_time_idx[i] * sampling_time))
+            x = x + width
+
+        self.axs_action.set_title('human action prediction')
+        self.axs_action.set(Xlabel='human actions')
+        self.axs_action.set(ylabel='Probability')
+        self.axs_action.legend(loc='upper right')
+        plt.xticks(x0, labels)
+        plt.ylim([0, 1])
+        plt.pause(0.001)
+
+        # for ax in self.axs_metrics.flat:
+        #     ax.label_outer()
+        plt.show()
+        plt.pause(0.001)
+        plt.tight_layout()
+        return
+
+    def motion(self, time, inputs, prediction, plot_indices, plot_columns):
+        # data processing
+        # inputs = inputs.tolist()
+        print('inputs type: {} , shape : {}'.format(type(inputs), np.shape(inputs)))
+        print('prediction type: {} , shape : {}'.format(type(prediction), np.shape(prediction)))
+
+        prediction = np.float64(np.array(prediction))
+        t_x = np.shape(inputs)[1]
+        t_y = np.shape(prediction)[1]
+
+        if len(self.input_time):
+            self.input_time.append(time)
+            self.input_states.append(inputs[:, -1, int(plot_indices[0])])
+        else:
+            self.input_time = [i+time+1 for i in range(-t_x, 0)]   # ! time: (-Tx + time, time)
+            self.input_states = (inputs[:, :, int(plot_indices[0])].transpose()).tolist()
+
+        self.output_time.append([i+time for i in range(1, t_y+1)])
+        self.output_prediction.append(np.reshape(prediction[:, :, int(plot_indices[0])], t_y))
+        # if not self.input_time:
+        #     np.array(range(-t_x, 0)) + time + 1  # ! time: (-Tx + time, time)
+        # else:
+        #     self.input_time.append(time)
+        #
+        max_n = len(plot_indices)
+
+        # plot
+        plt.figure(2, figsize=(8, 8))
+        self.plot_motion.clf()
+        self.axs_motion = self.plot_motion.subplots(2)
+
+        for n in range(max_n):
+            n_index = int(plot_indices[n])
+            # input_time = np.array(range(-t_x, 0)) + time + 1  # ! time: (-Tx + time, time)
+            # input_time = input_time.reshape(t_x, 1)
+            # # output_time = np.array(range(1, t_y + 1)) + time
+            # output_time = output_time.reshape(t_y, 1)
+
+            self.axs_motion[n].plot(self.input_time, self.input_states, 'b', linewidth=2, markersize=12)
+
+            for i in range(np.shape(self.output_time)[0]):
+                if self.output_time[i][-1] > time:
+                    self.axs_motion[n].plot(self.output_time[i], self.output_prediction[i], 'r')
+
+            # plt.scatter(output_time, prediction[:, :, n_index],
+            #             marker='X', edgecolors='k', label='Predictions',
+            #             c='#ff7f0e', s=64, zorder=-10, alpha=0.7)
+
+            # self.axs_motion[0].set_title('motion prediction for {} time horizon'.format(t_y))
+            # self.axs_motion[n].legend(['input', 'prediction'], loc='upper right')
+            #
+            # self.axs_motion[n].set(ylabel=f'{plot_columns[n]}')
+            # self.axs_motion[n].set(xlabel='time steps', ylabel='{}'.format(plot_columns[n]))
+
+        for ax in self.axs_motion.flat:
+            ax.label_outer()
+
+        plt.show()
+        plt.pause(0.001)
+        plt.tight_layout()
+
+        return
+
+
+
+
+

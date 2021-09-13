@@ -4,12 +4,14 @@ import datetime
 import numpy as np
 import tensorflow as tf
 import copy
+import matplotlib.pyplot as plt
 
 from WindowGeneratorMoE import WindowGeneratorMoE
 from Utilities import visualize_model
 from Utilities import load_model_from_file
 from DatasetUtility import dataset_utility
 from DatasetUtility import plot_motion_prediction_data, plot_action_recognition_prediction
+from DatasetUtility import PlotInferenceResults
 from DatasetUtility import current_milli_time
 import yarp
 
@@ -31,11 +33,14 @@ def get_normalized_features(data, wrench_indices, user_weight, data_mean, data_s
 
 
 def get_denormalized_features(normalized_data, wrench_indices, user_weight, data_mean, data_std):
-    denormalized_data = None
-    dat_length = len(data_mean)
+    denormalized_data = []
+    data_length = len(data_mean)
 
-    for i in range(dat_length):
-        denormalized_data[i] = normalized_data[i] * data_std[i] + data_mean[i]
+    for i in range(data_length):
+        denormalized_data.append(normalized_data[0, i])
+
+    for i in range(data_length):
+        denormalized_data[i] = denormalized_data[i] * data_std[i] + data_mean[i]
 
     for i in wrench_indices:
         denormalized_data[i] = denormalized_data[i] * user_weight
@@ -57,8 +62,6 @@ if __name__ == "__main__":
 
     plotting_features = ['l_shoe_fz', 'r_shoe_fz', 'jLeftKnee_roty_val', 'jRightKnee_roty_val']
     labels = ['None', 'Rotating', 'Standing', 'Walking']
-    plot_prediction = True
-    prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for the timings
 
     user_mass = 79.0
     gravity = 9.81
@@ -72,7 +75,17 @@ if __name__ == "__main__":
     val_percentage = 0.2  # ! the percentage of the time series data after training data for validation
     test_percentage = 1.0 - (train_percentage + val_percentage)  # ! the amount of data at end for testing
 
-    ## yarp
+    # visualization information
+    plot_prediction = True
+    action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
+    motion_prediction_time_idx = 5  # ! indexes that have been used for the prediciotn timings
+    plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
+    plot_indices = np.array([])
+
+    if plot_prediction:
+        plot_prediction = PlotInferenceResults()
+
+    # ! YARP
     if not yarp.Network.checkNetwork():
         print("[main] Unable to find YARP network")
 
@@ -88,8 +101,11 @@ if __name__ == "__main__":
     print("port is connected: {}".format(is_connected))
     yarp.delay(0.5)
 
-    prediction_port = yarp.BufferedPortVector()
-    prediction_port.open("/ActionRecognition:o")
+    action_prediction_port = yarp.BufferedPortVector()
+    action_prediction_port.open("/actionRecognition:o")
+    motion_prediction_port = yarp.BufferedPortVector()
+    motion_prediction_port.open("/motionPrediction:o")
+
 
     ## model, data
     model = load_model_from_file(file_path=model_path, file_name=model_name)
@@ -105,17 +121,10 @@ if __name__ == "__main__":
                                                                    user_weight=user_weight_)
 
     input_feature_length = len(train_mean)
-
-    # window_dataset.plot(model, max_subplots=MAX_SUBPLOTS, plot_col=PLOT_COL)
-    # df_std = (df - train_mean) / train_std
-    # data = np.array(df_std)
-
-    # plot_index = np.array([])
-    # for feature in plotting_features:
-    #     plot_index = np.append(plot_index, df.columns.get_loc(feature))
+    for feature in plot_keys:
+        plot_indices = np.append(plot_indices, df.columns.get_loc(feature))
 
     data_Tx = []
-    # human_data.resize(144)
     count = 0
     while True:
         human_kin_dyn = human_kin_dyn_port.read(False)
@@ -147,11 +156,21 @@ if __name__ == "__main__":
             # print('prediction time: {} ms', tok - tik)
             # print('prediction: {}', prediction)
 
-            ## STREAM DATA
-            bottle = prediction_port.prepare()
-            bottle.clear()
+            # ! stream prediction data
+            action_recognition_bottle = action_prediction_port.prepare()
+            motion_prediction_bottle = motion_prediction_port.prepare()
+            action_recognition_bottle.clear()
+            motion_prediction_bottle.clear()
+
             predicted_actions = np.float64(np.array(predictions[0]))
-            predicted_states = np.float64(np.array(predictions[0]))
+            predicted_motion = get_denormalized_features(
+                np.float64(np.array(predictions[1]))[:, motion_prediction_time_idx, :],
+                wrench_indices=wrench_indices,
+                user_weight=user_mass*gravity,
+                data_mean=train_mean,
+                data_std=train_std)
+
+            predicted_motion = predicted_motion[0:66]
 
             if np.size(predicted_actions.shape) > 2:
                 predicted_actions = np.reshape(predicted_actions,
@@ -163,9 +182,13 @@ if __name__ == "__main__":
             # print("pred[0]: ", pred[0])
             for i in range(predicted_actions.shape[0]):
                 for j in range(predicted_actions.shape[1]):
-                    bottle.push_back(predicted_actions[i, j])
-            # print("Sending ...")
-            prediction_port.write()
+                    action_recognition_bottle.push_back(predicted_actions[i, j])
+
+            for i in range(np.size(predicted_motion)):
+                motion_prediction_bottle.push_back(predicted_motion[i])
+
+            action_prediction_port.write()
+            motion_prediction_port.write()
 
             data_Tx.pop(0)
             # argMax = np.argmax(pred)
@@ -173,42 +196,31 @@ if __name__ == "__main__":
                   format(tok - tik))
 
             if plot_prediction:
-                plot_action_recognition_prediction(predicted_actions, labels=labels, prediction_time_idx= prediction_time_idx)
+                # plot_prediction.action(prediction=predicted_actions,
+                #                        labels=labels,
+                #                        prediction_time_idx=action_prediction_time_idx)
+                plot_prediction.motion(time=count,
+                                       inputs=human_data_Tx,
+                                       prediction=predictions[1],
+                                       plot_indices=plot_indices,
+                                       plot_columns=plot_keys)
+
+                if count > 20:
+                    print(asghar)
+
+                # plot_motion_prediction_data(plt_=plot_motions,
+                #                             time=count,
+                #                             inputs=human_data_Tx,
+                #                             prediction=predictions[1],
+                #                             plot_indices=plot_indices,
+                #                             plot_columns=plot_keys)
+
         # print("----------")
 
         # print("human_data shape: ", human_data.shape)
         count += 1
 
         yarp.delay(0.001)
-
-    # n = 0
-    # mean_computation_time = 0.0
-    # for t in range(35000, 35300, 10):
-    #     n += 1
-    #     data_tmp = data[t:t + INPUT_WIDTH]
-    #     # (batch_size, Tx, nx)
-    #     data_tmp = np.reshape(data_tmp, (1, data_tmp.shape[0], data_tmp.shape[1]))
-    #     tik = current_milli_time()
-    #     prediction = model.predict(data_tmp)
-    #     tok = current_milli_time()
-    #     mean_computation_time += tok - tik
-    #     labels = data[t + INPUT_WIDTH:t + INPUT_WIDTH + OUT_STEPS]
-    #     plot_prediction(time=t, inputs=data_tmp, labels=labels, prediction=prediction,
-    #                     plot_index=plot_index, PLOT_COL=PLOT_COL)
-    #
-    #     bottle = prediction_port.prepare()
-    #     bottle.clear()
-    #     pred = np.float64(np.array(prediction))
-    #     pred = np.reshape(pred, (pred.shape[1] * pred.shape[2]))
-    #     vec = yarp.Vector(list(pred))
-    #     bottle.addList().read(vec)
-    #     print("Sending ...")
-    #     prediction_port.write()
-    # prediction_port.close()
-    # mean_computation_time = mean_computation_time / n
-    # print('==> average time for computing for prediction is: {} ms'.format(mean_computation_time))
-
-    # visualize_human()
 
 # if __name__ == "__main__":
 #     main()
