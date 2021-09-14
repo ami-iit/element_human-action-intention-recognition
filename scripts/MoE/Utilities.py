@@ -153,7 +153,7 @@ def compile_model(model):
     model.compile(loss={'gate_output': CategoricalCrossentropy(from_logits=False),
                         'moe_output': tf.losses.MeanSquaredError()},
                   optimizer=Adam(),
-                  loss_weights={'gate_output': 0.0, 'moe_output': 1.0},
+                  loss_weights={'gate_output': 1.0, 'moe_output': 1.0},
                   metrics={'gate_output': ['accuracy'],
                            'moe_output': ['mae']})
 

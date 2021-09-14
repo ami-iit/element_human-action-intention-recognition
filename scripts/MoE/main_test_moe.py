@@ -214,7 +214,14 @@ if __name__ == "__main__":
                 #                             plot_columns=plot_keys)
 
             tok_total = current_milli_time()
-            print('inference time[ms]: {} , total time[ms]: {}'.format((tok - tik), (tok_total - tik_total)))
+            max_idx = np.argmax(predicted_actions[0, :])
+            action_ = labels[max_idx]
+            action_prob_ = predicted_actions[0, max_idx]
+            print('inference time[ms]: {} , total time[ms]: {},     == action: {},  probability: {}'.format(
+                (tok - tik),
+                (tok_total - tik_total),
+                action_,
+                action_prob_))
 
         # print("human_data shape: ", human_data.shape)
         count += 1
