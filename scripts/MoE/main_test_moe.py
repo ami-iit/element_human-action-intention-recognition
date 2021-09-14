@@ -34,7 +34,7 @@ def get_normalized_features(data, wrench_indices, user_weight, data_mean, data_s
 
 def get_denormalized_features(normalized_data, wrench_indices, user_weight, data_mean, data_std):
     denormalized_data = []
-    data_length = len(data_mean)
+    data_length = normalized_data.shape[-1]
 
     for i in range(data_length):
         denormalized_data.append(normalized_data[0, i])
@@ -42,8 +42,8 @@ def get_denormalized_features(normalized_data, wrench_indices, user_weight, data
     for i in range(data_length):
         denormalized_data[i] = denormalized_data[i] * data_std[i] + data_mean[i]
 
-    for i in wrench_indices:
-        denormalized_data[i] = denormalized_data[i] * user_weight
+    # for i in wrench_indices:
+    #     denormalized_data[i] = denormalized_data[i] * user_weight
 
     return denormalized_data
 

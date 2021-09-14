@@ -10,7 +10,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import Accuracy, CategoricalAccuracy
 from tensorflow.keras.layers import Input, Lambda, Dense, Flatten, LSTM, Reshape, Dropout, BatchNormalization, Conv1D, \
-    MaxPooling1D, Softmax, Multiply, Add, Layer, Concatenate
+    MaxPooling1D, Softmax, Multiply, Add, Layer, Concatenate, LeakyReLU
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import ModelCheckpoint
@@ -63,7 +63,7 @@ def get_moe_model_four_experts(number_categories, number_outputs, output_steps, 
     return model
 
 
-def get_moe_model_one_expert(number_categories, number_outputs, output_steps, input_shape=None, reg_l2=None, dp_rate=None):
+def get_moe_model_one_expert(number_categories, number_experts_outputs, output_steps, input_shape=None, reg_l1=None, reg_l2=None, dp_rate=None):
     # input
     inputs = Input(shape=input_shape)
 
@@ -86,26 +86,47 @@ def get_moe_model_one_expert(number_categories, number_outputs, output_steps, in
     #                  kernel_regularizer=regularizers.l2(reg_l2),
     #                  bias_regularizer=regularizers.l2(reg_l2))(h_expert)
     # #
-    h_expert = LSTM(256,
+    h_expert = LSTM(128,
                     name='expert_nn',
-                    return_sequences=False
+                    return_sequences=True,
+                    activation=LeakyReLU(),
+                    kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
                     )(inputs)
 
-    # h_expert = Dense(output_steps * number_outputs)(h_expert)
-    #
+    h_expert = BatchNormalization()(h_expert)
+
+    h_expert = LSTM(64,
+                    name='expert_nn',
+                    return_sequences=False,
+                    kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+                    )(inputs)
+
+    # h_expert = Flatten()(inputs)
+
     h_expert = BatchNormalization()(h_expert)
     #
-    h_expert = Dropout(dp_rate)(h_expert)
+    # h_expert = LSTM(128,
+    #                 return_sequences=False,
+    #                 kernel_regularizer=regularizers.l1_l2(reg_l2, reg_l2),
+    #                 )(inputs)
+
+    # h_expert = Flatten()(inputs)
 
     # h_expert = BatchNormalization()(h_expert)
 
-    h_expert = Dense(output_steps * number_outputs)(h_expert)
+    # h_expert = Dense(number_outputs, activation=LeakyReLU())(h_expert)
+
+    # h_expert = Dropout(dp_rate)(h_expert)
 
     h_expert = BatchNormalization()(h_expert)
 
-    h_expert = Dropout(dp_rate)(h_expert)
+    h_expert = Dense(output_steps * number_experts_outputs)(h_expert)
 
-    moe_output = Reshape([output_steps, number_outputs], name='moe_output')(h_expert)
+    # h_expert = BatchNormalization()(h_expert)
+
+    # h_expert = Dropout(dp_rate)(h_expert)
+
+    moe_output = Reshape([output_steps, number_experts_outputs], name='moe_output')(h_expert)
 
     #############
     # Gate Layer
@@ -160,8 +181,8 @@ def fit_model(model, window, patience=2, max_epochs=20, model_path='', model_nam
     history = model.fit(window.train,
                         epochs=max_epochs,
                         validation_data=window.val,
+                        # validation_split=0.15,
                         callbacks=[early_stopping, callback_loss_accuracy_plot, checkpoint_best],
-                        # callback_loss_accuracy_plot
                         verbose=1)
     return history
 
@@ -205,7 +226,8 @@ def visualize_model(model, file_path='', file_name='myModel'):
 
 
 def load_model_from_file(file_path='', file_name='myModel'):
-    model = load_model('{}/{}.h5'.format(file_path, file_name), custom_objects={'ReducedSum': ReducedSum})
+    model = load_model('{}/{}.h5'.format(file_path, file_name), custom_objects={'ReducedSum': ReducedSum,
+                                                                                'LeakyReLU': LeakyReLU})
     return model
 
 

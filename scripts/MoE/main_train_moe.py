@@ -58,10 +58,13 @@ if __name__ == "__main__":
     test_percentage = 1.0 - (train_percentage + val_percentage)  # ! the amount of data at end for testing
 
     # general configurations for the neural networks
-    regularization_l2 = 1.0e-2
-    dropout_rate = 0.5
+    regularization_l2 = 5.0e-2
+    regularization_l1 = 1.0e-1
+    dropout_rate = 0.4
     max_epochs = 100  # Default: 20
-    patience = 5  # ! default: 4
+    patience = 10  # ! default: 4
+
+    number_experts_outputs = 66 # to fix later
 
     # =====================
     # ====== DATASET ======
@@ -173,9 +176,10 @@ if __name__ == "__main__":
     # MoE
     if learn_moe_model:
         model_moe = get_moe_model_one_expert(number_categories=number_categories,
-                                             number_outputs=144,
+                                             number_experts_outputs=number_experts_outputs,
                                              output_steps=output_steps,
                                              input_shape=input_shape,
+                                             reg_l1=regularization_l2,
                                              reg_l2=regularization_l2,
                                              dp_rate=dropout_rate)
 

@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from copy import deepcopy
 import matplotlib.pyplot as plt
+import random
 
 
 class WindowGenerator:
@@ -55,7 +56,7 @@ class WindowGenerator:
         self.gate_output_label_slice = slice(None, None)
         self.experts_output_label_slice = slice(None, None)
 
-        if output_labels is not None:
+        if self.output_labels is not None:
             df_keys = np.array(train_df.keys())
             first_output_key = output_labels[0]
             if first_output_key in df_keys:
@@ -64,7 +65,9 @@ class WindowGenerator:
 
                 self.input_label_slice = slice(0, first_idx)
                 self.gate_output_label_slice = slice(first_idx, None)
-                self.experts_output_label_slice = slice(0, first_idx)  # ! currently all features : to update later
+                # exp_output_idx= first_idx
+                exp_output_idx = 66
+                self.experts_output_label_slice = slice(0, exp_output_idx)  # ! currently all features : to update later
 
     def __repr__(self):
         return '\n'.join([
@@ -72,29 +75,6 @@ class WindowGenerator:
             f'Input indices: {self.input_indices}',
             f'Label indices: {self.label_indices}',
             f'Label column name(s): {self.label_columns}'])
-
-    def split_window(self, features):
-        print('type(feature): {}'.format(type(features)))
-
-        inputs = features[:, self.input_slice, self.input_label_slice]
-        gate_labels = features[:, self.labels_slice, self.gate_output_label_slice]
-        experts_labels = features[:, self.labels_slice, self.experts_output_label_slice]
-
-        if self.label_columns is not None:
-            gate_labels = tf.stack([gate_labels[:, :, self.column_indices[name]] for name in self.label_columns],
-                                   axis=-1)
-            experts_labels = tf.stack([experts_labels[:, :, self.column_indices[name]] for name in self.label_columns],
-                                      axis=-1)
-
-        # Slicing doesn't preserve static shape information, so set the shapes
-        # manually. This way the `tf.data.Datasets` are easier to inspect.
-        inputs.set_shape([None, self.input_width, None])  # ! shape: (batch_size, Tx, nx)
-        gate_labels.set_shape([None, self.label_width, None])  # ! shape: (batch_size, Ty, ny)
-        experts_labels.set_shape([None, self.label_width, None])  # ! shape: (batch_size, Ty, ny)
-
-        self._example = inputs, gate_labels
-
-        return inputs, {"gate_output": gate_labels, "moe_output": experts_labels}
 
     def plot(self, model=None, max_subplots=3, plot_col='jLeftKnee_roty_val'):
         print('plot')
@@ -131,6 +111,29 @@ class WindowGenerator:
 
         plt.xlabel('Time [samples]')
 
+    def split_window(self, features):
+        print('type(feature): {}'.format(type(features)))
+        # features.set_shape([None, 30, 148])
+        inputs = features[:, self.input_slice, self.input_label_slice]
+        gate_labels = features[:, self.labels_slice, self.gate_output_label_slice]
+        experts_labels = features[:, self.labels_slice, self.experts_output_label_slice]
+
+        if self.label_columns is not None:
+            gate_labels = tf.stack([gate_labels[:, :, self.column_indices[name]] for name in self.label_columns],
+                                   axis=-1)
+            experts_labels = tf.stack([experts_labels[:, :, self.column_indices[name]] for name in self.label_columns],
+                                      axis=-1)
+
+        # Slicing doesn't preserve static shape information, so set the shapes
+        # manually. This way the `tf.data.Datasets` are easier to inspect.
+        inputs.set_shape([None, self.input_width, None])  # ! shape: (batch_size, Tx, nx)
+        gate_labels.set_shape([None, self.label_width, None])  # ! shape: (batch_size, Ty, ny)
+        experts_labels.set_shape([None, self.label_width, None])  # ! shape: (batch_size, Ty, ny)
+
+        self._example = inputs, gate_labels
+
+        return inputs, {"gate_output": gate_labels, "moe_output": experts_labels}
+
     def make_dataset(self, data):
         data = np.array(data, dtype=np.float32)
         ds = tf.keras.preprocessing.timeseries_dataset_from_array(
@@ -139,11 +142,46 @@ class WindowGenerator:
             sequence_length=self.total_window_size,
             sequence_stride=1,
             shuffle=True,
-            batch_size=32)
+            batch_size=32
+        )
         print('ds: {}'.format(ds))
         print('type(ds): {}'.format(type(ds)))
 
+        # ds = ds.shuffle(1000000, reshuffle_each_iteration=False)
         ds = ds.map(self.split_window)
+        # ds.shuffle(32, reshuffle_each_iteration=False)
+        # ds.batch(32)
+        #
+        # validation_split = 5
+        # test_split = 10
+        #
+        # test_ds = ds.enumerate().filter(lambda x, y: x % test_split == 0).map(lambda x, y: y)
+        # train_ds_tmp = ds.enumerate().filter(lambda x, y: x % test_split != 0).map(lambda x, y: y)
+        #
+        # val_ds = train_ds_tmp.enumerate().filter(lambda x, y: x % validation_split == 0).map(lambda x, y: y)
+        # train_ds = train_ds_tmp.enumerate().filter(lambda x, y: x % validation_split != 0).map(lambda x, y: y)
+
+        #
+        # def is_test(data_):
+        #     return random.random() < test_split
+        #
+        # is_test = lambda x: random.random() < test_split
+        # is_validation = lambda x: (not is_test(x)) and (random.random() < validation_split)
+        # is_train = lambda x: (not is_validation(x)) and (not is_test(x))
+        #
+        # test_ds = ds.filter(is_test)
+        # val_ds = ds.filter(is_validation)
+        # train_ds = ds.filter(is_train)
+        #
+        # val_ds = val_ds.map(self.split_window)
+        # train_ds = train_ds.map(self.split_window)
+        #
+        # val_ds = val_ds.shuffle(100000)
+        # test_ds = test_ds.shuffle(100000)
+
+        # self.train_ds = train_ds
+        # self.val_ds = val_ds
+        # self.test_ds = test_ds
 
         return ds
 
@@ -151,6 +189,7 @@ class WindowGenerator:
     def train(self):
         result = getattr(self, 'train_ds', None)
         if result is None:
+            print('no training dataset, generating')
             self.train_ds = self.make_dataset(self.train_df)
         return self.train_ds
 
@@ -158,6 +197,7 @@ class WindowGenerator:
     def val(self):
         result = getattr(self, 'val_ds', None)
         if result is None:
+            print('no val dataset, generating')
             self.val_ds = self.make_dataset(self.val_df)
         return self.val_ds
 
@@ -165,6 +205,7 @@ class WindowGenerator:
     def test(self):
         result = getattr(self, 'test_ds', None)
         if result is None:
+            print('no test dataset, generating')
             self.test_ds = self.make_dataset(self.test_df)
         return self.test_ds
 
