@@ -120,13 +120,21 @@ def get_moe_model_one_expert(number_categories, number_experts_outputs, output_s
 
     h_expert = BatchNormalization()(h_expert)
 
-    h_expert = Dense(output_steps * number_experts_outputs)(h_expert)
+    # h_expert = Dense(output_steps * number_experts_outputs)(h_expert)
+    #
+    # # h_expert = BatchNormalization()(h_expert)
+    #
+    # # h_expert = Dropout(dp_rate)(h_expert)
+    #
+    # moe_output = Reshape([output_steps, number_experts_outputs], name='moe_output')(h_expert)
+
+    h_expert = Dense(output_steps * number_experts_outputs * number_categories)(h_expert)
 
     # h_expert = BatchNormalization()(h_expert)
 
     # h_expert = Dropout(dp_rate)(h_expert)
 
-    moe_output = Reshape([output_steps, number_experts_outputs], name='moe_output')(h_expert)
+    h_expert = Reshape([output_steps, number_experts_outputs, number_categories])(h_expert)
 
     #############
     # Gate Layer
@@ -137,12 +145,12 @@ def get_moe_model_one_expert(number_categories, number_experts_outputs, output_s
     # experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4])
     print('experts shape: {}'.format(h_expert.shape))
 
-    # h_gate = Reshape([output_steps, 1, number_categories])(h_gate)
+    h_gate = Reshape([output_steps, 1, number_categories])(h_gate)
     # print('h_gate shape: {}'.format(h_gate.shape))
     #
-    # moe_output_ = Multiply()([h_expert, h_gate])
+    moe_output_ = Multiply()([h_expert, h_gate])
     # print('moe_output_ shape: {}'.format(moe_output_.shape))
-    # moe_output = ReducedSum(name='moe_output', axis=3)(moe_output_)
+    moe_output = ReducedSum(name='moe_output', axis=3)(moe_output_)
 
     model = Model(inputs=inputs, outputs=[gate_output, moe_output])
 
