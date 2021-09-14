@@ -10,7 +10,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.metrics import Accuracy, CategoricalAccuracy
 from tensorflow.keras.layers import Input, Lambda, Dense, Flatten, LSTM, Reshape, Dropout, BatchNormalization, Conv1D, \
-    MaxPooling1D, Softmax, Multiply, Add, Layer, Concatenate
+    MaxPooling1D, Softmax, Multiply, Add, Layer, Concatenate, LeakyReLU
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import ModelCheckpoint
@@ -132,6 +132,23 @@ def get_dense_expert_output(input_, number_outputs, output_steps, reg_l2, dp_rat
     return output_
 
 
+def get_refined_lstm_expert_output(input_, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, expert_number):
+    h_expert = LSTM(128,
+                    name='expert_{}_nn'.format(expert_number),
+                    return_sequences=False,
+                    activation=LeakyReLU(),
+                    kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+                    )(input_)
+
+    h_expert = BatchNormalization()(h_expert)
+
+    h_expert = Dense(output_steps * number_experts_outputs)(h_expert)
+
+    h_expert = Reshape([output_steps, number_experts_outputs])(h_expert)
+
+    return h_expert
+
+
 def get_lstm_expert_output(input_, number_outputs, output_steps, reg_l2, dp_rate, expert_number):
     output_ = LSTM(64,
                    name='expert{}_nn'.format(expert_number),
@@ -169,12 +186,13 @@ def get_lstm_expert_output(input_, number_outputs, output_steps, reg_l2, dp_rate
     return output_
 
 
-def get_gate_selector_output(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories, number_outputs,
-                             output_steps):
-    h_expert1 = Reshape([output_steps, number_outputs, 1])(h_expert1)
-    h_expert2 = Reshape([output_steps, number_outputs, 1])(h_expert2)
-    h_expert3 = Reshape([output_steps, number_outputs, 1])(h_expert3)
-    h_expert4 = Reshape([output_steps, number_outputs, 1])(h_expert4)
+def get_gate_selector_output(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+                             number_experts_outputs, output_steps):
+
+    h_expert1 = Reshape([output_steps, number_experts_outputs, 1])(h_expert1)
+    h_expert2 = Reshape([output_steps, number_experts_outputs, 1])(h_expert2)
+    h_expert3 = Reshape([output_steps, number_experts_outputs, 1])(h_expert3)
+    h_expert4 = Reshape([output_steps, number_experts_outputs, 1])(h_expert4)
     experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4])
     print('experts shape: {}'.format(experts.shape))
 

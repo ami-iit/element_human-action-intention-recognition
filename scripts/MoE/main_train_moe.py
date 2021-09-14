@@ -19,7 +19,8 @@ from Utilities import get_dense_model_classification,\
     get_moe_model_four_experts,\
     visualize_model,\
     compile_and_fit_regression,\
-    get_moe_model_one_expert
+    get_moe_model_one_expert,\
+    get_refined_moe_four_expert
 
 from Utilities import save_nn_model
 
@@ -175,13 +176,13 @@ if __name__ == "__main__":
 
     # MoE
     if learn_moe_model:
-        model_moe = get_moe_model_one_expert(number_categories=number_categories,
-                                             number_experts_outputs=number_experts_outputs,
-                                             output_steps=output_steps,
-                                             input_shape=input_shape,
-                                             reg_l1=regularization_l2,
-                                             reg_l2=regularization_l2,
-                                             dp_rate=dropout_rate)
+        model_moe = get_refined_moe_four_expert(number_categories=number_categories,
+                                                number_experts_outputs=number_experts_outputs,
+                                                output_steps=output_steps,
+                                                input_shape=input_shape,
+                                                reg_l1=regularization_l2,
+                                                reg_l2=regularization_l2,
+                                                dp_rate=dropout_rate)
 
         model_moe = compile_model(model_moe)
 

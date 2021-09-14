@@ -16,7 +16,8 @@ from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import ModelCheckpoint
 from CustomLayers import ReducedSum
 from CustomLayers import get_complex_gate_output, get_simple_gate_output
-from CustomLayers import get_lstm_expert_output, get_gate_selector_output, get_dense_expert_output
+from CustomLayers import get_lstm_expert_output, get_gate_selector_output,\
+    get_dense_expert_output, get_refined_lstm_expert_output
 
 
 def get_moe_model_four_experts(number_categories, number_outputs, output_steps, input_shape=None, reg_l2=None, dp_rate=None):
@@ -63,6 +64,29 @@ def get_moe_model_four_experts(number_categories, number_outputs, output_steps, 
     return model
 
 
+def get_refined_moe_four_expert(number_categories, number_experts_outputs, output_steps, input_shape=None, reg_l1=None,
+                                reg_l2=None, dp_rate=None):
+    # input
+    inputs = Input(shape=input_shape)
+    #############
+    # gate NN
+    h_gate = Flatten(name='gate_nn')(inputs)
+    h_gate = get_complex_gate_output(h_gate, number_categories, output_steps, reg_l2, dp_rate)
+    gate_output = Layer(name='gate_output')(h_gate)
+
+    h_expert1 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 1)
+    h_expert2 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 2)
+    h_expert3 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 3)
+    h_expert4 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 4)
+
+    moe_output = get_gate_selector_output(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+                                          number_experts_outputs, output_steps)
+
+    model = Model(inputs=inputs, outputs=[gate_output, moe_output])
+
+    return model
+
+
 def get_moe_model_one_expert(number_categories, number_experts_outputs, output_steps, input_shape=None, reg_l1=None, reg_l2=None, dp_rate=None):
     # input
     inputs = Input(shape=input_shape)
@@ -95,15 +119,15 @@ def get_moe_model_one_expert(number_categories, number_experts_outputs, output_s
 
     h_expert = BatchNormalization()(h_expert)
 
-    h_expert = LSTM(64,
-                    name='expert_nn',
-                    return_sequences=False,
-                    kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
-                    )(inputs)
+    # h_expert = LSTM(64,
+    #                 name='expert_nn',
+    #                 return_sequences=False,
+    #                 kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+    #                 )(h_expert)
 
     # h_expert = Flatten()(inputs)
 
-    h_expert = BatchNormalization()(h_expert)
+    # h_expert = BatchNormalization()(h_expert)
     #
     # h_expert = LSTM(128,
     #                 return_sequences=False,
