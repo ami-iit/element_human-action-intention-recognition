@@ -78,7 +78,7 @@ if __name__ == "__main__":
     # visualization information
     plot_prediction = True
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
-    motion_prediction_time_idx = 1  # ! indexes that have been used for the prediciotn timings
+    motion_prediction_time_idx = 10  # ! indexes that have been used for the prediciotn timings
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
     plot_indices = np.array([])
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     motion_prediction_port = yarp.BufferedPortVector()
     motion_prediction_port.open("/motionPrediction:o")
 
-    ## model, data
+    # model, data
     model = load_model_from_file(file_path=model_path, file_name=model_name)
 
     # features_list = ['jLeftKnee_roty_val', 'jRightKnee_roty_val', 'jLeftKnee_roty_vel', 'jRightKnee_roty_vel']
@@ -194,9 +194,9 @@ if __name__ == "__main__":
             # argMax = np.argmax(pred)
 
             if plot_prediction:
-                # plot_prediction_result.action(prediction=predicted_actions,
-                #                               labels=labels,
-                #                               prediction_time_idx=action_prediction_time_idx)
+                plot_prediction_result.action(prediction=predicted_actions,
+                                              labels=labels,
+                                              prediction_time_idx=action_prediction_time_idx)
                 # plot_prediction_result.motion(time=count,
                 #                               inputs=human_data_Tx,
                 #                               prediction=predictions[1],

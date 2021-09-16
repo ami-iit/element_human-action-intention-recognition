@@ -77,7 +77,7 @@ class GetHumanData(threading.Thread):
 if __name__ == "__main__":
     # parameters
 
-    model_name = 'model_CNN'
+    model_name = 'model_LSTM'
     model_path = 'models'
     data_path = '/home/kourosh/icub_ws/external/DataSet/HumanDataForActionMotionPrediction/' \
                 'ActionRecognition/carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
@@ -156,6 +156,7 @@ if __name__ == "__main__":
     # human_data.resize(144)
     count = 0
     while True:
+        tik_total = current_milli_time()
         human_kin_dyn = human_kin_dyn_port.read(False)
         # bot = yarp.Bottle(human_kin_dyn)
         # print(human_kin_dyn)
@@ -186,7 +187,6 @@ if __name__ == "__main__":
             # print('prediction time: {} ms', tok - tik)
             # print('prediction: {}', prediction)
 
-
             ## STREAM DATA
             bottle = prediction_port.prepare()
             bottle.clear()
@@ -203,10 +203,16 @@ if __name__ == "__main__":
 
             data_Tx.pop(0)
             # argMax = np.argmax(pred)
-            print("----- Predicted Action :{} ------, inference time[ms]: {}".format(labels[np.argmax(pred)], tok - tik))
 
             if PLOT_PREDICTION:
                 plot_prediction(pred, labels=labels)
+
+            tok_total = current_milli_time()
+            print(" Predicted Action :{} , inference time[ms]: {} , total time: {}".format(
+                labels[np.argmax(pred)],
+                (tok - tik),
+                (tok_total - tik_total)))
+
         # print("----------")
 
         # print("human_data shape: ", human_data.shape)

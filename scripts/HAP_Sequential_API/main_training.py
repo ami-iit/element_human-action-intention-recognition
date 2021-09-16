@@ -25,8 +25,8 @@ from Utilities import visualize_model
 mpl.rcParams['figure.figsize'] = (8, 6)
 mpl.rcParams['axes.grid'] = False
 DO_DATA_PREPROCESSING = False
-LEARN_DENSE_MODEL = False
-LEARN_CNN_MODEL = False
+LEARN_DENSE_MODEL = True
+LEARN_CNN_MODEL = True
 LEARN_LSTM_MODEL = True
 DO_PERFORMANCE_ANALYSIS = True
 NORMALIZE_INPUT = True
@@ -243,7 +243,6 @@ if __name__ == "__main__":
     multi_performance = {}
 
     # DENSE
-
     if LEARN_DENSE_MODEL:
 
         model_dense = get_dense_model(NUMBER_CATEGORIES, input_shape, regularization_l2, dropout_rate)
