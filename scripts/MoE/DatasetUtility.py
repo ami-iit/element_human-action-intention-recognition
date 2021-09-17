@@ -215,7 +215,7 @@ class PlotInferenceResults:
         for i in prediction_time_idx:
             bars.append(prediction[i, :])
             colors.append((0, 0, 1, (1 / (i + 1)) ** (1 / 4)))
-        print('prediction bars: {}'.format(bars))
+        # print('prediction bars: {}'.format(bars))
         width = 0.25
         sampling_time = 0.04
         x0 = np.arange(0, 2 * len(labels), 2)

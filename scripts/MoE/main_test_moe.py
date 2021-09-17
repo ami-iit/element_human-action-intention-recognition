@@ -76,7 +76,7 @@ if __name__ == "__main__":
     test_percentage = 1.0 - (train_percentage + val_percentage)  # ! the amount of data at end for testing
 
     # visualization information
-    plot_prediction = True
+    plot_prediction = False
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
     motion_prediction_time_idx = 10  # ! indexes that have been used for the prediciotn timings
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
@@ -95,16 +95,16 @@ if __name__ == "__main__":
     rf.setDefaultConfigFile("default.ini")
 
     human_kin_dyn_port = yarp.BufferedPortBottle()
-    human_kin_dyn_port.open("/humanKinDyn:i")
-    is_connected = yarp.Network.connect("/humanDataAcquisition/humanKinDyn:o", "/humanKinDyn:i")
+    human_kin_dyn_port.open("/test_moe/humanKinDyn:i")
+    is_connected = yarp.Network.connect("/humanDataAcquisition/humanKinDyn:o", "/test_moe/humanKinDyn:i")
     # is_connected = yarp.Network.isConnected("/humanDataAcquisition/humanKinDyn:o", "/humanKinDyn:i")
     print("port is connected: {}".format(is_connected))
     yarp.delay(0.5)
 
     action_prediction_port = yarp.BufferedPortVector()
-    action_prediction_port.open("/actionRecognition:o")
+    action_prediction_port.open("/test_moe/actionRecognition:o")
     motion_prediction_port = yarp.BufferedPortVector()
-    motion_prediction_port.open("/motionPrediction:o")
+    motion_prediction_port.open("/test_moe/motionPrediction:o")
 
     # model, data
     model = load_model_from_file(file_path=model_path, file_name=model_name)
