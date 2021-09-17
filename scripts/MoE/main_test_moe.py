@@ -67,7 +67,7 @@ if __name__ == "__main__":
     gravity = 9.81
     user_weight_ = user_mass * gravity
 
-    output_steps = 25  # ! at the moment only the value `1` is possible
+    output_steps = 60  # ! at the moment only the value `1` is possible
     shift = output_steps  # ! offset, e.g., 10
     input_width = 5  # ! default: 10
     max_subplots = 5
@@ -105,6 +105,8 @@ if __name__ == "__main__":
     action_prediction_port.open("/test_moe/actionRecognition:o")
     motion_prediction_port = yarp.BufferedPortVector()
     motion_prediction_port.open("/test_moe/motionPrediction:o")
+    motion_prediction_all_port = yarp.BufferedPortVector()
+    motion_prediction_all_port.open("/test_moe/motionPredictionAll:o")
 
     # model, data
     model = load_model_from_file(file_path=model_path, file_name=model_name)
@@ -159,8 +161,10 @@ if __name__ == "__main__":
             # ! stream prediction data
             action_recognition_bottle = action_prediction_port.prepare()
             motion_prediction_bottle = motion_prediction_port.prepare()
+            motion_prediction_all_bottle = motion_prediction_all_port.prepare()
             action_recognition_bottle.clear()
             motion_prediction_bottle.clear()
+            motion_prediction_all_bottle.clear()
 
             predicted_actions = np.float64(np.array(predictions[0]))
             predicted_motion = get_denormalized_features(
@@ -169,6 +173,16 @@ if __name__ == "__main__":
                 user_weight=user_mass * gravity,
                 data_mean=train_mean,
                 data_std=train_std)
+
+            predicted_motion_all = []
+            for i in range(output_steps):
+                tmp = get_denormalized_features(
+                    np.float64(np.array(predictions[1]))[:, i, :],
+                    wrench_indices=wrench_indices,
+                    user_weight=user_mass * gravity,
+                    data_mean=train_mean,
+                    data_std=train_std)
+                predicted_motion_all.append(tmp.copy())
 
             predicted_motion = predicted_motion[0:66]
 
@@ -187,6 +201,11 @@ if __name__ == "__main__":
             for i in range(np.size(predicted_motion)):
                 motion_prediction_bottle.push_back(predicted_motion[i])
 
+            for i in range(np.shape(predicted_motion_all)[0]):
+                for j in range(np.shape(predicted_motion_all)[1]):
+                    motion_prediction_all_bottle.push_back(predicted_motion_all[i][j])
+
+            motion_prediction_all_port.write()
             action_prediction_port.write()
             motion_prediction_port.write()
 
