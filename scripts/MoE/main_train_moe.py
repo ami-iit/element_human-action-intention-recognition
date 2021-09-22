@@ -42,7 +42,7 @@ if __name__ == "__main__":
     verbose = False
 
     # configurations for the datasets
-    model_name = 'gate_model_trial'
+    model_name = 'model'
     models_path = '__untrack/models'
     data_path = '/home/kourosh/icub_ws/external/DataSet/' \
                 'HumanDataForActionMotionPrediction/ActionRecognition/' \
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     user_mass = 79.0
     gravity = 9.81
 
-    output_steps = 60  # ! at the moment only the value `1` is possible
+    output_steps = 25  # ! at the moment only the value `1` is possible
     shift = output_steps  # ! offset, e.g., 10
     input_width = 5  # ! default: 10
     max_subplots = 5

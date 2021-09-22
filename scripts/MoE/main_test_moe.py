@@ -36,23 +36,39 @@ def get_denormalized_features(normalized_data, wrench_indices, user_weight, data
     denormalized_data = []
     data_length = normalized_data.shape[-1]
 
-    for i in range(data_length):
-        denormalized_data.append(normalized_data[0, i])
+    # for i in range(data_length):
+    #     denormalized_data.append(normalized_data[0, i])
 
-    for i in range(data_length):
-        denormalized_data[i] = denormalized_data[i] * data_std[i] + data_mean[i]
+    denormalized_data = np.reshape(normalized_data, (-1))
 
+    # data_tmp = denormalized_data.copy()
+    # for i in range(data_length):
+    #     denormalized_data[i] = denormalized_data[i] * data_std[i] + data_mean[i]
+
+    denormalized_data = denormalized_data * np.array(data_std[:66]) + np.array(data_mean[:66])
+    # data_tmp = data_tmp*np.array(data_std[:66]) + np.array(data_mean[:66])
+
+    # print('denormalized_data: {}'.format(denormalized_data))
+    # print('data_tmp: {}'.format(data_tmp))
+
+    # print(asghar)
     # for i in wrench_indices:
     #     denormalized_data[i] = denormalized_data[i] * user_weight
 
+    return denormalized_data
+
+def get_denormalized_features_all_predictions(normalized_data, data_mean, data_std):
+    shape_ = np.shape(np.float64(np.array(predictions[1])))
+    denormalized_data = np.reshape(np.float64(np.array(predictions[1])), (shape_[1], shape_[2]))
+    denormalized_data = denormalized_data * np.array(data_std[:66]) + np.array(data_mean[:66])
     return denormalized_data
 
 
 # def main():
 if __name__ == "__main__":
     # parameters
-    model_name = 'gate_model_trial_MoE'
-    model_path = '__untrack/models'
+    model_name = 'model_MoE'
+    model_path = '__untrack/models/horizon_25steps_expert_66lstm'
     data_path = '/home/kourosh/icub_ws/external/DataSet/' \
                 'HumanDataForActionMotionPrediction/ActionRecognition/' \
                 'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
@@ -67,7 +83,7 @@ if __name__ == "__main__":
     gravity = 9.81
     user_weight_ = user_mass * gravity
 
-    output_steps = 60  # ! at the moment only the value `1` is possible
+    output_steps = 25  # ! at the moment only the value `1` is possible
     shift = output_steps  # ! offset, e.g., 10
     input_width = 5  # ! default: 10
     max_subplots = 5
@@ -127,6 +143,7 @@ if __name__ == "__main__":
 
     data_Tx = []
     count = 0
+    computation_time = []
     while True:
         tik_total = current_milli_time()
         human_kin_dyn = human_kin_dyn_port.read(False)
@@ -154,6 +171,7 @@ if __name__ == "__main__":
             predictions = model(human_data_Tx, training=False)
 
             tok = current_milli_time()
+            t1 = current_milli_time()
 
             # print('prediction time: {} ms', tok - tik)
             # print('prediction: {}', prediction)
@@ -165,26 +183,36 @@ if __name__ == "__main__":
             action_recognition_bottle.clear()
             motion_prediction_bottle.clear()
             motion_prediction_all_bottle.clear()
+            t2 = current_milli_time()
 
             predicted_actions = np.float64(np.array(predictions[0]))
-            predicted_motion = get_denormalized_features(
-                np.float64(np.array(predictions[1]))[:, motion_prediction_time_idx, :],
-                wrench_indices=wrench_indices,
-                user_weight=user_mass * gravity,
+            # predicted_motion = get_denormalized_features(
+            #     np.float64(np.array(predictions[1]))[:, motion_prediction_time_idx, :],
+            #     wrench_indices=wrench_indices,
+            #     user_weight=user_mass * gravity,
+            #     data_mean=train_mean,
+            #     data_std=train_std)
+
+            t3 = current_milli_time()
+
+            # predicted_motion_all = []
+            # for i in range(output_steps):
+            #     tmp = get_denormalized_features(
+            #         np.float64(np.array(predictions[1]))[:, i, :],
+            #         wrench_indices=wrench_indices,
+            #         user_weight=user_mass * gravity,
+            #         data_mean=train_mean,
+            #         data_std=train_std)
+            #     predicted_motion_all.append(tmp.copy())
+
+            predicted_motion_all = get_denormalized_features_all_predictions(
+                np.float64(np.array(predictions[1])),
                 data_mean=train_mean,
                 data_std=train_std)
+            t4 = current_milli_time()
 
-            predicted_motion_all = []
-            for i in range(output_steps):
-                tmp = get_denormalized_features(
-                    np.float64(np.array(predictions[1]))[:, i, :],
-                    wrench_indices=wrench_indices,
-                    user_weight=user_mass * gravity,
-                    data_mean=train_mean,
-                    data_std=train_std)
-                predicted_motion_all.append(tmp.copy())
-
-            predicted_motion = predicted_motion[0:66]
+            # predicted_motion = predicted_motion[0:66]
+            predicted_motion =predicted_motion_all[motion_prediction_time_idx]
 
             if np.size(predicted_actions.shape) > 2:
                 predicted_actions = np.reshape(predicted_actions,
@@ -192,6 +220,7 @@ if __name__ == "__main__":
             else:
                 predicted_actions = np.reshape(predicted_actions,
                                                (predicted_actions.shape[0], predicted_actions.shape[1]))
+            t5 = current_milli_time()
 
             # print("pred[0]: ", pred[0])
             for i in range(predicted_actions.shape[0]):
@@ -208,6 +237,7 @@ if __name__ == "__main__":
             motion_prediction_all_port.write()
             action_prediction_port.write()
             motion_prediction_port.write()
+            t6 = current_milli_time()
 
             data_Tx.pop(0)
             # argMax = np.argmax(pred)
@@ -241,6 +271,10 @@ if __name__ == "__main__":
                 (tok_total - tik_total),
                 action_,
                 action_prob_))
+            print('t2-t1: {} , t3-t2: {} t4-t3: {} t5-t4: {} t6-t5: {} '.format((t2-t1), (t3-t2),(t4-t3),(t5-t4),(t6-t5) ))
+
+            # computation_time.append((tok_total-tik_total))
+
 
         # print("human_data shape: ", human_data.shape)
         count += 1

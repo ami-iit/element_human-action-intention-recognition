@@ -133,7 +133,7 @@ def get_dense_expert_output(input_, number_outputs, output_steps, reg_l2, dp_rat
 
 
 def get_refined_lstm_expert_output(input_, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, expert_number):
-    h_expert = LSTM(128,
+    h_expert = LSTM(66,
                     name='expert_{}_nn'.format(expert_number),
                     return_sequences=False,
                     activation=LeakyReLU(),

@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -194,10 +195,10 @@ def current_milli_time():
 class PlotInferenceResults:
     def __init__(self):
         self.plot_action = plt.figure(1, figsize=(8, 6))
-        self.axs_action = self.plot_action.subplots(1)
+        self.fig_action, self.axs_action = self.plot_action.subplots(1)
 
         self.plot_motion = plt.figure(2, figsize=(8, 8))
-        self.axs_motion = self.plot_motion.subplots(2)
+        self.fig_motion, self.axs_motion = self.plot_motion.subplots(2)
 
         self.input_time = []
         self.output_time = []
@@ -395,6 +396,11 @@ class PlotInferenceResults:
         # else:
         #     self.input_time.append(time)
         #
+        if len(self.input_time)>50:
+            self.input_time.pop(0)
+            self.output_time.pop(0)
+            self.input_states.pop(0)
+            self.output_prediction.pop(0)
         max_n = len(plot_indices)
 
         # plot
@@ -408,15 +414,27 @@ class PlotInferenceResults:
             # input_time = input_time.reshape(t_x, 1)
             # # output_time = np.array(range(1, t_y + 1)) + time
             # output_time = output_time.reshape(t_y, 1)
-            self.axs_motion[n].plot(self.input_time, self.input_states, 'b', linewidth=4, markersize=12)
 
+            total_data = np.shape(self.output_time)[0]
             for i in range(np.shape(self.output_time)[0]):
                 if True:  # self.output_time[i][-1] > time:
                     # self.axs_motion[n].plot(self.output_time[i], self.output_prediction[i], 'r')
                     # print('output timings: current time: {}, future horizon: {}'.format(time, self.output_time[i]))
-                    self.axs_motion[n].scatter(self.output_time[i], self.output_prediction[i],
-                                               marker='X', edgecolors='k', label='Predictions',
-                                               c='#ff7f0e', s=64, zorder=-10, alpha=0.7)
+                    alpha = i / total_data
+                    # print('alpha: {}'.format(alpha))
+                    self.axs_motion[n].plot(self.output_time[i], self.output_prediction[i], color=(alpha, 0.2, 0.2, alpha))
+                                               # marker='X', edgecolors='k', label='Predictions',
+                                               # c='#ff7f0e', s=64, zorder=-10, alpha=0.7)
+                    self.axs_motion[n].scatter(self.output_time[i][0], self.output_prediction[i][0],
+                                               marker='o',
+                                               color=(alpha, 0.2, 0.2, alpha),
+                                               zorder=2)
+                    self.axs_motion[n].scatter(self.output_time[i][-1], self.output_prediction[i][-1],
+                                               marker='o',
+                                               color=(alpha, 0.2, 0.2, alpha),
+                                               zorder=2)
+
+            self.axs_motion[n].plot(self.input_time, self.input_states, 'b', linewidth=4, markersize=12)
 
             # plt.scatter(output_time, prediction[:, :, n_index],
             #             marker='X', edgecolors='k', label='Predictions',
