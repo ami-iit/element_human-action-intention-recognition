@@ -88,7 +88,6 @@ if __name__ == "__main__":
                                                                    max_subplots=max_subplots,
                                                                    user_weight=user_weight_)
 
-    input_feature_length = len(train_mean)
     for feature in plot_keys:
         plot_indices = np.append(plot_indices, df.columns.get_loc(feature))
 
@@ -144,12 +143,12 @@ if __name__ == "__main__":
             human_kin_dyn_prediction_data = np.reshape(human_kin_dyn_prediction_data, (-1, number_motion_output))
             last_human_kin_dyn_prediction_data = human_kin_dyn_prediction_data.copy()
 
-        if last_human_kin_dyn_prediction_data is not None and (last_human_kin_dyn_data is not None):
-            plot_prediction_result.motion(time=count,
-                                          inputs=last_human_kin_dyn_data,
-                                          prediction=last_human_kin_dyn_prediction_data,
-                                          plot_indices=plot_indices,
-                                          plot_columns=plot_keys)
+        # if last_human_kin_dyn_prediction_data is not None and (last_human_kin_dyn_data is not None):
+        #     plot_prediction_result.motion(time=count,
+        #                                   inputs=last_human_kin_dyn_data,
+        #                                   prediction=last_human_kin_dyn_prediction_data,
+        #                                   plot_indices=plot_indices,
+        #                                   plot_columns=plot_keys)
 
             # print('to plot human actions ...', last_human_kin_dyn_prediction_data, last_human_kin_dyn_data)
             # print(asghar)

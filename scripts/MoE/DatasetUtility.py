@@ -194,16 +194,25 @@ def current_milli_time():
 
 class PlotInferenceResults:
     def __init__(self):
-        self.plot_action = plt.figure(1, figsize=(8, 6))
-        self.fig_action, self.axs_action = self.plot_action.subplots(1)
-
-        self.plot_motion = plt.figure(2, figsize=(8, 8))
-        self.fig_motion, self.axs_motion = self.plot_motion.subplots(2)
-
+        # variables
         self.input_time = []
         self.output_time = []
         self.input_states = []
         self.output_prediction = []
+
+        # human action plot
+        self.plot_action = plt.figure(1, figsize=(8, 6))
+        self.fig_action, self.axs_action = self.plot_action.subplots(1)
+
+
+
+
+
+        # human motion plot
+        self.plot_motion = plt.figure(2, figsize=(8, 8))
+        self.fig_motion, self.axs_motion = self.plot_motion.subplots(2)
+
+
         return
 
     def action(self, prediction, labels, prediction_time_idx):
@@ -311,9 +320,6 @@ class PlotInferenceResults:
         plt.tight_layout()
 
         return
-
-
-
 
 class PlotInferenceResults:
     def __init__(self):
