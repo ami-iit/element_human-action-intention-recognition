@@ -323,6 +323,8 @@ class PlotInferenceResults:
 
 class PlotInferenceResults:
     def __init__(self):
+        font = {'size': 15}
+        plt.rc('font', **font)
         self.plot_action = plt.figure(1, figsize=(8, 6))
         self.axs_action = self.plot_action.subplots(1)
 
@@ -357,10 +359,10 @@ class PlotInferenceResults:
                                    label='t + {} [sec]'.format(prediction_time_idx[i] * sampling_time))
             x = x + width
 
-        self.axs_action.set_title('human action prediction')
-        self.axs_action.set(xlabel='human actions')
-        self.axs_action.set(ylabel='Probability')
-        self.axs_action.legend(loc='upper right')
+        self.axs_action.set_title('human action prediction', fontsize=16)
+        self.axs_action.set_xlabel('human actions')
+        self.axs_action.set_ylabel('Probability')
+        self.axs_action.legend(loc='upper left')
         plt.xticks(x0, labels)
         plt.ylim([0, 1])
         plt.pause(0.001)
