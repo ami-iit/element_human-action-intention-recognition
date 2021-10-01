@@ -31,19 +31,19 @@ rf.setDefaultConfigFile("default.ini")
 
 human_kin_dyn_port = yarp.BufferedPortBottle()
 human_kin_dyn_port.open("/test_visualization/humanKinDyn:i")
-action_prediction_port = yarp.BufferedPortVector()
-action_prediction_port.open("/test_visualization/actionRecognition:i")
+# action_prediction_port = yarp.BufferedPortVector()
+# action_prediction_port.open("/test_visualization/actionRecognition:i")
 motion_prediction_port = yarp.BufferedPortVector()
 motion_prediction_port.open("/test_visualization/motionPredictionAll:i")
 
 is_connected_human_kindyn = yarp.Network.connect("/humanDataAcquisition/humanKinDyn:o",
                                                  "/test_visualization/humanKinDyn:i")
-is_connected_action_recognition = yarp.Network.connect("/test_moe/actionRecognition:o",
-                                                       "/test_visualization/actionRecognition:i")
+# is_connected_action_recognition = yarp.Network.connect("/test_moe/actionRecognition:o",
+#                                                        "/test_visualization/actionRecognition:i")
 is_connected_motion_prediction = yarp.Network.connect("/test_moe/motionPredictionAll:o",
                                                       "/test_visualization/motionPredictionAll:i")
 print("human kindyn port is connected: {}".format(is_connected_human_kindyn))
-print("action recognition port is connected: {}".format(is_connected_action_recognition))
+# print("action recognition port is connected: {}".format(is_connected_action_recognition))
 print("motion prediction port is connected: {}".format(is_connected_motion_prediction))
 yarp.delay(0.5)
 
@@ -58,13 +58,16 @@ class PlotInferenceResults:
         font = {'size': 15}
         matplotlib.rc('font', **font)
 
+        self.xmin = 0.0
+        self.xmax = 10.0
+
         self.f0 = figure(num=0, figsize=(12, 8))  # , dpi = 100)
         # self.f0.title("joint value vs time", fontsize=12)
         self.ax01 = self.f0.subplots() # 2grid((1, 1), (0, 0))
         # self.ax02 = subplots()
         self.ax01.set_title('joint value vs time', fontsize=16)
         self.ax01.set_ylim(-2, 2)
-        self.ax01.set_xlim(0, 5.0)
+        self.ax01.set_xlim(self.xmin, self.xmax)
         self.ax01.grid(True)
         self.ax01.set_xlabel("time[sec]")
         self.ax01.set_ylabel("right-knee-y")
@@ -78,6 +81,22 @@ class PlotInferenceResults:
         self.p2, = self.ax01.plot(self.t_prediction, self.joint_predictions, 'o', color='k', markersize=4, alpha=0.1)
 
         # bar plot
+        # prediction_time_idx = [0, 12, 24]
+        # labels = ['None', 'Rotating', 'Standing', 'Walking']
+        #
+        # bars = []
+        # colors = []
+        # # print('prediction bars: {}'.format(bars))
+        # width = 0.25
+        # sampling_time = 0.04
+        # x0 = np.arange(0, 2 * len(labels), 2)
+        # x = x0 - (len(prediction_time_idx) // 2) * width
+        #
+        # for i in range(len(prediction_time_idx)):
+        #     self.axs_action.bar(x, bars[i], width=width, color=colors[i],
+        #                         label='t + {} [sec]'.format(prediction_time_idx[i] * sampling_time))
+        #     x = x + width
+        #
         # self.f1 = figure(num=1, figsize=(12, 8))  # , dpi = 100)
         # self.ax11 = self.f1.subplots() # 2grid((1, 1), (0, 0))
         # self.ax11.set_title('human action prediction')
@@ -87,17 +106,13 @@ class PlotInferenceResults:
         # self.ax11.set_ylim(0, 1.0)
         # width = 0.25
         # sampling_time = 0.04
-        # x0 = np.arange(0, 2 * len(labels), 2)
-        # x = x0 - (len(prediction_time_idx) // 2) * width
+        # self.t_prediction = np.zeros(0)
+        # self.joint_predictions = np.zeros(0)
+        # # self.p2 = self.ax01.scatter(self.t_prediction, self.joint_predictions)
+        # self.p2, = self.ax01.plot(self.t_prediction, self.joint_predictions, 'o', color='k', markersize=4, alpha=0.1)
+        ######################
+        ######################
 
-
-
-
-
-
-
-        self.xmin = 0.0
-        self.xmax = 5.0
         self.x = 0.0
 
         # related to the data
@@ -107,7 +122,7 @@ class PlotInferenceResults:
         self.human_kin_dyn_data = []
 
         self.prediction_horizon = 25
-        self.time_step = 0.04
+        self.time_step = 0.2
         self.output_size = 66
 
 
@@ -160,9 +175,10 @@ class PlotInferenceResults:
         self.p2.set_data(self.t_prediction, self.joint_predictions)
         self.p1.set_data(self.t, self.joint_values)
 
-        if time_now >= self.xmax - 1.00:
-            self.p1.axes.set_xlim(time_now - self.xmax + 1.0, time_now + 1.0)
-            self.p2.axes.set_xlim(time_now - self.xmax + 1.0, time_now + 1.0)
+        plot_front_time = 5.0
+        if time_now >= self.xmax - plot_front_time:
+            self.p1.axes.set_xlim(time_now - self.xmax + plot_front_time, time_now + plot_front_time)
+            self.p2.axes.set_xlim(time_now - self.xmax + plot_front_time, time_now + plot_front_time)
 
         # human_kin_dyn = human_kin_dyn_port.read(False)
         # if human_kin_dyn is not None:

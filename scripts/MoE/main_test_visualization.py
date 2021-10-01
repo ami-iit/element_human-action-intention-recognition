@@ -43,7 +43,7 @@ if __name__ == "__main__":
     test_percentage = 1.0 - (train_percentage + val_percentage)  # ! the amount of data at end for testing
 
     # visualization information
-    action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
+    action_prediction_time_idx = [0, 13, 24]  # ! indexes that have been used for plotting the prediction timings
     motion_prediction_time_idx = 10  # ! indexes that have been used for the prediciotn timings
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
     plot_indices = np.array([])

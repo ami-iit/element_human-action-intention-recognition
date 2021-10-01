@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # visualization information
     plot_prediction = False
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
-    motion_prediction_time_idx = 10  # ! indexes that have been used for the prediciotn timings
+    motion_prediction_time_idx = 3  # ! indexes that have been used for the prediciotn timings
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
     plot_indices = np.array([])
 
