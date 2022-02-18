@@ -7,7 +7,7 @@ import copy
 import yarp
 import matplotlib.animation as animation
 import time
-
+import math
 from matplotlib.pylab import *
 from mpl_toolkits.axes_grid1 import host_subplot
 
@@ -61,16 +61,16 @@ class PlotInferenceResults:
         self.xmin = 0.0
         self.xmax = 10.0
 
-        self.f0 = figure(num=0, figsize=(12, 8))  # , dpi = 100)
+        self.f0 = figure(num=0, figsize=(9, 6))  # , dpi = 100)
         # self.f0.title("joint value vs time", fontsize=12)
         self.ax01 = self.f0.subplots() # 2grid((1, 1), (0, 0))
         # self.ax02 = subplots()
-        self.ax01.set_title('joint value vs time', fontsize=16)
-        self.ax01.set_ylim(-2, 2)
+        # self.ax01.set_title('joint value vs time', fontsize=16)
+        self.ax01.set_ylim(-20, 100)
         self.ax01.set_xlim(self.xmin, self.xmax)
         self.ax01.grid(True)
-        self.ax01.set_xlabel("time[sec]")
-        self.ax01.set_ylabel("right-knee-y")
+        self.ax01.set_xlabel("time[sec]", fontsize=20)
+        self.ax01.set_ylabel("right-knee-y [deg]", fontsize=20)
         self.t = np.zeros(0)
         self.t0 = current_milli_time() / 1000.0  # seconds
         self.joint_values = np.zeros(0)
@@ -122,7 +122,7 @@ class PlotInferenceResults:
         self.human_kin_dyn_data = []
 
         self.prediction_horizon = 25
-        self.time_step = 0.2
+        self.time_step = 0.04
         self.output_size = 66
 
 
@@ -157,9 +157,9 @@ class PlotInferenceResults:
 
             new_time_prediction = [(time_now + i * self.time_step) for i in range(self.prediction_horizon)]
             self.t_prediction = append(self.t_prediction, new_time_prediction)
-            self.joint_predictions = append(self.joint_predictions, human_kin_dyn_prediction_data)
+            self.joint_predictions = append(self.joint_predictions, np.degrees(human_kin_dyn_prediction_data))
 
-            print('prediction shape: {}'.format(np.shape(human_kin_dyn_prediction_data)))
+            # print('prediction shape: {}'.format(np.shape(human_kin_dyn_prediction_data)))
             #
             # self.p2.scatter(self.output_time[i][0], self.output_prediction[i][0],
             #                            marker='o',
@@ -167,7 +167,7 @@ class PlotInferenceResults:
             #                            zorder=2)
 
         # handle data to feed to plots
-        self.joint_values = append(self.joint_values, tmp_joint)
+        self.joint_values = append(self.joint_values, np.degrees(tmp_joint))
         self.t = append(self.t, time_now)
 
         self.x += 0.05
