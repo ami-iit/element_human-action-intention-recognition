@@ -3,7 +3,7 @@ import os
 import datetime
 import numpy as np
 import copy
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import yarp
 import matplotlib.animation as animation
 import time
@@ -16,10 +16,13 @@ from mpl_toolkits.axes_grid1 import host_subplot
 def current_milli_time():
     return round(time.time() * 1000)
 
+
 # parameters:
 number_motion_output = 66
 
-
+##
+labels = ['None', 'Rotating', 'Standing', 'Walking']
+number_categories = len(labels)
 
 # YARP related code
 if not yarp.Network.checkNetwork():
@@ -29,23 +32,27 @@ rf = yarp.ResourceFinder()
 rf.setDefaultContext("myContext")
 rf.setDefaultConfigFile("default.ini")
 
-human_kin_dyn_port = yarp.BufferedPortBottle()
-human_kin_dyn_port.open("/test_visualization/humanKinDyn:i")
-# action_prediction_port = yarp.BufferedPortVector()
-# action_prediction_port.open("/test_visualization/actionRecognition:i")
-motion_prediction_port = yarp.BufferedPortVector()
-motion_prediction_port.open("/test_visualization/motionPredictionAll:i")
+# human_kin_dyn_port = yarp.BufferedPortBottle()
+# human_kin_dyn_port.open("/test_visualization/humanKinDyn:i")
+action_prediction_port = yarp.BufferedPortVector()
+action_prediction_port.open("/onlineAnimation/actionRecognition:i")
+# motion_prediction_port = yarp.BufferedPortVector()
+# motion_prediction_port.open("/test_visualization/motionPredictionAll:i")
 
-is_connected_human_kindyn = yarp.Network.connect("/humanDataAcquisition/humanKinDyn:o",
-                                                 "/test_visualization/humanKinDyn:i")
+# is_connected_human_kindyn = yarp.Network.connect("/humanDataAcquisition/humanKinDyn:o",
+#                                                  "/test_visualization/humanKinDyn:i")
 # is_connected_action_recognition = yarp.Network.connect("/test_moe/actionRecognition:o",
 #                                                        "/test_visualization/actionRecognition:i")
-is_connected_motion_prediction = yarp.Network.connect("/test_moe/motionPredictionAll:o",
-                                                      "/test_visualization/motionPredictionAll:i")
-print("human kindyn port is connected: {}".format(is_connected_human_kindyn))
+# is_connected_motion_prediction = yarp.Network.connect("/test_moe/motionPredictionAll:o",
+#                                                       "/test_visualization/motionPredictionAll:i")
+is_connected_human_action_prediction = yarp.Network.connect("/test_moe/actionRecognition:o",
+                                                            "/onlineAnimation/actionRecognition:i")
+
+# print("human kindyn port is connected: {}".format(is_connected_human_kindyn))
 # print("action recognition port is connected: {}".format(is_connected_action_recognition))
-print("motion prediction port is connected: {}".format(is_connected_motion_prediction))
+print("action prediction port is connected: {}".format(is_connected_human_action_prediction))
 yarp.delay(0.5)
+
 
 # fig, ax = plt.subplots()
 # x = np.arange(0, 2 * np.pi, 0.01)
@@ -55,30 +62,54 @@ yarp.delay(0.5)
 class PlotInferenceResults:
     def __init__(self):
         # related to figure
-        font = {'size': 15}
+        font = {'size': 16}
         matplotlib.rc('font', **font)
 
         self.xmin = 0.0
-        self.xmax = 10.0
+        self.xmax = 6.5
+        self.plot_front_time = 1.2
+        self.f0 = figure(num=0, figsize=(5.5, 3.3))#, dpi=100)
 
-        self.f0 = figure(num=0, figsize=(9, 6))  # , dpi = 100)
         # self.f0.title("joint value vs time", fontsize=12)
-        self.ax01 = self.f0.subplots() # 2grid((1, 1), (0, 0))
+        self.ax01 = self.f0.subplots()  # 2grid((1, 1), (0, 0))
         # self.ax02 = subplots()
         # self.ax01.set_title('joint value vs time', fontsize=16)
-        self.ax01.set_ylim(-20, 100)
+        self.ax01.set_ylim(0, 1)
         self.ax01.set_xlim(self.xmin, self.xmax)
         self.ax01.grid(True)
-        self.ax01.set_xlabel("time[sec]", fontsize=20)
-        self.ax01.set_ylabel("right-knee-y [deg]", fontsize=20)
         self.t = np.zeros(0)
         self.t0 = current_milli_time() / 1000.0  # seconds
-        self.joint_values = np.zeros(0)
-        self.p1, = self.ax01.plot(self.t, self.joint_values, 'b-', linewidth=5)
+
         self.t_prediction = np.zeros(0)
-        self.joint_predictions = np.zeros(0)
-        # self.p2 = self.ax01.scatter(self.t_prediction, self.joint_predictions)
-        self.p2, = self.ax01.plot(self.t_prediction, self.joint_predictions, 'o', color='k', markersize=4, alpha=0.1)
+        # action 0
+        self.prediction_now0 = np.zeros(0)
+        self.action_predictions0 = np.zeros(0)
+        self.p1, = self.ax01.plot(self.t, self.prediction_now0, 'k-', linewidth=5, label='{}'.format(labels[0]))
+        self.p2, = self.ax01.plot(self.t_prediction, self.action_predictions0, 'o', color='k', markersize=4, alpha=0.05)
+
+        # action 1
+        self.prediction_now1 = np.zeros(0)
+        self.action_predictions1 = np.zeros(0)
+        self.p3, = self.ax01.plot(self.t, self.prediction_now1, 'b-', linewidth=5, label='{}'.format(labels[1]))
+        self.p4, = self.ax01.plot(self.t_prediction, self.action_predictions1, 'o', color='b', markersize=4, alpha=0.05)
+
+        # action 2
+        self.prediction_now2 = np.zeros(0)
+        self.action_predictions2 = np.zeros(0)
+        self.p5, = self.ax01.plot(self.t, self.prediction_now2, 'r-', linewidth=5, label='{}'.format(labels[2]))
+        self.p6, = self.ax01.plot(self.t_prediction, self.action_predictions2, 'o', color='r', markersize=4, alpha=0.05)
+
+        # action 3
+        self.prediction_now3 = np.zeros(0)
+        self.action_predictions3 = np.zeros(0)
+        self.p7, = self.ax01.plot(self.t, self.prediction_now3, 'g-', linewidth=5, label='{}'.format(labels[3]))
+        self.p8, = self.ax01.plot(self.t_prediction, self.action_predictions3, 'o', color='g', markersize=4, alpha=0.05)
+
+        # to add legend and x-y labels
+        if False:
+            self.ax01.set_xlabel("time[sec]")
+            self.ax01.set_ylabel("action predictions")
+            plt.legend()
 
         # bar plot
         # prediction_time_idx = [0, 12, 24]
@@ -113,7 +144,7 @@ class PlotInferenceResults:
         ######################
         ######################
 
-        self.x = 0.0
+        # self.x = 0.0
 
         # related to the data
         self.timer = current_milli_time()
@@ -123,8 +154,7 @@ class PlotInferenceResults:
 
         self.prediction_horizon = 25
         self.time_step = 0.04
-        self.output_size = 66
-
+        self.output_size = 4
 
         return
 
@@ -136,49 +166,117 @@ class PlotInferenceResults:
         time_now = (current_milli_time() / 1000.0) - self.t0  # seconds
 
         # set the human current joint values
-        joint_idx = 17
-        human_kin_dyn = human_kin_dyn_port.read(False)
-        if human_kin_dyn is not None:
-            tmp_joint = human_kin_dyn.get(joint_idx).asFloat64()
-        else:
-            return self.p1, self.p2,
+        # joint_idx = 17
+        # human_kin_dyn = human_kin_dyn_port.read(False)
+        # if human_kin_dyn is not None:
+        #     tmp_joint = human_kin_dyn.get(joint_idx).asFloat64()
+        # else:
+        #     return self.p1, self.p2,
 
         # get all the prediction results
-        human_kin_dyn_prediction = motion_prediction_port.read(False)
-        if human_kin_dyn_prediction is not None:
-            human_kin_dyn_prediction_data = []
-            for i in range(joint_idx, human_kin_dyn_prediction.size(), self.output_size):
-                human_kin_dyn_prediction_data.append(human_kin_dyn_prediction.get(i))
+        predicted_human_actions = action_prediction_port.read(False)
+        if predicted_human_actions is not None:
+            # print("predicted_human_actions: ", predicted_human_actions)
+            # print("predicted_human_actions size: ", predicted_human_actions.size())
+            # print("++++================================++++")
+            predicted_human_actions_data = []
+            # for i in range(joint_idx, predicted_action.size(), self.output_size):
+            #     human_kin_dyn_prediction_data.append(predicted_action.get(i))
 
-            if len(human_kin_dyn_prediction_data) != self.prediction_horizon:
+            for i in range(predicted_human_actions.size()):
+                predicted_human_actions_data.append(predicted_human_actions.get(i))
+
+            # print("predicted_human_actions_data: ", predicted_human_actions_data)
+            # print("predicted_human_actions_data size: ", np.size(predicted_human_actions_data))
+            # print("++++================================++++")
+
+            predicted_actions_reshaped = np.reshape(predicted_human_actions_data, (-1, number_categories))
+
+            # if predicted_human_actions is not None:
+            #     predicted_human_actions_data = []
+            #     for i in range(joint_idx, predicted_human_actions.size(), self.output_size):
+            #         predicted_human_actions_data.append(predicted_human_actions.get(i))
+
+            # print("predicted_actions_reshaped size: ", np.shape(predicted_actions_reshaped))
+            # print("predicted_actions_reshaped len: ", len(predicted_actions_reshaped))
+            # print("++++================================++++")
+
+            if len(predicted_actions_reshaped) != self.prediction_horizon:
                 print('prediction values size {} and prediction horizon size {} are not equal'.format(
-                    len(human_kin_dyn_prediction_data),  self.prediction_horizon))
+                    len(predicted_actions_reshaped), self.prediction_horizon))
                 return self.p1,
 
             new_time_prediction = [(time_now + i * self.time_step) for i in range(self.prediction_horizon)]
             self.t_prediction = append(self.t_prediction, new_time_prediction)
-            self.joint_predictions = append(self.joint_predictions, np.degrees(human_kin_dyn_prediction_data))
+            self.action_predictions0 = append(self.action_predictions0, predicted_actions_reshaped[:, 0])
+            self.action_predictions1 = append(self.action_predictions1, predicted_actions_reshaped[:, 1])
+            self.action_predictions2 = append(self.action_predictions2, predicted_actions_reshaped[:, 2])
+            self.action_predictions3 = append(self.action_predictions3, predicted_actions_reshaped[:, 3])
 
-            # print('prediction shape: {}'.format(np.shape(human_kin_dyn_prediction_data)))
             #
             # self.p2.scatter(self.output_time[i][0], self.output_prediction[i][0],
             #                            marker='o',
             #                            color=(alpha, 0.2, 0.2, alpha),
             #                            zorder=2)
 
-        # handle data to feed to plots
-        self.joint_values = append(self.joint_values, np.degrees(tmp_joint))
-        self.t = append(self.t, time_now)
+            # handle data to feed to plots
+            self.t = append(self.t, time_now)
+            self.prediction_now0 = append(self.prediction_now0, predicted_actions_reshaped[0, 0])
+            self.prediction_now1 = append(self.prediction_now1, predicted_actions_reshaped[0, 1])
+            self.prediction_now2 = append(self.prediction_now2, predicted_actions_reshaped[0, 2])
+            self.prediction_now3 = append(self.prediction_now3, predicted_actions_reshaped[0, 3])
 
-        self.x += 0.05
+        # print("self.t_prediction: ", np.shape(self.t_prediction))
+        # print("self.t_prediction: ", self.t_prediction)
+        # print("self.t_prediction: ", type(self.t_prediction))
+        #
+        # print("self.action_predictions: ", np.shape(self.action_predictions0))
+        # print("self.action_predictions: ", self.action_predictions0)
+        # print("self.action_predictions: ", type(self.action_predictions0))
+        # print("+++++++++++++++++++++++++++++++")
+        # print("+++++++++++++++++++++++++++++++")
+        # print("+++++++++++++++++++++++++++++++")
+
+        # self.x += 0.05
         # handling figure
-        self.p2.set_data(self.t_prediction, self.joint_predictions)
-        self.p1.set_data(self.t, self.joint_values)
+        self.p1.set_data(self.t, self.prediction_now0)
+        self.p2.set_data(self.t_prediction, self.action_predictions0)
 
-        plot_front_time = 5.0
-        if time_now >= self.xmax - plot_front_time:
-            self.p1.axes.set_xlim(time_now - self.xmax + plot_front_time, time_now + plot_front_time)
-            self.p2.axes.set_xlim(time_now - self.xmax + plot_front_time, time_now + plot_front_time)
+        self.p3.set_data(self.t, self.prediction_now1)
+        self.p4.set_data(self.t_prediction, self.action_predictions1)
+
+        self.p5.set_data(self.t, self.prediction_now2)
+        self.p6.set_data(self.t_prediction, self.action_predictions2)
+
+        self.p7.set_data(self.t, self.prediction_now3)
+        self.p8.set_data(self.t_prediction, self.action_predictions3)
+
+        if time_now >= self.xmax - self.plot_front_time:
+            self.p1.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+            self.p2.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+
+            self.p3.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+            self.p4.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+
+            self.p5.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+            self.p6.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+
+            self.p7.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+            self.p8.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+
+            # pop the data to have faster visualization iff new data arrives
+            if predicted_human_actions is not None:
+                self.t_prediction = self.t_prediction[self.prediction_horizon:]
+                self.action_predictions0 = self.action_predictions0[self.prediction_horizon:]
+                self.action_predictions1 = self.action_predictions1[self.prediction_horizon:]
+                self.action_predictions2 = self.action_predictions2[self.prediction_horizon:]
+                self.action_predictions3 = self.action_predictions3[self.prediction_horizon:]
+
+                self.t = self.t[1:]
+                self.prediction_now0 = self.prediction_now0[1:]
+                self.prediction_now1 = self.prediction_now1[1:]
+                self.prediction_now2 = self.prediction_now2[1:]
+                self.prediction_now3 = self.prediction_now3[1:]
 
         # human_kin_dyn = human_kin_dyn_port.read(False)
         # if human_kin_dyn is not None:
@@ -200,7 +298,7 @@ class PlotInferenceResults:
         #     print('timer: {}'.format(current_milli_time()-self.timer))
         #     self.timer = current_milli_time()
         #     self.counter = self.counter + 1
-        return self.p1, self.p2,
+        return self.p1, self.p2, self.p3, self.p4, self.p5, self.p6, self.p7, self.p8,
 
     # Init only required for blitting to give a clean slate.
     def init(self):
@@ -215,5 +313,5 @@ class PlotInferenceResults:
 plot_object = PlotInferenceResults()
 
 ani = animation.FuncAnimation(plot_object.f0, plot_object.animate,
-                              interval=20, blit=False, repeat=False)
+                              interval=1, blit=False, repeat=False, cache_frame_data=False)
 plt.show()
