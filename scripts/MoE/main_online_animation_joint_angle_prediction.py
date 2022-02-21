@@ -120,7 +120,7 @@ class PlotInferenceResults:
 
         self.prediction_horizon = 25
         self.time_step = 0.04
-        self.output_size = 78
+        self.output_size = 66
 
 
         return
@@ -133,10 +133,10 @@ class PlotInferenceResults:
         time_now = (current_milli_time() / 1000.0) - self.t0  # seconds
 
         # set the human current joint values
-        joint_idx = 17
+        self.joint_idx = 17
         human_kin_dyn = human_kin_dyn_port.read(False)
         if human_kin_dyn is not None:
-            tmp_joint = human_kin_dyn.get(joint_idx).asFloat64()
+            tmp_joint = human_kin_dyn.get(self.joint_idx).asFloat64()
         else:
             return self.p1, self.p2,
 
@@ -144,7 +144,7 @@ class PlotInferenceResults:
         human_kin_dyn_prediction = motion_prediction_port.read(False)
         if human_kin_dyn_prediction is not None:
             human_kin_dyn_prediction_data = []
-            for i in range(joint_idx, human_kin_dyn_prediction.size(), self.output_size):
+            for i in range(self.joint_idx, human_kin_dyn_prediction.size(), self.output_size):
                 human_kin_dyn_prediction_data.append(human_kin_dyn_prediction.get(i))
 
             if len(human_kin_dyn_prediction_data) != self.prediction_horizon:

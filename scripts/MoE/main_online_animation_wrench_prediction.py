@@ -37,7 +37,7 @@ is_connected_human_kindyn = yarp.Network.connect("/humanDataAcquisition/humanKin
                                                  "/test_visualization/humanDynamics:i")
 # is_connected_action_recognition = yarp.Network.connect("/test_moe/actionRecognition:o",
 #                                                        "/test_visualization/actionRecognition:i")
-is_connected_motion_prediction = yarp.Network.connect("/test_moe/motionPredictionAll:o",
+is_connected_motion_prediction = yarp.Network.connect("/test_moe/dynamicPredictionAll:o",
                                                       "/test_visualization/dynamicsPredictionAll:i")
 print("human kindyn port is connected: {}".format(is_connected_human_kindyn))
 # print("action recognition port is connected: {}".format(is_connected_action_recognition))
@@ -55,7 +55,7 @@ class PlotInferenceResults:
         font = {'size': 15}
         matplotlib.rc('font', **font)
 
-        self.variable_idx_prediction = 68
+        self.variable_idx_prediction = 2
         self.variable_idx_ground_truth = 2 * 66 + 2
 
         self.variableName = 'l_fz'
@@ -126,8 +126,7 @@ class PlotInferenceResults:
 
         self.prediction_horizon = 25
         self.time_step = 0.04
-        self.output_size = 78
-
+        self.output_size = 12
 
         return
 
