@@ -16,9 +16,6 @@ from mpl_toolkits.axes_grid1 import host_subplot
 def current_milli_time():
     return round(time.time() * 1000)
 
-# parameters:
-number_motion_output = 66
-
 
 
 # YARP related code
@@ -123,7 +120,7 @@ class PlotInferenceResults:
 
         self.prediction_horizon = 25
         self.time_step = 0.04
-        self.output_size = 66
+        self.output_size = 78
 
 
         return
