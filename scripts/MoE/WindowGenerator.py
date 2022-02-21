@@ -51,7 +51,7 @@ class WindowGenerator:
         self.input_indices = np.arange(self.total_window_size)[self.input_slice]
         self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
 
-        # work out for input and output label indices
+        # work around for input and output label indices
         self.input_label_slice = slice(None, None)
         self.gate_output_label_slice = slice(None, None)
         self.experts_output_label_slice = slice(None, None)
@@ -68,6 +68,11 @@ class WindowGenerator:
                 # exp_output_idx= first_idx
                 exp_output_idx = 66
                 self.experts_output_label_slice = slice(0, exp_output_idx)  # ! currently all features : to update later
+                self.experts_output_label_slices = [slice(0, exp_output_idx), slice(132, 144)]  # ! currently all features : to update later
+                for i in self.experts_output_label_slices:
+                    print('target features for the {}\'th slice are: {}'.format(i, df_keys[i]))
+
+        print("init is done.")
 
     def __repr__(self):
         return '\n'.join([
@@ -111,12 +116,23 @@ class WindowGenerator:
 
         plt.xlabel('Time [samples]')
 
-    def split_window(self, features):
-        print('type(feature): {}'.format(type(features)))
-        # features.set_shape([None, 30, 148])
-        inputs = features[:, self.input_slice, self.input_label_slice]
-        gate_labels = features[:, self.labels_slice, self.gate_output_label_slice]
-        experts_labels = features[:, self.labels_slice, self.experts_output_label_slice]
+    def split_window(self, input_data):
+        print('type(input_data): {}, shape: {}'.format(type(input_data), tf.shape(input_data)))
+
+        # input_data.set_shape([None, 30, 148]): (None, time, features)
+        inputs = input_data[:, self.input_slice, self.input_label_slice]
+        gate_labels = input_data[:, self.labels_slice, self.gate_output_label_slice]
+        # experts_labels = input_data[:, self.labels_slice, self.experts_output_label_slice]
+
+        experts_labels_check = [input_data[:, self.labels_slice, data_slice] for data_slice in
+                                self.experts_output_label_slices]
+
+        experts_labels = tf.concat(experts_labels_check, -1) # to check
+
+        print('type(experts_labels): {}, shape: {}'.format(type(experts_labels), tf.shape(experts_labels)))
+        print('type(experts_labels): {}, shape: {}'.format(type(experts_labels),
+                                                                   tf.shape(experts_labels)))
+
 
         if self.label_columns is not None:
             gate_labels = tf.stack([gate_labels[:, :, self.column_indices[name]] for name in self.label_columns],

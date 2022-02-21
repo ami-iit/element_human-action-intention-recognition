@@ -1,10 +1,16 @@
 import os
-import datetime
+from datetime import datetime
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import copy
+
+
+def get_time_now():
+    now = datetime.now()  # current date and time
+    date_time = now.strftime("%Y-%m-%d_%H:%M:%S")
+    return date_time
 
 # functions and classes to import
 from WindowGeneratorMoE import WindowGeneratorMoE
@@ -43,7 +49,7 @@ if __name__ == "__main__":
 
     # configurations for the datasets
     model_name = 'model'
-    models_path = '__untrack/models'
+    models_path = '__untrack/models/RAL/'+get_time_now()
     data_path = '/home/kourosh/icub_ws/external/DataSet/' \
                 'HumanDataForActionMotionPrediction/ActionRecognition/' \
                 'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
@@ -65,7 +71,7 @@ if __name__ == "__main__":
     max_epochs = 100  # Default: 20
     patience = 10  # ! default: 4
 
-    number_experts_outputs = 66 # to fix later
+    number_experts_outputs = 78 # to fix later
 
     # =====================
     # ====== DATASET ======
