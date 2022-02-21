@@ -57,10 +57,12 @@ def get_denormalized_features(normalized_data, wrench_indices, user_weight, data
 
     return denormalized_data
 
-def get_denormalized_features_all_predictions(normalized_data, data_mean, data_std):
-    shape_ = np.shape(np.float64(np.array(predictions[1])))
-    denormalized_data = np.reshape(np.float64(np.array(predictions[1])), (shape_[1], shape_[2]))
-    denormalized_data = denormalized_data * np.array(data_std[:66]) + np.array(data_mean[:66])
+
+def get_denormalized_features_all_predictions(normalized_data, denormalizing_mean, denormalizing_std, denormalizing_weight):
+    shape_ = np.shape(normalized_data)
+    denormalized_data = np.reshape(normalized_data, (shape_[1], shape_[2]))
+    denormalized_data = denormalized_data * denormalizing_std + denormalizing_mean
+    denormalized_data = denormalized_data * denormalizing_weight
     return denormalized_data
 
 
@@ -68,7 +70,9 @@ def get_denormalized_features_all_predictions(normalized_data, data_mean, data_s
 if __name__ == "__main__":
     # parameters
     model_name = 'model_MoE'
-    model_path = '__untrack/models/horizon_25steps_expert_66lstm'
+    # model_path = '__untrack/models/horizon_25steps_expert_66lstm'  # related to Neurisp paper
+    model_path = '__untrack/models/RAL/2022-02-21_12:51:45'
+
     data_path = '/home/kourosh/icub_ws/external/DataSet/' \
                 'HumanDataForActionMotionPrediction/ActionRecognition/' \
                 'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
@@ -94,7 +98,7 @@ if __name__ == "__main__":
     # visualization information
     plot_prediction = False
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
-    motion_prediction_time_idx = 3  # ! indexes that have been used for the prediciotn timings
+    motion_prediction_time_idx = 3  # ! indexes that have been used for the prediction timings
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
     plot_indices = np.array([])
 
@@ -140,6 +144,18 @@ if __name__ == "__main__":
     input_feature_length = len(train_mean)
     for feature in plot_keys:
         plot_indices = np.append(plot_indices, df.columns.get_loc(feature))
+
+    # for denormalization:
+    slices = [slice(0, 66), slice(132, 144)]
+    wrench_slice = slice(132, 144)
+    denormalize_mean = [train_mean[i] for i in slices]
+    denormalize_std = [train_std[i] for i in slices]
+    denormalize_mean = np.array(np.concatenate(denormalize_mean, axis=-1))
+    denormalize_std = np.array(np.concatenate(denormalize_std, axis=-1))
+
+    denormalize_weight = np.ones(denormalize_mean.shape)
+    denormalize_weight[-12:] = np.ones(12)*user_weight_
+    denormalize_weight=np.array(denormalize_weight)
 
     data_Tx = []
     count = 0
@@ -207,12 +223,13 @@ if __name__ == "__main__":
 
             predicted_motion_all = get_denormalized_features_all_predictions(
                 np.float64(np.array(predictions[1])),
-                data_mean=train_mean,
-                data_std=train_std)
+                denormalizing_mean=denormalize_mean,
+                denormalizing_std=denormalize_std,
+                denormalizing_weight=denormalize_weight)
             t4 = current_milli_time()
 
             # predicted_motion = predicted_motion[0:66]
-            predicted_motion =predicted_motion_all[motion_prediction_time_idx]
+            predicted_motion = predicted_motion_all[motion_prediction_time_idx]
 
             if np.size(predicted_actions.shape) > 2:
                 predicted_actions = np.reshape(predicted_actions,
@@ -271,10 +288,10 @@ if __name__ == "__main__":
                 (tok_total - tik_total),
                 action_,
                 action_prob_))
-            print('t2-t1: {} , t3-t2: {} t4-t3: {} t5-t4: {} t6-t5: {} '.format((t2-t1), (t3-t2),(t4-t3),(t5-t4),(t6-t5) ))
+            print('t2-t1: {} , t3-t2: {} t4-t3: {} t5-t4: {} t6-t5: {} '.format((t2 - t1), (t3 - t2), (t4 - t3),
+                                                                                (t5 - t4), (t6 - t5)))
 
             # computation_time.append((tok_total-tik_total))
-
 
         # print("human_data shape: ", human_data.shape)
         count += 1
