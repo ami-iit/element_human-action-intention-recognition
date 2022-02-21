@@ -99,6 +99,7 @@ if __name__ == "__main__":
     plot_prediction = False
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
     motion_prediction_time_idx = 3  # ! indexes that have been used for the prediction timings
+                                    # (index+1) * 0.04 in the future
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
     plot_indices = np.array([])
 
@@ -123,10 +124,16 @@ if __name__ == "__main__":
 
     action_prediction_port = yarp.BufferedPortVector()
     action_prediction_port.open("/test_moe/actionRecognition:o")
+
     motion_prediction_port = yarp.BufferedPortVector()
     motion_prediction_port.open("/test_moe/motionPrediction:o")
     motion_prediction_all_port = yarp.BufferedPortVector()
     motion_prediction_all_port.open("/test_moe/motionPredictionAll:o")
+
+    dynamic_prediction_port = yarp.BufferedPortVector()
+    dynamic_prediction_port.open("/test_moe/dynamicPrediction:o")
+    dynamic_prediction_all_port = yarp.BufferedPortVector()
+    dynamic_prediction_all_port.open("/test_moe/dynamicPredictionAll:o")
 
     # model, data
     model = load_model_from_file(file_path=model_path, file_name=model_name)
@@ -155,7 +162,11 @@ if __name__ == "__main__":
 
     denormalize_weight = np.ones(denormalize_mean.shape)
     denormalize_weight[-12:] = np.ones(12)*user_weight_
-    denormalize_weight=np.array(denormalize_weight)
+    denormalize_weight = np.array(denormalize_weight)
+
+    motion_prediction_slice = slice(0, 66)
+    dynamic_prediction_slice = slice(66, 78)
+
 
     data_Tx = []
     count = 0
@@ -196,9 +207,15 @@ if __name__ == "__main__":
             action_recognition_bottle = action_prediction_port.prepare()
             motion_prediction_bottle = motion_prediction_port.prepare()
             motion_prediction_all_bottle = motion_prediction_all_port.prepare()
+            dynamic_prediction_bottle = dynamic_prediction_port.prepare()
+            dynamic_prediction_all_bottle = dynamic_prediction_all_port.prepare()
+
             action_recognition_bottle.clear()
             motion_prediction_bottle.clear()
             motion_prediction_all_bottle.clear()
+            dynamic_prediction_bottle.clear()
+            dynamic_prediction_all_bottle.clear()
+
             t2 = current_milli_time()
 
             predicted_actions = np.float64(np.array(predictions[0]))
@@ -229,7 +246,11 @@ if __name__ == "__main__":
             t4 = current_milli_time()
 
             # predicted_motion = predicted_motion[0:66]
-            predicted_motion = predicted_motion_all[motion_prediction_time_idx]
+            motion_prediction_all = predicted_motion_all[:, motion_prediction_slice]
+            dynamic_prediction_all = predicted_motion_all[:, dynamic_prediction_slice]
+
+            predicted_motion = motion_prediction_all[motion_prediction_time_idx]
+            predicted_dynamics = dynamic_prediction_all[motion_prediction_time_idx]
 
             if np.size(predicted_actions.shape) > 2:
                 predicted_actions = np.reshape(predicted_actions,
@@ -247,13 +268,23 @@ if __name__ == "__main__":
             for i in range(np.size(predicted_motion)):
                 motion_prediction_bottle.push_back(predicted_motion[i])
 
-            for i in range(np.shape(predicted_motion_all)[0]):
-                for j in range(np.shape(predicted_motion_all)[1]):
-                    motion_prediction_all_bottle.push_back(predicted_motion_all[i][j])
+            for i in range(np.size(predicted_dynamics)):
+                dynamic_prediction_bottle.push_back(predicted_dynamics[i])
 
-            motion_prediction_all_port.write()
+            for i in range(np.shape(motion_prediction_all)[0]):
+                for j in range(np.shape(motion_prediction_all)[1]):
+                    motion_prediction_all_bottle.push_back(motion_prediction_all[i][j])
+
+            for i in range(np.shape(dynamic_prediction_all)[0]):
+                for j in range(np.shape(dynamic_prediction_all)[1]):
+                    dynamic_prediction_all_bottle.push_back(dynamic_prediction_all[i][j])
+
             action_prediction_port.write()
             motion_prediction_port.write()
+            motion_prediction_all_port.write()
+            dynamic_prediction_port.write()
+            dynamic_prediction_all_port.write()
+
             t6 = current_milli_time()
 
             data_Tx.pop(0)
