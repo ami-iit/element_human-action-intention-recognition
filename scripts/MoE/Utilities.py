@@ -15,6 +15,7 @@ from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import ModelCheckpoint
 from CustomLayers import *
+import math
 #from CustomLayers import get_complex_gate_output, get_simple_gate_output
 #from CustomLayers import get_lstm_expert_output, get_gate_selector_output,\
 #    get_dense_expert_output, get_refined_lstm_expert_output
@@ -64,21 +65,30 @@ def get_moe_model_four_experts(number_categories, number_outputs, output_steps, 
     return model
 
 
-def get_refined_moe_four_expert(number_categories, number_experts_outputs, output_steps, input_shape=None, reg_l1=None,
-                                reg_l2=None, dp_rate=None):
+def get_refined_moe_four_expert(number_categories, number_experts_outputs, output_steps, input_shape=None,
+                                reg_l1_gate=None, reg_l2_gate=None,
+                                reg_l1_experts=None, reg_l2_experts=None,
+                                dp_rate=None):
     # input
     inputs = Input(shape=input_shape)
     #############
     # gate NN
-    h_gate = get_complex_gate_output(inputs, number_categories, output_steps, reg_l1, reg_l2, dp_rate)
+    h_gate = get_complex_gate_output(inputs, number_categories, output_steps,
+                                     reg_l1_gate, reg_l2_gate,
+                                     dp_rate)
     gate_output = Layer(name='gate_output')(h_gate)
 
-    h_expert1 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 1)
-    h_expert2 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 2)
-    h_expert3 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 3)
-    h_expert4 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 4)
+    h_expert1 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 1)
+    h_expert2 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 2)
+    h_expert3 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 3)
+    h_expert4 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 4)
 
-    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4,
+                                                      number_categories,
                                                       number_experts_outputs, output_steps)
 
     model = Model(inputs=inputs, outputs=[gate_output, moe_output])
@@ -184,7 +194,7 @@ def compile_model(model):
     model.compile(loss={'gate_output': CategoricalCrossentropy(from_logits=False),
                         'moe_output': tf.losses.MeanSquaredError()},
                   optimizer=Adam(),
-                  loss_weights={'gate_output': 5.0, 'moe_output': 1.0},
+                  loss_weights={'gate_output': 1.0, 'moe_output': 0.2},
                   metrics={'gate_output': ['accuracy'],
                            'moe_output': ['mae']})
 
@@ -209,14 +219,23 @@ def fit_model(model, window, patience=2, max_epochs=20, model_path='', model_nam
                                       verbose=1,
                                       shuffle=True)
 
+    lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_step_decay, verbose=1)
+
     history = model.fit(window.train,
                         epochs=max_epochs,
                         validation_data=window.val,
                         # validation_split=0.15,
-                        callbacks=[early_stopping, callback_loss_accuracy_plot, checkpoint_best],
+                        callbacks=[early_stopping, callback_loss_accuracy_plot, checkpoint_best, lr_scheduler],
                         verbose=1)
     return history
 
+
+# learning rate step decay
+def lr_step_decay(epoch, lr):
+    initial_learning_rate = 0.001
+    drop_rate = 0.9
+    epochs_drop = 5.0
+    return initial_learning_rate * math.pow(drop_rate, math.floor(epoch/epochs_drop))
 
 def plot_losses(history):
     plt.figure(figsize=(12, 8))
@@ -329,6 +348,7 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         self.axs_loss[0].plot(self.val_losses)
         self.axs_loss[0].set_title('model loss', fontsize=self.font_size)
         self.axs_loss[0].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
+        self.axs_loss[0].set_ylim(0, 4.0)
 
         self.axs_loss[1].plot(self.gate_losses)
         self.axs_loss[1].plot(self.val_gate_losses)

@@ -6,29 +6,31 @@ import numpy as np
 import pandas as pd
 import copy
 
+# functions and classes to import
+from WindowGeneratorMoE import WindowGeneratorMoE
+from WindowGenerator import WindowGenerator
+# from Utilities import get_dense_model_classification,\
+#     get_cnn_model,\
+#     get_lstm_regression_model_sequential,\
+#     compile_model,\
+#     fit_model, \
+#     plot_losses,\
+#     plot_accuracy,\
+#     get_moe_model_four_experts,\
+#     visualize_model,\
+#     compile_and_fit_regression,\
+#     get_moe_model_one_expert,\
+#     get_refined_moe_four_expert
+#
+# from Utilities import save_nn_model
+from Utilities import *
+
 
 def get_time_now():
     now = datetime.now()  # current date and time
     date_time = now.strftime("%Y-%m-%d_%H:%M:%S")
     return date_time
 
-# functions and classes to import
-from WindowGeneratorMoE import WindowGeneratorMoE
-from WindowGenerator import WindowGenerator
-from Utilities import get_dense_model_classification,\
-    get_cnn_model,\
-    get_lstm_regression_model_sequential,\
-    compile_model,\
-    fit_model, \
-    plot_losses,\
-    plot_accuracy,\
-    get_moe_model_four_experts,\
-    visualize_model,\
-    compile_and_fit_regression,\
-    get_moe_model_one_expert,\
-    get_refined_moe_four_expert
-
-from Utilities import save_nn_model
 
 # def main():
 if __name__ == "__main__":
@@ -65,13 +67,16 @@ if __name__ == "__main__":
     test_percentage = 1.0 - (train_percentage + val_percentage)  # ! the amount of data at end for testing
 
     # general configurations for the neural networks
-    regularization_l2 = 5.0e-2
-    regularization_l1 = 1.0e-1
+    regularization_l2_gate = 1.0e-2
+    regularization_l1_gate = 1.0e-2
+    regularization_l2_experts = 1.0e-2
+    regularization_l1_experts = 1.0e-2
+
     dropout_rate = 0.4
     max_epochs = 100  # Default: 20
-    patience = 10  # ! default: 4
+    patience = 5  # ! default: 4
 
-    number_experts_outputs = 78 # to fix later
+    number_experts_outputs = 78  # to fix later
 
     # =====================
     # ====== DATASET ======
@@ -178,7 +183,7 @@ if __name__ == "__main__":
     input_data_example, __ = multi_window.example
     input_shape = (input_data_example.shape[1], input_data_example.shape[2])
     multi_val_performance = {}
-    multi_performance = {}
+    multi_test_performance = {}
 
     # MoE
     if learn_moe_model:
@@ -186,8 +191,10 @@ if __name__ == "__main__":
                                                 number_experts_outputs=number_experts_outputs,
                                                 output_steps=output_steps,
                                                 input_shape=input_shape,
-                                                reg_l1=regularization_l2,
-                                                reg_l2=regularization_l2,
+                                                reg_l1_gate=regularization_l1_gate,
+                                                reg_l2_gate=regularization_l2_gate,
+                                                reg_l1_experts=regularization_l1_experts,
+                                                reg_l2_experts=regularization_l2_experts,
                                                 dp_rate=dropout_rate)
 
         model_moe = compile_model(model_moe)
@@ -207,7 +214,7 @@ if __name__ == "__main__":
         #                       patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
 
         multi_val_performance['MoE'] = model_moe.evaluate(multi_window.val)
-        multi_performance['MoE'] = model_moe.evaluate(multi_window.test, verbose=0)
+        multi_test_performance['MoE'] = model_moe.evaluate(multi_window.test, verbose=0)
         if verbose:
             multi_window.plot(model_moe, max_subplots=2, plot_col='jRightHip_roty_val')
 
@@ -228,7 +235,7 @@ if __name__ == "__main__":
         #
         # history = compile_and_fit(multi_conv_model, multi_window_cpy, plot_losses=plot_losses,
         #                           patience=PATIENCE, MAX_EPOCHS=MAX_EPOCHS)
-        model_cnn = get_cnn_model(number_categories, input_shape, regularization_l2, dropout_rate)
+        model_cnn = get_cnn_model(number_categories, input_shape, regularization_l2_gate, dropout_rate)
         model_cnn.summary()
         model_cnn = compile_model(model_cnn)
         history_cnn = fit_model(model_cnn,
@@ -243,60 +250,76 @@ if __name__ == "__main__":
             plot_accuracy(history_cnn)
 
         multi_val_performance['Conv'] = model_cnn.evaluate(multi_window.val)
-        multi_performance['Conv'] = model_cnn.evaluate(multi_window.test, verbose=0)
+        multi_test_performance['Conv'] = model_cnn.evaluate(multi_window.test, verbose=0)
         if verbose:
             multi_window.plot(model_cnn, max_subplots=max_subplots, output_labels=output_labels)
 
     # RNN
     if learn_lstm_model:
-        model_lstm = get_lstm_regression_model_sequential(number_outputs=144,
-                                                          output_steps=output_steps,
-                                                          input_shape=input_shape,
-                                                          reg_l2=regularization_l2,
-                                                          dp_rate=dropout_rate)
-            # (number_categories, input_shape, regularization_l2, dropout_rate)
+        model_lstm = get_lstm_regression_classification_model_ablation(number_categories=number_categories,
+                                                                       number_experts_outputs=number_experts_outputs,
+                                                                       output_steps=output_steps,
+                                                                       input_shape=input_shape,
+                                                                       reg_l1=regularization_l1_gate,
+                                                                       reg_l2=regularization_l2_gate,
+                                                                       dp_rate=dropout_rate)
+
         model_lstm.summary()
-        # model_lstm = compile_model(model_lstm)
-        history_lstm = compile_and_fit_regression(model=model_lstm,
-                                                  window=multi_window,
-                                                  patience=patience,
-                                                  max_epochs=max_epochs)
+        model_lstm = compile_model(model_lstm)
+
+        history_lstm = fit_model(model=model_lstm,
+                                 window=multi_window,
+                                 patience=patience,
+                                 max_epochs=max_epochs,
+                                 model_path=models_path,
+                                 model_name=model_name + '_LSTM_Best')
         if verbose:
             plot_accuracy(history_lstm)
 
         plot_losses(history_lstm)
 
         multi_val_performance['LSTM'] = model_lstm.evaluate(multi_window.val)
-        multi_performance['LSTM'] = model_lstm.evaluate(multi_window.test, verbose=0)
+        multi_test_performance['LSTM'] = model_lstm.evaluate(multi_window.test, verbose=0)
 
         if verbose:
             multi_window.plot(model_lstm, max_subplots=max_subplots, output_labels=output_labels)
 
     # performances
     if do_performance_analysis:
-        x = np.arange(len(multi_performance))
+        x = np.arange(len(multi_test_performance))
         width = 0.3
 
         metrics_list = ['gate_output_accuracy', 'moe_output_mae']
+        metrics_names = []
         for metrics_name in metrics_list:
             if learn_lstm_model:
                 metric_index = model_lstm.metrics_names.index(metrics_name)
+                metrics_names = model_lstm.metrics_names
             elif learn_moe_model:
                 metric_index = model_moe.metrics_names.index(metrics_name)
+                metrics_names = model_moe.metrics_names
             elif learn_cnn_model:
                 metric_index = model_cnn.metrics_names.index(metrics_name)
+                metrics_names = model_cnn.metrics_names
 
             val_mae = [v[metric_index] for v in multi_val_performance.values()]
-            test_mae = [v[metric_index] for v in multi_performance.values()]
+            test_mae = [v[metric_index] for v in multi_test_performance.values()]
             plt.figure(figsize=(12, 8))
             plt.bar(x - 0.17, val_mae, width, label='Validation')
             plt.bar(x + 0.17, test_mae, width, label='Test')
-            plt.xticks(ticks=x, labels=multi_performance.keys(),
+            plt.xticks(ticks=x, labels=multi_test_performance.keys(),
                        rotation=45)
             plt.ylabel('{}'.format(metrics_name))
             _ = plt.legend()
-            for name, value in multi_performance.items():
-                print(f'{name:8s}: {value[1]:0.4f}')
+
+        print('==============================')
+        print('======== Test Metrics ========')
+        print('==============================')
+        for name, value in multi_test_performance.items():
+            print('=========== {} ==========='.format(name))
+            for i in range(len(metrics_names)):
+                print(f'{metrics_names[i]:20s}: {value[i]:0.4f}')
+        print('==============================')
 
     if save_model:
         if learn_moe_model:
@@ -307,7 +330,7 @@ if __name__ == "__main__":
             visualize_model(model_cnn, file_path=models_path, file_name=model_name + '_CNN')
         if learn_lstm_model:
             save_nn_model(model_lstm, file_path=models_path, file_name=model_name + '_LSTM')
-            visualize_model(model_cnn, file_path=models_path, file_name=model_name + '_LSTM')
+            visualize_model(model_lstm, file_path=models_path, file_name=model_name + '_LSTM')
 
 
 # if __name__ == "__main__":

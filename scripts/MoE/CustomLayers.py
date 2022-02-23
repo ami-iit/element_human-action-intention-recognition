@@ -95,7 +95,7 @@ def get_complex_gate_output(input_, number_categories, output_steps, reg_l1, reg
 
     output_ = Dropout(dp_rate)(output_)
 
-    output_ = Dense(256, activation='relu',
+    output_ = Dense(512, activation='relu',
                     kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
                     bias_regularizer=regularizers.l1_l2(reg_l1, reg_l2))(output_)
 
