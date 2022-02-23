@@ -39,19 +39,65 @@ class ReducedSum(Layer):
         return {"axis": self.axis}
 
 
+class ProbabilisticSwitch(Layer):
+
+    def __init__(self, axis=-1, **kwargs):
+        super(ProbabilisticSwitch, self).__init__(**kwargs)
+        self.axis = axis
+
+    def build(self, input_shape):
+        print('[build] input_shape: {}'.format(input_shape))
+        print('[build] input_shape[0]: {}'.format(input_shape[0]))
+        return
+
+    def call(self, experts, gate=None):
+        # return tf.matmul(inputs, self.w) + self.b
+        # print('__call__')
+        # print('input tensor shape: {}'.format(inputs.shape))
+        # get the element of the category
+
+        arg_max = tf.math.argmax(gate, axis=-1)
+        # print('type check: ', type(experts.shape[:-1]))
+        # output = np.zeros(experts.shape[:-1])
+        output = tf.fill(experts.shape[:-1], 0.0)
+        #output = np.zeros(gate.shape)
+        for m in range(output.shape[0]):
+            for t in range(output.shape[1]):
+                #output[m, t, :, arg_max[m, t, 0]] = 1.0
+                output[m, t, :] = experts[m, t, :, arg_max[m, t]]
+        # print('output tensor shape: {}'.format(output.shape))
+        return tf.convert_to_tensor(output)
+
+    def get_config(self):
+        return {"axis": self.axis}
+
+
 # models:
-def get_complex_gate_output(input_, number_categories, output_steps, reg_l2, dp_rate):
+def get_complex_gate_output(input_, number_categories, output_steps, reg_l1, reg_l2, dp_rate):
+    # output_ = Conv1D(filters=128, kernel_size=3, activation='relu', padding='same',
+    #                  kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+    #                  bias_regularizer=regularizers.l1_l2(reg_l1, reg_l2))(input_)
+    #
+    # output_ = LSTM(78,
+    #                name='gate_lstm_nn',
+    #                return_sequences=False,
+    #                activation=LeakyReLU(),
+    #                kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+    #                )(output_)
+
+    output_ = Flatten(name='gate_nn')(input_)
+
     output_ = Dense(1024, activation='relu',
                     kernel_regularizer=regularizers.l2(reg_l2),
-                    bias_regularizer=regularizers.l2(reg_l2))(input_)
+                    bias_regularizer=regularizers.l2(reg_l2))(output_)
 
     output_ = BatchNormalization()(output_)
 
     output_ = Dropout(dp_rate)(output_)
 
-    output_ = Dense(512, activation='relu',
-                    kernel_regularizer=regularizers.l2(reg_l2),
-                    bias_regularizer=regularizers.l2(reg_l2))(input_)
+    output_ = Dense(256, activation='relu',
+                    kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+                    bias_regularizer=regularizers.l1_l2(reg_l1, reg_l2))(output_)
 
     output_ = BatchNormalization()(output_)
 
@@ -133,7 +179,7 @@ def get_dense_expert_output(input_, number_outputs, output_steps, reg_l2, dp_rat
 
 
 def get_refined_lstm_expert_output(input_, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, expert_number):
-    h_expert = LSTM(66,
+    h_expert = LSTM(78,
                     name='expert_{}_nn'.format(expert_number),
                     return_sequences=False,
                     activation=LeakyReLU(),
@@ -186,8 +232,8 @@ def get_lstm_expert_output(input_, number_outputs, output_steps, reg_l2, dp_rate
     return output_
 
 
-def get_gate_selector_output(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
-                             number_experts_outputs, output_steps):
+def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+                                         number_experts_outputs, output_steps):
 
     h_expert1 = Reshape([output_steps, number_experts_outputs, 1])(h_expert1)
     h_expert2 = Reshape([output_steps, number_experts_outputs, 1])(h_expert2)
@@ -202,9 +248,30 @@ def get_gate_selector_output(h_gate, h_expert1, h_expert2, h_expert3, h_expert4,
     moe_output_ = Multiply()([experts, h_gate])
     print('moe_output_ shape: {}'.format(moe_output_.shape))
     moe_output = ReducedSum(name='moe_output', axis=3)(moe_output_)
+    print('moe_output shape: {}'.format(moe_output.shape))
 
     return moe_output
 
+
+def get_gate_selector_output_competitive(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+                                         number_experts_outputs, output_steps):
+
+    # h_expert1 = Reshape([output_steps, number_experts_outputs, 1])(h_expert1)
+    # h_expert2 = Reshape([output_steps, number_experts_outputs, 1])(h_expert2)
+    # h_expert3 = Reshape([output_steps, number_experts_outputs, 1])(h_expert3)
+    # h_expert4 = Reshape([output_steps, number_experts_outputs, 1])(h_expert4)
+    experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4])
+    print('competitive expert shape: {}'.format(h_expert1.shape))
+
+    # h_gate = Reshape([output_steps, 1, number_categories])(h_gate)
+    print('competitive h_gate shape: {}'.format(h_gate.shape))
+
+    # moe_output_ = Multiply()([experts, h_gate])
+    # print('moe_output_ shape: {}'.format(moe_output_.shape))
+    # moe_output = ReducedSum(name='moe_output', axis=3)(moe_output_)
+    moe_output = ProbabilisticSwitch(name='moe_output')(experts, h_gate)
+
+    return moe_output
 
 ########################
 
@@ -306,3 +373,81 @@ e2 = tf.constant([[[100, 200, 100, 200], [300, 400, 300, 400], [500, 600, 500, 6
 
 gl = GateLayer()
 gl([gate_, e1, e2])
+
+
+def get_complex_gate_output_ablation(input_, number_categories, output_steps, reg_l1, reg_l2, dp_rate):
+    # output_classification = LSTM(128,
+    #                              name='cls_lstm_layer_1',
+    #                              return_sequences=True,
+    #                              activation=LeakyReLU(),
+    #                              kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2)
+    #                              )(input_)
+    #
+    # output_classification = BatchNormalization()(output_classification)
+
+    output_classification = LSTM(64,
+                                 name='cls_lstm_layer_2',
+                                 return_sequences=True,
+                                 activation=LeakyReLU(),
+                                 kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2)
+                                 )(input_)
+
+    output_classification = BatchNormalization()(output_classification)
+
+    output_classification = LSTM(16,
+                                 name='cls_lstm_layer_3',
+                                 return_sequences=False,
+                                 activation=LeakyReLU(),
+                                 kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2)
+                                 )(output_classification)
+
+    output_classification = BatchNormalization()(output_classification)
+
+    output_classification = Flatten()(output_classification)
+
+    output_classification = Dense(number_categories * output_steps)(output_classification)
+
+    # ! default: axis=-1, normalization is done over last axis
+    output_classification = Reshape([output_steps, number_categories])(output_classification)
+
+    output_classification = Softmax(name='gate_output_softmax')(output_classification)
+
+    return output_classification
+
+
+def get_refined_lstm_expert_output_ablation(input_, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, expert_number):
+    output_regression = LSTM(128,
+                             name='rgs_lstm_layer_1_expert{}'.format(expert_number),
+                             return_sequences=True,
+                             activation=LeakyReLU(),
+                             kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+                             )(input_)
+
+    output_regression = BatchNormalization()(output_regression)
+
+    output_regression = LSTM(64,
+                             name='rgs_lstm_layer_2_expert{}'.format(expert_number),
+                             return_sequences=True,
+                             activation=LeakyReLU(),
+                             kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+                             )(output_regression)
+
+    output_regression = BatchNormalization()(output_regression)
+
+    output_regression = LSTM(32,
+                             name='rgs_lstm_layer_3_expert{}'.format(expert_number),
+                             return_sequences=True,
+                             activation=LeakyReLU(),
+                             kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+                             )(output_regression)
+
+    output_regression = BatchNormalization()(output_regression)
+
+    output_regression = Flatten()(output_regression)
+
+    output_regression = Dense(output_steps * number_experts_outputs)(output_regression)
+
+    output_regression = Reshape([output_steps, number_experts_outputs],
+                                name='moe_output_expert{}'.format(expert_number))(output_regression)
+
+    return output_regression
