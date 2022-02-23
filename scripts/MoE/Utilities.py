@@ -14,10 +14,10 @@ from tensorflow.keras.layers import Input, Lambda, Dense, Flatten, LSTM, Reshape
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import ModelCheckpoint
-from CustomLayers import ReducedSum
-from CustomLayers import get_complex_gate_output, get_simple_gate_output
-from CustomLayers import get_lstm_expert_output, get_gate_selector_output,\
-    get_dense_expert_output, get_refined_lstm_expert_output
+from CustomLayers import *
+#from CustomLayers import get_complex_gate_output, get_simple_gate_output
+#from CustomLayers import get_lstm_expert_output, get_gate_selector_output,\
+#    get_dense_expert_output, get_refined_lstm_expert_output
 
 
 def get_moe_model_four_experts(number_categories, number_outputs, output_steps, input_shape=None, reg_l2=None, dp_rate=None):
@@ -51,8 +51,8 @@ def get_moe_model_four_experts(number_categories, number_outputs, output_steps, 
 
     #############
     # Gate Layer
-    moe_output = get_gate_selector_output(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
-                                          number_outputs, output_steps)
+    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+                                                      number_outputs, output_steps)
 
     # print('moe_output shape: {}'.format(moe_output.shape))
 
@@ -70,8 +70,7 @@ def get_refined_moe_four_expert(number_categories, number_experts_outputs, outpu
     inputs = Input(shape=input_shape)
     #############
     # gate NN
-    h_gate = Flatten(name='gate_nn')(inputs)
-    h_gate = get_complex_gate_output(h_gate, number_categories, output_steps, reg_l2, dp_rate)
+    h_gate = get_complex_gate_output(inputs, number_categories, output_steps, reg_l1, reg_l2, dp_rate)
     gate_output = Layer(name='gate_output')(h_gate)
 
     h_expert1 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 1)
@@ -79,8 +78,8 @@ def get_refined_moe_four_expert(number_categories, number_experts_outputs, outpu
     h_expert3 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 3)
     h_expert4 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 4)
 
-    moe_output = get_gate_selector_output(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
-                                          number_experts_outputs, output_steps)
+    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+                                                      number_experts_outputs, output_steps)
 
     model = Model(inputs=inputs, outputs=[gate_output, moe_output])
 
@@ -185,7 +184,7 @@ def compile_model(model):
     model.compile(loss={'gate_output': CategoricalCrossentropy(from_logits=False),
                         'moe_output': tf.losses.MeanSquaredError()},
                   optimizer=Adam(),
-                  loss_weights={'gate_output': 1.0, 'moe_output': 1.0},
+                  loss_weights={'gate_output': 5.0, 'moe_output': 1.0},
                   metrics={'gate_output': ['accuracy'],
                            'moe_output': ['mae']})
 
@@ -301,6 +300,7 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
 
         self.moe_mae = []
         self.val_moe_mae = []
+        self.font_size = 16
 
     def on_epoch_end(self, epoch, logs=None):
         print('[on_epoch_end] epoch: {} , loss: {} , val_loss : {}'.format(epoch, logs['loss'], logs['val_loss']))
@@ -327,21 +327,23 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         self.axs_loss = self.plot_loss.subplots(3)
         self.axs_loss[0].plot(self.losses)
         self.axs_loss[0].plot(self.val_losses)
-        self.axs_loss[0].set_title('model loss')
-        self.axs_loss[0].legend(['train', 'validation'], loc='upper left')
+        self.axs_loss[0].set_title('model loss', fontsize=self.font_size)
+        self.axs_loss[0].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
 
         self.axs_loss[1].plot(self.gate_losses)
         self.axs_loss[1].plot(self.val_gate_losses)
-        self.axs_loss[1].set_title('gate loss')
-        self.axs_loss[1].legend(['train', 'validation'], loc='upper left')
+        self.axs_loss[1].set_title('gate loss', fontsize=self.font_size)
+        self.axs_loss[1].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
 
         self.axs_loss[2].plot(self.moe_losses)
         self.axs_loss[2].plot(self.val_moe_losses)
-        self.axs_loss[2].set_title('moe loss')
-        self.axs_loss[2].legend(['train', 'validation'], loc='upper left')
+        self.axs_loss[2].set_title('moe loss', fontsize=self.font_size)
+        self.axs_loss[2].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
 
         for ax in self.axs_loss.flat:
-            ax.set(xlabel='epoch', ylabel='loss')
+            # ax.set(xlabel='epoch', ylabel='loss')
+            ax.set_xlabel('epoch', fontsize=self.font_size)
+            ax.set_ylabel('loss', fontsize=self.font_size)
 
         # Hide x labels and tick labels for top plots and y ticks for right plots.
         for ax in self.axs_loss.flat:
@@ -357,15 +359,16 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         self.axs_metrics = self.plot_metrics.subplots(2)
         self.axs_metrics[0].plot(self.gate_accuracy)
         self.axs_metrics[0].plot(self.val_gate_accuracy)
-        self.axs_metrics[0].set_title('model accuracy')
-        self.axs_metrics[0].set(ylabel='accuracy')
-        self.axs_metrics[0].legend(['train', 'validation'], loc='upper left')
+        self.axs_metrics[0].set_title('model accuracy', fontsize=self.font_size)
+        self.axs_metrics[0].set_ylabel('accuracy', fontsize=self.font_size)
+        self.axs_metrics[0].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
 
         self.axs_metrics[1].plot(self.moe_mae)
         self.axs_metrics[1].plot(self.val_moe_mae)
-        self.axs_metrics[1].set_title('model mae')
-        self.axs_metrics[1].set(xlabel='epoch', ylabel='mae')
-        self.axs_metrics[1].legend(['train', 'validation'], loc='upper left')
+        self.axs_metrics[1].set_title('model mae', fontsize=self.font_size)
+        self.axs_metrics[1].set_xlabel('epoch', fontsize=self.font_size)
+        self.axs_metrics[1].set_ylabel('mae', fontsize=self.font_size)
+        self.axs_metrics[1].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
 
         for ax in self.axs_metrics.flat:
             ax.label_outer()
@@ -379,6 +382,21 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         Path(self.file_path).mkdir(parents=True, exist_ok=True)
         self.model.save('{}/{}_{}_{}.h5'.format(self.file_path, self.file_name, epoch, val_loss))
         return
+
+    def on_train_end(self, logs=None):
+        print('loss =', self.losses)
+        print('val_loss =', self.val_losses)
+        print('gate_output_loss =', self.gate_losses)
+        print('val_gate_output_loss =', self.val_gate_losses)
+        print('moe_output_loss =', self.moe_losses)
+        print('val_moe_output_loss =', self.val_moe_losses)
+        print('gate_output_accuracy =', self.gate_accuracy)
+        print('val_gate_output_accuracy =', self.val_gate_accuracy)
+        print('moe_output_mae =', self.moe_mae)
+        print('val_moe_output_mae =', self.val_moe_mae)
+
+        return
+
 
 # =================================
 
@@ -501,3 +519,49 @@ def compile_and_fit_regression(model, window, patience, max_epochs):
 
     return history
 
+
+def get_lstm_regression_classification_model_ablation(number_categories, number_experts_outputs, output_steps,
+                                                      input_shape=None, reg_l1=None, reg_l2=None, dp_rate=None):
+    # input
+    inputs = Input(shape=input_shape)
+    #############
+    # classification NN
+    # input
+    inputs = Input(shape=input_shape)
+    #############
+    # gate NN
+    output_classification = get_complex_gate_output_ablation(inputs, number_categories, output_steps, reg_l1, reg_l2, dp_rate)
+    output_classification = Layer(name='gate_output')(output_classification)
+
+    # regression NN
+    output_regression = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2,
+                                                                dp_rate, 1)
+    output_regression = Layer(name='moe_output')(output_regression)
+
+    model = Model(inputs=inputs, outputs=[output_classification, output_regression])
+
+    return model
+
+
+def get_refined_moe_four_expert_ablation(number_categories, number_experts_outputs, output_steps, input_shape=None,
+                                         reg_l1=None, reg_l2=None, dp_rate=None):
+    # input
+    inputs = Input(shape=input_shape)
+    #############
+    # gate NN
+    h_gate = get_complex_gate_output_ablation(inputs, number_categories, output_steps, reg_l1, reg_l2, dp_rate)
+    gate_output = Layer(name='gate_output')(h_gate)
+
+    h_expert1 = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 1)
+    h_expert2 = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 2)
+    h_expert3 = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 3)
+    h_expert4 = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 4)
+
+    # moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+    #                                                   number_experts_outputs, output_steps)
+    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+                                                      number_experts_outputs, output_steps)
+
+    model = Model(inputs=inputs, outputs=[gate_output, moe_output])
+
+    return model
