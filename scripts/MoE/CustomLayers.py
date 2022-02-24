@@ -376,17 +376,8 @@ gl([gate_, e1, e2])
 
 
 def get_complex_gate_output_ablation(input_, number_categories, output_steps, reg_l1, reg_l2, dp_rate):
-    # output_classification = LSTM(128,
-    #                              name='cls_lstm_layer_1',
-    #                              return_sequences=True,
-    #                              activation=LeakyReLU(),
-    #                              kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2)
-    #                              )(input_)
-    #
-    # output_classification = BatchNormalization()(output_classification)
-
-    output_classification = LSTM(64,
-                                 name='cls_lstm_layer_2',
+    output_classification = LSTM(512,
+                                 name='cls_lstm_layer_1',
                                  return_sequences=True,
                                  activation=LeakyReLU(),
                                  kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2)
@@ -394,8 +385,26 @@ def get_complex_gate_output_ablation(input_, number_categories, output_steps, re
 
     output_classification = BatchNormalization()(output_classification)
 
-    output_classification = LSTM(16,
+    output_classification = LSTM(256,
+                                 name='cls_lstm_layer_2',
+                                 return_sequences=True,
+                                 activation=LeakyReLU(),
+                                 kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2)
+                                 )(output_classification)
+
+    output_classification = BatchNormalization()(output_classification)
+
+    output_classification = LSTM(128,
                                  name='cls_lstm_layer_3',
+                                 return_sequences=True,
+                                 activation=LeakyReLU(),
+                                 kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2)
+                                 )(output_classification)
+
+    output_classification = BatchNormalization()(output_classification)
+
+    output_classification = LSTM(16,
+                                 name='cls_lstm_layer_4',
                                  return_sequences=False,
                                  activation=LeakyReLU(),
                                  kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2)
@@ -416,7 +425,7 @@ def get_complex_gate_output_ablation(input_, number_categories, output_steps, re
 
 
 def get_refined_lstm_expert_output_ablation(input_, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, expert_number):
-    output_regression = LSTM(128,
+    output_regression = LSTM(512,
                              name='rgs_lstm_layer_1_expert{}'.format(expert_number),
                              return_sequences=True,
                              activation=LeakyReLU(),
@@ -425,7 +434,7 @@ def get_refined_lstm_expert_output_ablation(input_, number_experts_outputs, outp
 
     output_regression = BatchNormalization()(output_regression)
 
-    output_regression = LSTM(64,
+    output_regression = LSTM(256,
                              name='rgs_lstm_layer_2_expert{}'.format(expert_number),
                              return_sequences=True,
                              activation=LeakyReLU(),
@@ -434,8 +443,17 @@ def get_refined_lstm_expert_output_ablation(input_, number_experts_outputs, outp
 
     output_regression = BatchNormalization()(output_regression)
 
-    output_regression = LSTM(32,
+    output_regression = LSTM(128,
                              name='rgs_lstm_layer_3_expert{}'.format(expert_number),
+                             return_sequences=True,
+                             activation=LeakyReLU(),
+                             kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+                             )(output_regression)
+
+    output_regression = BatchNormalization()(output_regression)
+
+    output_regression = LSTM(64,
+                             name='rgs_lstm_layer_4_expert{}'.format(expert_number),
                              return_sequences=True,
                              activation=LeakyReLU(),
                              kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),

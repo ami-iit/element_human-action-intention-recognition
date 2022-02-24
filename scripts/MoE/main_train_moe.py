@@ -42,7 +42,7 @@ if __name__ == "__main__":
     # high level flags for training
     learn_moe_model = True
     learn_cnn_model = False
-    learn_lstm_model = False
+    learn_lstm_model = True
     do_performance_analysis = True
     normalize_input = True
     output_categorical = True
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     regularization_l1_experts = 1.0e-2
 
     dropout_rate = 0.4
-    max_epochs = 100  # Default: 20
+    max_epochs = 40  # Default: 20
     patience = 5  # ! default: 4
 
     number_experts_outputs = 78  # to fix later
@@ -196,6 +196,8 @@ if __name__ == "__main__":
                                                 reg_l1_experts=regularization_l1_experts,
                                                 reg_l2_experts=regularization_l2_experts,
                                                 dp_rate=dropout_rate)
+        model_moe.summary()
+        print(asghar)
 
         model_moe = compile_model(model_moe)
 
@@ -260,8 +262,10 @@ if __name__ == "__main__":
                                                                        number_experts_outputs=number_experts_outputs,
                                                                        output_steps=output_steps,
                                                                        input_shape=input_shape,
-                                                                       reg_l1=regularization_l1_gate,
-                                                                       reg_l2=regularization_l2_gate,
+                                                                       reg_l1_gate=regularization_l1_gate,
+                                                                       reg_l2_gate=regularization_l2_gate,
+                                                                       reg_l1_experts=regularization_l1_experts,
+                                                                       reg_l2_experts=regularization_l2_experts,
                                                                        dp_rate=dropout_rate)
 
         model_lstm.summary()

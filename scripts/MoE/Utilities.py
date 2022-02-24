@@ -540,22 +540,26 @@ def compile_and_fit_regression(model, window, patience, max_epochs):
     return history
 
 
-def get_lstm_regression_classification_model_ablation(number_categories, number_experts_outputs, output_steps,
-                                                      input_shape=None, reg_l1=None, reg_l2=None, dp_rate=None):
-    # input
-    inputs = Input(shape=input_shape)
-    #############
-    # classification NN
+def get_lstm_regression_classification_model_ablation(number_categories,
+                                                      number_experts_outputs,
+                                                      output_steps,
+                                                      input_shape=None,
+                                                      reg_l1_gate=None,
+                                                      reg_l2_gate=None,
+                                                      reg_l1_experts=None,
+                                                      reg_l2_experts=None,
+                                                      dp_rate=None):
     # input
     inputs = Input(shape=input_shape)
     #############
     # gate NN
-    output_classification = get_complex_gate_output_ablation(inputs, number_categories, output_steps, reg_l1, reg_l2, dp_rate)
+    output_classification = get_complex_gate_output_ablation(inputs, number_categories, output_steps,
+                                                             reg_l1_gate, reg_l2_gate, dp_rate)
     output_classification = Layer(name='gate_output')(output_classification)
 
     # regression NN
-    output_regression = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2,
-                                                                dp_rate, 1)
+    output_regression = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps,
+                                                                reg_l1_experts, reg_l2_experts, dp_rate, 1)
     output_regression = Layer(name='moe_output')(output_regression)
 
     model = Model(inputs=inputs, outputs=[output_classification, output_regression])
