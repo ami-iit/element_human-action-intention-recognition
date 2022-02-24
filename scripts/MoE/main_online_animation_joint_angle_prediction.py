@@ -56,9 +56,10 @@ class PlotInferenceResults:
         matplotlib.rc('font', **font)
 
         self.xmin = 0.0
-        self.xmax = 10.0
+        self.xmax = 6.5
+        self.plot_front_time = 1.2
 
-        self.f0 = figure(num=0, figsize=(9, 6))  # , dpi = 100)
+        self.f0 = figure(num=0, figsize=(8, 3.5))  # , dpi = 100)
         # self.f0.title("joint value vs time", fontsize=12)
         self.ax01 = self.f0.subplots() # 2grid((1, 1), (0, 0))
         # self.ax02 = subplots()
@@ -66,8 +67,7 @@ class PlotInferenceResults:
         self.ax01.set_ylim(-20, 100)
         self.ax01.set_xlim(self.xmin, self.xmax)
         self.ax01.grid(True)
-        self.ax01.set_xlabel("time[sec]", fontsize=20)
-        self.ax01.set_ylabel("right-knee-y [deg]", fontsize=20)
+
         self.t = np.zeros(0)
         self.t0 = current_milli_time() / 1000.0  # seconds
         self.joint_values = np.zeros(0)
@@ -76,6 +76,9 @@ class PlotInferenceResults:
         self.joint_predictions = np.zeros(0)
         # self.p2 = self.ax01.scatter(self.t_prediction, self.joint_predictions)
         self.p2, = self.ax01.plot(self.t_prediction, self.joint_predictions, 'o', color='k', markersize=4, alpha=0.1)
+
+        # self.ax01.set_xlabel("time[sec]", fontsize=20)
+        # self.ax01.set_ylabel("right-knee-y [deg]", fontsize=20)
 
         # bar plot
         # prediction_time_idx = [0, 12, 24]
@@ -172,10 +175,17 @@ class PlotInferenceResults:
         self.p2.set_data(self.t_prediction, self.joint_predictions)
         self.p1.set_data(self.t, self.joint_values)
 
-        plot_front_time = 5.0
-        if time_now >= self.xmax - plot_front_time:
-            self.p1.axes.set_xlim(time_now - self.xmax + plot_front_time, time_now + plot_front_time)
-            self.p2.axes.set_xlim(time_now - self.xmax + plot_front_time, time_now + plot_front_time)
+        if time_now >= self.xmax - self.plot_front_time:
+            self.p1.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+            self.p2.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+
+            if human_kin_dyn_prediction is not None and (time_now - self.t[0] > self.xmax):
+                self.t_prediction = self.t_prediction[self.prediction_horizon:]
+                self.joint_predictions = self.joint_predictions[self.prediction_horizon:]
+
+            if human_kin_dyn is not None:
+                self.t = self.t[1:]
+                self.joint_values = self.joint_values[1:]
 
         # human_kin_dyn = human_kin_dyn_port.read(False)
         # if human_kin_dyn is not None:

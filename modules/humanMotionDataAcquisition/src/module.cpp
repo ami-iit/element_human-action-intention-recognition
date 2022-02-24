@@ -741,7 +741,7 @@ bool HumanDataAcquisitionModule::updateModule() {
       m_KinDynPort.write();
     }
 
-    if (m_DataLineIndex % 500 == 0)
+    if (m_DataLineIndex % 100 == 0)
       yInfo() << "[update] index of the data: " << m_DataLineIndex;
 
     if (m_DataLineIndex == m_readDataMapVector.size() - 1) {

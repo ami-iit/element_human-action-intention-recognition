@@ -585,6 +585,7 @@ int main(int argc, char *argv[]) {
     }
 
     for (auto &modelName : modelNameList) {
+
       // read values from base pose port
       basePoseVector =
           modelConfigurationMap[modelName].basePosePort.read(false);
@@ -684,6 +685,9 @@ int main(int argc, char *argv[]) {
     // if joint list is empty, skip the jointPositionPort
     if (!modelConfigurationMap[modelName].jointList.empty()) {
       modelConfigurationMap[modelName].jointPositionPort.close();
+    }
+    if (!modelConfigurationMap[modelName].wrenchSourceLinks.empty()) {
+      modelConfigurationMap[modelName].wrenchPort.close();
     }
   }
 

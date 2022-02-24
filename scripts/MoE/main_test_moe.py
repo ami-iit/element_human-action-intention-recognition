@@ -69,9 +69,9 @@ def get_denormalized_features_all_predictions(normalized_data, denormalizing_mea
 # def main():
 if __name__ == "__main__":
     # parameters
-    model_name = 'model_MoE'
+    model_name = 'model_MoE_Best'
     # model_path = '__untrack/models/horizon_25steps_expert_66lstm'  # related to Neurisp paper
-    model_path = '__untrack/models/RAL/2022-02-21_12:51:45'
+    model_path = '__untrack/models/RAL/2022-02-23_16:32:42/'
 
     data_path = '/home/kourosh/icub_ws/external/DataSet/' \
                 'HumanDataForActionMotionPrediction/ActionRecognition/' \

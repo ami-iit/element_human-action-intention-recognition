@@ -62,21 +62,21 @@ yarp.delay(0.5)
 class PlotInferenceResults:
     def __init__(self):
         # related to figure
-        font = {'size': 16}
+        font = {'size': 15}
         matplotlib.rc('font', **font)
 
         self.xmin = 0.0
         self.xmax = 6.5
         self.plot_front_time = 1.2
-        self.f0 = figure(num=0, figsize=(5.5, 3.3))#, dpi=100)
+        self.f0 = figure(num=0, figsize=(8, 3.0))#, dpi=100)
 
         # self.f0.title("joint value vs time", fontsize=12)
         self.ax01 = self.f0.subplots()  # 2grid((1, 1), (0, 0))
         # self.ax02 = subplots()
         # self.ax01.set_title('joint value vs time', fontsize=16)
-        self.ax01.set_ylim(0, 1)
+        self.ax01.set_ylim(-0.1, 1.1)
         self.ax01.set_xlim(self.xmin, self.xmax)
-        self.ax01.grid(True)
+        self.ax01.grid(False)
         self.t = np.zeros(0)
         self.t0 = current_milli_time() / 1000.0  # seconds
 
@@ -106,10 +106,10 @@ class PlotInferenceResults:
         self.p8, = self.ax01.plot(self.t_prediction, self.action_predictions3, 'o', color='g', markersize=4, alpha=0.05)
 
         # to add legend and x-y labels
-        if False:
-            self.ax01.set_xlabel("time[sec]")
-            self.ax01.set_ylabel("action predictions")
-            plt.legend()
+
+        # self.ax01.set_xlabel("time[sec]")
+        # self.ax01.set_ylabel("Probabilities")
+        # plt.legend(loc='upper left', fontsize=12)
 
         # bar plot
         # prediction_time_idx = [0, 12, 24]
@@ -239,6 +239,7 @@ class PlotInferenceResults:
 
         # self.x += 0.05
         # handling figure
+        # print('data time: ', current_milli_time() - self.timer)
         self.p1.set_data(self.t, self.prediction_now0)
         self.p2.set_data(self.t_prediction, self.action_predictions0)
 
@@ -265,8 +266,9 @@ class PlotInferenceResults:
             self.p8.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
 
             # pop the data to have faster visualization iff new data arrives
-            if predicted_human_actions is not None:
-                self.t_prediction = self.t_prediction[self.prediction_horizon:]
+            if (predicted_human_actions is not None) and (time_now - self.t[0] > self.xmax):
+                # print('deleting: ', self.t_prediction[slice(0, self.prediction_horizon)])
+                self.t_prediction = np.delete(self.t_prediction, slice(0, self.prediction_horizon))
                 self.action_predictions0 = self.action_predictions0[self.prediction_horizon:]
                 self.action_predictions1 = self.action_predictions1[self.prediction_horizon:]
                 self.action_predictions2 = self.action_predictions2[self.prediction_horizon:]
@@ -313,5 +315,5 @@ class PlotInferenceResults:
 plot_object = PlotInferenceResults()
 
 ani = animation.FuncAnimation(plot_object.f0, plot_object.animate,
-                              interval=1, blit=False, repeat=False, cache_frame_data=False)
+                              interval=0, blit=True, repeat=False, cache_frame_data=False, save_count=0)
 plt.show()
