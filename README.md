@@ -56,6 +56,9 @@ In this element, at the first step, we will try to recognize the human action an
 
   - if you want to install in system directoy, remove `--user` from the command line.
 
-    
+  *Notes about compiling the code:*
+  - commenting the requirements of TensorflowCC in CMakelists.txt file in `modules.`
+  - commenting `numpy>=1.20.0` in requirements.txt file
+  - modifying `opt-einsum==3.1.0` to `opt-einsum>=3.1.0`
 
   
