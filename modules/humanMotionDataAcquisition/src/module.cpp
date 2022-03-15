@@ -55,11 +55,16 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
       rf.check("useJointValues", yarp::os::Value(false)).asBool();
   m_useJointVelocities =
       rf.check("useJointVelocities", yarp::os::Value(false)).asBool();
+  /*
   m_useLeftFootWrench =
       rf.check("useLeftFootWrench", yarp::os::Value(false)).asBool();
   m_useRightFootWrench =
       rf.check("useRightFootWrench", yarp::os::Value(false)).asBool();
+  */
+  m_useFeetWrench = rf.check("useFeetWrench", yarp::os::Value(false)).asBool();
+
   m_useBaseValues = rf.check("useBaseValues", yarp::os::Value(false)).asBool();
+
   m_useComValues = rf.check("useCOMValues", yarp::os::Value(false)).asBool();
 
   m_streamData = rf.check("streamData", yarp::os::Value(true)).asBool();
@@ -122,42 +127,66 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
                       .asString();
 
     yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
-
-    //
+    
+    // **********MODIFY THE CODE: START**********
+    // open the input port for receiving the data of left shoe
+    /*
     if (m_useLeftFootWrench) {
-      portNameIn = rf.check("WearablesLeftShoesPortIn",
-                            yarp::os::Value("/FTShoeLeft/WearableData/data:i"))
+      portNameIn = rf.check("WearablesBothShoesPortIn",
+                            yarp::os::Value("/iFeelSuit/WearableData/data:i"))
                        .asString();
-      if (!m_leftShoesPort.open("/" + getName() + portNameIn)) {
+      if (!m_bothShoesPort.open("/" + getName() + portNameIn)) {
         yError() << "[HumanDataAcquisition::configure] " << portNameIn
                  << " port already open.";
         return false;
       }
 
-      portNameOut = rf.check("WearablesLeftShoesPortOut",
-                             yarp::os::Value("/FTShoeLeft/WearableData/data:o"))
+      // check the output port that we want to read is available
+      portNameOut = rf.check("WearablesBothShoesPortOut",
+                             yarp::os::Value("/iFeelSuit/WearableData/data:o"))
                         .asString();
-
+      
+      // connect the input and output ports
       yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
     }
 
-    //
+    // open the input port for receiving the data of right shoe
     if (m_useRightFootWrench) {
-      portNameIn = rf.check("WearablesRightShoesPortIn",
-                            yarp::os::Value("/FTShoeRight/WearableData/data:i"))
+      portNameIn = rf.check("WearablesBothShoesPortIn",
+                            yarp::os::Value("/iFeelSuit/WearableData/data:i"))
                        .asString();
-      if (!m_rightShoesPort.open("/" + getName() + portNameIn)) {
+      if (!m_bothShoesPort.open("/" + getName() + portNameIn)) {
         yError() << "[HumanDataAcquisition::configure] " << portNameIn
                  << " port already open.";
         return false;
       }
+
+      // check the output port is available
       portNameOut =
-          rf.check("WearablesRightShoesPortOut",
-                   yarp::os::Value("/FTShoeRight/WearableData/data:o"))
+          rf.check("WearablesBothShoesPortOut",
+                   yarp::os::Value("/iFeelSuit/WearableData/data:o"))
               .asString();
+      
+      // connect the input and output ports
+      yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
+    }
+    */
+    if (m_useFeetWrench) {
+      portNameIn = rf.check("WearablesBothShoesPortIn",
+                              yarp::os::Value("/iFeelSuit/WearableData/data:i")).asString();
+      
+      if (!m_bothShoesPort.open("/" + getName() + portNameIn)) {
+        yError() << "[HumanDataAcquisition::configure] " << portNameIn
+                 << "port already open.";
+        return false;
+      }
+
+      portNameOut = rf.check("WearablesBothShoesPortOut",
+                             yarp::os::Value("/iFeelSuit/WearableData/data:o")).asString();
 
       yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
     }
+    // **********MODIFY THE CODE: END**********
   }
 
   if (m_readDataFromFile) {
@@ -229,10 +258,13 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
   m_rightShoes.resize(6, 0.0);
 
   size_t wrenchSize = 0;
-
+  /*
   if (m_useLeftFootWrench)
     wrenchSize += 6;
   if (m_useRightFootWrench)
+    wrenchSize += 6;
+  */
+  if (m_useFeetWrench)
     wrenchSize += 6;
 
   m_wrenchValues.resize(wrenchSize, 0.0);
@@ -243,9 +275,13 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
     kinDynSize += m_robotJointsListNames.size();
   if (m_useJointVelocities)
     kinDynSize += m_robotJointsListNames.size();
+  /*
   if (m_useLeftFootWrench)
     kinDynSize += 6;
   if (m_useRightFootWrench)
+    kinDynSize += 6;
+  */
+  if (m_useFeetWrench)
     kinDynSize += 6;
 
   m_kinDynValues.resize(kinDynSize, 0.0);
@@ -270,13 +306,22 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
                                               "_vel");
     }
   }
-
+  
+  /*
   if (m_useLeftFootWrench) {
     features += "l_shoe_fx l_shoe_fy l_shoe_fz l_shoe_tx l_shoe_ty l_shoe_tz ";
   }
 
   if (m_useRightFootWrench) {
     features += "r_shoe_fx r_shoe_fy r_shoe_fz r_shoe_tx r_shoe_ty r_shoe_tz ";
+  }
+  */
+
+  if (m_useFeetWrench) {
+    features += "l_shoe_fx l_shoe_fy l_shoe_fz l_shoe_tx l_shoe_ty l_shoe_tz ";
+
+    features += "r_shoe_fx r_shoe_fy r_shoe_fz r_shoe_tx r_shoe_ty r_shoe_tz ";
+                
   }
 
   if (m_useBaseValues) {
@@ -517,7 +562,7 @@ bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
           (m_readDataMapVector[m_DataLineIndex])[m_comFeatuersName[i]];
   }
 
-  if (m_firstIteration && m_readDataFromFile) {
+  if (m_firstIteration && m_useForAnnotation) {
     yInfo() << "\033[1;31m Module is Running ... \033[0m";
     yInfo()
         << "\033[1;31m To do fast backward press `'` on the keyboard\033[0m";
@@ -529,17 +574,28 @@ bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
   return true;
 }
 
+// **********MODIFY THE CODE: START**********
+// read the input port that was previously connected to the output port for left shoe 
+/*
 bool HumanDataAcquisitionModule::getLeftShoesWrenches() {
 
   if (!m_readDataFromFile) {
-    yarp::os::Bottle *leftShoeWrench = m_leftShoesPort.read(false);
+    
+    yarp::os::Bottle *leftShoeWrench = m_bothShoesPort.read(false);
 
     if (leftShoeWrench == NULL) {
       //    yInfo() << "[getLeftShoesWrenches()] left shoes port is empty";
       return true;
     }
+    
 
+    // parse the data in order to extract the relevant information:
+    // the 6 values of force/torque
+    // Here the parsing assumes that the data in the port contains onlt a single shoe data
+    // NOTE: here we are not using remapper device but parsing the data in the port directly.
+    // NOTE: in general this should be avoided by using IWearRemapper device. 
     // data are located in 5th element:
+    
     yarp::os::Value list4 = leftShoeWrench->get(4);
 
     yarp::os::Bottle *tmp1 = list4.asList();
@@ -556,14 +612,37 @@ bool HumanDataAcquisitionModule::getLeftShoesWrenches() {
       m_leftShoes(i) =
           (m_readDataMapVector[m_DataLineIndex])[m_leftWrenchFeatuersName[i]];
   }
+  
+
+    yarp::os::Value list4 = leftShoeWrench->get(4);
+
+    yarp::os::Bottle *tmp1 = list4.asList();
+    yarp::os::Bottle *tmp2 = tmp1->get(0).asList();
+    yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
+
+    for (size_t i = 0; i < 6; i++)
+      m_leftShoes(i) = tmp3->get(i+2).asDouble();
+
+  } else {
+
+    for (size_t i = 0; i < m_leftWrenchFeatuersName.size(); i++)
+      m_leftShoes(i) = 
+          (m_readDataMapVector[m_DataLineIndex])[m_leftWrenchFeatuersName[i]];
+  }
 
   return true;
 }
+*/
 
+// **********MODIFY THE CODE: END**********
+
+// **********MODIFY THE CODE: START**********
+// read the input port that was previously connected to the output port fro right shoe 
+/*
 bool HumanDataAcquisitionModule::getRightShoesWrenches() {
 
   if (!m_readDataFromFile) {
-    yarp::os::Bottle *rightShoeWrench = m_rightShoesPort.read(false);
+    yarp::os::Bottle *rightShoeWrench = m_bothShoesPort.read(false);
 
     if (rightShoeWrench == NULL) {
       //    yInfo() << "[getRightShoesWrenches()] right shoes port is empty";
@@ -573,6 +652,7 @@ bool HumanDataAcquisitionModule::getRightShoesWrenches() {
     //    "<<rightShoeWrench->size();
 
     // data are located in 5th element:
+    
     yarp::os::Value list4 = rightShoeWrench->get(4);
 
     yarp::os::Bottle *tmp1 = list4.asList();
@@ -589,9 +669,62 @@ bool HumanDataAcquisitionModule::getRightShoesWrenches() {
       m_rightShoes(i) =
           (m_readDataMapVector[m_DataLineIndex])[m_rightWrenchFeatuersName[i]];
   }
+  
+    yarp::os::Value list4 = rightShoeWrench->get(4);
+
+    yarp::os::Bottle *tmp1 = list4.asList();
+    yarp::os::Bottle *tmp2 = tmp1->get(1).asList();
+    yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
+
+    for (size_t i = 0; i < 6; i++)
+      m_rightShoes(i) = tmp3->get(i+2).asDouble();
+  } else {
+
+    for (size_t i = 0; i < m_rightWrenchFeatuersName.size(); i++)
+      m_rightShoes(i) =
+          (m_readDataMapVector[m_DataLineIndex])[m_rightWrenchFeatuersName[i]];
+  }
 
   return true;
 }
+*/
+bool HumanDataAcquisitionModule::getShoesWrenches() {
+
+  if (!m_readDataFromFile) {
+    yarp::os::Bottle *myShoesWrench = m_bothShoesPort.read(false);
+
+    if (myShoesWrench == NULL) {
+
+      return true;
+    }
+
+    yarp::os::Value list4 = myShoesWrench->get(4);
+
+    yarp::os::Bottle *tmp0 = list4.asList();
+
+    yarp::os::Bottle *tmp1 = tmp0->get(0).asList();
+    yarp::os::Bottle *tmp2 = tmp1->get(1).asList();
+
+    yarp::os::Bottle *tmp3 = tmp0->get(1).asList();
+    yarp::os::Bottle *tmp4 = tmp3->get(1).asList();
+
+    for (size_t i = 0; i < 6; i++) {
+      m_leftShoes(i) = tmp2->get(i+2).asDouble();
+      m_rightShoes(i) = tmp4->get(i+2).asDouble();
+    
+    } 
+  } 
+  else {
+      for (size_t i = 0; i < m_leftWrenchFeatuersName.size(); i++)
+        m_leftShoes(i) = (m_readDataMapVector[m_DataLineIndex])[m_leftWrenchFeatuersName[i]];
+
+      for (size_t i = 0; i< m_rightWrenchFeatuersName.size(); i++)
+        m_rightShoes(i) = (m_readDataMapVector[m_DataLineIndex])[m_rightWrenchFeatuersName[i]];
+  }
+
+  return true;
+}
+// **********MODIFY THE CODE: END**********
 
 double HumanDataAcquisitionModule::getPeriod() { return m_dT; }
 
@@ -614,11 +747,19 @@ bool HumanDataAcquisitionModule::updateModule() {
       yError() << "[updateModule] cannot get human states.";
       return false;
     }
-
+    
+    // **********MODIFY THE CODE: START**********
+    // call the method for reading the port (defined above)
+    /*
     if (m_useLeftFootWrench)
       getLeftShoesWrenches();
     if (m_useRightFootWrench)
       getRightShoesWrenches();
+    */
+    if (m_useFeetWrench)
+      getShoesWrenches();
+
+    // **********MODIFY THE CODE: END**********
 
     if (m_logData)
       logData();
@@ -629,18 +770,28 @@ bool HumanDataAcquisitionModule::updateModule() {
                     "m_wholeBodyHumanJointsPort port is closed";
         return false;
       }
+      /*
       if (m_useLeftFootWrench) {
-        if (m_leftShoesPort.isClosed()) {
+        if (m_bothShoesPort.isClosed()) {
           yError()
-              << "[HumanDataAcquisition::updateModule] m_leftShoesPort port "
+              << "[HumanDataAcquisition::updateModule] m_bothShoesPort port "
                  "is closed";
           return false;
         }
       }
       if (m_useRightFootWrench) {
-        if (m_rightShoesPort.isClosed()) {
+        if (m_bothShoesPort.isClosed()) {
           yError()
-              << "[HumanDataAcquisition::updateModule] m_rightShoesPort port "
+              << "[HumanDataAcquisition::updateModule] m_bothShoesPort port "
+                 "is closed";
+          return false;
+        }
+      }
+      */
+      if (m_useFeetWrench) {
+        if (m_bothShoesPort.isClosed()) {
+          yError()
+              << "[HumanDataAcquisition::updateModule] m_bothShoesPort port "
                  "is closed";
           return false;
         }
@@ -667,6 +818,7 @@ bool HumanDataAcquisitionModule::updateModule() {
                     "closed";
         return false;
       }
+      /*
       if (m_useLeftFootWrench || m_useRightFootWrench) {
         if (m_wrenchPort.isClosed()) {
           yError()
@@ -675,6 +827,16 @@ bool HumanDataAcquisitionModule::updateModule() {
           return false;
         }
       }
+      */
+      if (m_useFeetWrench) {
+        if (m_wrenchPort.isClosed()) {
+          yError()
+              << "[HumanDataAcquisition::updateModule] m_wrenchPort port is "
+                 "closed";
+          return false;
+        }
+      }
+
       if (m_KinDynPort.isClosed()) {
         yError() << "[HumanDataAcquisition::updateModule] m_KinDynPort port is "
                     "closed";
@@ -696,6 +858,7 @@ bool HumanDataAcquisitionModule::updateModule() {
 
       // Wrench vector
 
+      /*
       size_t wrenchCounter = 0;
       if (m_useLeftFootWrench) {
         for (size_t i = 0; i < m_leftShoes.size(); i++) {
@@ -706,6 +869,18 @@ bool HumanDataAcquisitionModule::updateModule() {
       if (m_useRightFootWrench) {
         for (size_t i = 0; i < m_rightShoes.size(); i++) {
           // if uses both wrenches, wrenchCounter is 6, otherwise it will 0.
+          m_wrenchValues(wrenchCounter + i) = m_rightShoes(i);
+        }
+      }
+      */
+      size_t wrenchCounter = 0;
+      if (m_useFeetWrench) {
+        for (size_t i = 0; i < m_leftShoes.size(); i++) {
+          m_wrenchValues(i) = m_leftShoes(i);
+          wrenchCounter++;
+        }
+
+        for (size_t i = 0; i < m_rightShoes.size(); i++) {
           m_wrenchValues(wrenchCounter + i) = m_rightShoes(i);
         }
       }
@@ -770,7 +945,7 @@ bool HumanDataAcquisitionModule::updateModule() {
 void HumanDataAcquisitionModule::keyboardHandler() {
   constexpr std::chrono::microseconds keyboad_input_thread_period{10};
   std::string lastAnnotation;
-  while (m_readDataFromFile) {
+  while (m_useForAnnotation) {
     auto start = std::chrono::steady_clock::now();
 
     // get the string from terminal
@@ -875,7 +1050,7 @@ bool HumanDataAcquisitionModule::logData() {
     for (size_t i = 0; i < m_actuatedDOFs; i++) {
       features += std::to_string(m_jointVelocities(i)) + " ";
     }
-
+  /*
   if (m_useLeftFootWrench)
     for (size_t i = 0; i < 6; i++) {
       features += std::to_string(m_leftShoes(i)) + " ";
@@ -885,6 +1060,17 @@ bool HumanDataAcquisitionModule::logData() {
     for (size_t i = 0; i < 6; i++) {
       features += std::to_string(m_rightShoes(i)) + " ";
     }
+  */
+
+  if (m_useFeetWrench) {
+    for (size_t i = 0; i < 6; i++) {
+      features += std::to_string(m_leftShoes(i)) + " ";
+    }
+
+    for (size_t i = 0; i < 6; i++) {
+      features += std::to_string(m_rightShoes(i)) + " ";
+    }
+  }
 
   if (m_useBaseValues)
     for (size_t i = 0; i < m_baseValues.size(); i++) {

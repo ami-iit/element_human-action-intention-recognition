@@ -64,13 +64,17 @@ private:
 
   /** Port used to retrieve the human whole body joint pose. */
   yarp::os::BufferedPort<hde::msgs::HumanState> m_wholeBodyHumanJointsPort;
-
+  
   /** Port used to retrieve the left shoes wrenches. */
-  yarp::os::BufferedPort<yarp::os::Bottle> m_leftShoesPort;
+  //yarp::os::BufferedPort<yarp::os::Bottle> m_leftShoesPort;
 
   /** Port used to retrieve the right shoes wrenches. */
-  yarp::os::BufferedPort<yarp::os::Bottle> m_rightShoesPort;
+  //yarp::os::BufferedPort<yarp::os::Bottle> m_rightShoesPort;
+  
 
+  /** Port used to retrieve both shoes wrenches. */
+  yarp::os::BufferedPort<yarp::os::Bottle> m_bothShoesPort;
+  
   /** Port used to provide the smoothed joint pose to yarp port. */
   yarp::os::BufferedPort<yarp::sig::Vector> m_wholeBodyJointsPort;
   /** Port used to provide the human CoM position to the yarp network.  */
@@ -120,8 +124,9 @@ private:
 
   bool m_useJointValues;
   bool m_useJointVelocities;
-  bool m_useLeftFootWrench;
-  bool m_useRightFootWrench;
+  //bool m_useLeftFootWrench;
+  //bool m_useRightFootWrench;
+  bool m_useFeetWrench;
   bool m_useBaseValues;
   bool m_useComValues;
 
@@ -158,9 +163,11 @@ public:
    */
   bool getVectorizeHumanStates();
 
-  bool getLeftShoesWrenches();
+  //bool getLeftShoesWrenches();
 
-  bool getRightShoesWrenches();
+  //bool getRightShoesWrenches();
+
+  bool getShoesWrenches();
 
   bool logData();
 

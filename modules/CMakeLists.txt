@@ -3,12 +3,12 @@
 # Authors: Kourosh Darvish <Kourosh.Darvish@iit.it>
 
 #if(UNIX)
-    find_package(TensorflowCC REQUIRED)
+#    find_package(TensorflowCC QUIET)
 #endif()
 
-if(NOT TensorflowCC_FOUND)
-	message(FATAL_ERROR "TensorflowCC is not found" )
-endif()
+#if(NOT TensorflowCC_FOUND)
+#	message(FATAL_ERROR "TensorflowCC is not found" )
+#endif()
 
 #add_subdirectory(PredictSequenceDataGenerated_module)
 
