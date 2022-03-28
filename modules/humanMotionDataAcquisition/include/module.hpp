@@ -13,6 +13,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 // YARP
 #include <hde/msgs/HumanState.h>
@@ -23,6 +24,10 @@
 #include <yarp/os/Network.h>
 #include <yarp/os/RFModule.h>
 #include <yarp/sig/Vector.h>
+#include <yarp/os/Searchable.h>
+
+// wearable
+#include <Wearable/IWear/IWear.h>
 
 #include <chrono>
 #include <yarp/os/Clock.h>
@@ -73,8 +78,15 @@ private:
   
 
   /** Port used to retrieve both shoes wrenches. */
-  yarp::os::BufferedPort<yarp::os::Bottle> m_bothShoesPort;
+  //yarp::os::BufferedPort<yarp::os::Bottle> m_bothShoesPort;
+
+  yarp::dev::PolyDriver m_wearableDevice;
+
+  wearable::IWear *m_iWear{nullptr}; /**Sense FT Shoes wearable interface. */
   
+  wearable::VectorOfSensorPtr<const wearable::sensor::IForceTorque6DSensor> m_leftShoeSensor;
+
+  wearable::VectorOfSensorPtr<const wearable::sensor::IForceTorque6DSensor> m_rightShoeSensor;
   /** Port used to provide the smoothed joint pose to yarp port. */
   yarp::os::BufferedPort<yarp::sig::Vector> m_wholeBodyJointsPort;
   /** Port used to provide the human CoM position to the yarp network.  */
@@ -134,6 +146,11 @@ private:
 
   std::string m_latestAnnotation; /**< the latest or updated annotation to use
                                      when logging the data*/
+
+  std::string m_sensorNameLeftShoe;
+
+  std::string m_sensorNameRightShoe;
+  
   std::vector<std::string> m_annotationList; /**< Vector containing the name of
                                                 the list of the annotations.*/
 

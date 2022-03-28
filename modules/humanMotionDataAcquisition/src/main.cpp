@@ -24,8 +24,13 @@ int main(int argc, char *argv[]) {
   // prepare and configure the resource finder
   yarp::os::ResourceFinder &rf =
       yarp::os::ResourceFinder::getResourceFinderSingleton();
+  
+  /*
+  const yarp::os::Searchable &config = 
+      yarp::os::Searchable::check();
+  */
 
-  rf.setDefaultConfigFile("humanDataForRiskAssessment.ini");
+  rf.setDefaultConfigFile("HumanDataAcquisition.ini");
 
   rf.configure(argc, argv);
 

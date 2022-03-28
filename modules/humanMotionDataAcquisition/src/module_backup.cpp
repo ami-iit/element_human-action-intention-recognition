@@ -5,8 +5,6 @@
 
 #include <module.hpp>
 
-using namespace wearable;
-
 class HumanDataAcquisitionModule::impl {
 public:
   /*
@@ -27,8 +25,7 @@ HumanDataAcquisitionModule::HumanDataAcquisitionModule() : pImpl{new impl()} {};
 
 HumanDataAcquisitionModule::~HumanDataAcquisitionModule(){};
 
-bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
-{
+bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
   // check if the configuration file is empty
   m_isClosed = false;
   if (rf.isNull()) {
@@ -52,7 +49,6 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
   m_readDataFromFile = rf.check("readFromFile", yarp::os::Value(true)).asBool();
 
   m_DataLineIndex = 0;
-
   m_time = 0.0;
 
   m_useJointValues =
@@ -75,12 +71,6 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
 
   m_useForAnnotation =
       rf.check("useForAnnotation", yarp::os::Value(false)).asBool();
-
-  m_sensorNameLeftShoe = 
-      rf.check("sensorNameLeftShoe", yarp::os::Value("iFeelSuit::ft6D::Node#1")).asString();
-
-  m_sensorNameRightShoe = 
-      rf.check("m_sensorNameRightShoe", yarp::os::Value("iFeelSuit::ft6D::Node#2")).asString();
 
   // the annotation list size
   m_annotationList.resize(0);
@@ -182,8 +172,6 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
     }
     */
     if (m_useFeetWrench) {
-      /*
-      // create a port to retrieve shoes data from yarp network
       portNameIn = rf.check("WearablesBothShoesPortIn",
                               yarp::os::Value("/iFeelSuit/WearableData/data:i")).asString();
       
@@ -197,37 +185,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
                              yarp::os::Value("/iFeelSuit/WearableData/data:o")).asString();
 
       yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
-      */
-      // use remapper device for parsing data in the port
-      yarp::os::Property options;
-      options.put("device", "iwear_remapper");
-      
-      yarp::os::Value *shoesDataPort;
-      
-      if (!rf.check("WearablesBothShoesPortOut", shoesDataPort))
-      {
-        yError() << "Unable to find WearablesBothShoesPortOut in configure file.";
-
-        return false;
-      }
-
-      options.put("wearableDataPorts", shoesDataPort); 
-      // optional
-      //options.put("carrier", "fast_tcp");
-      
-      if (!m_wearableDevice.open(options)) {
-        yError() << "Failed to connect wearable Remapper Device";
-
-        return false;
-      }
-      
-      if (!m_wearableDevice.view(m_iWear) || !m_iWear) {
-        yError() << "Failed to view FT Shoes Wearable Interface";
-
-        return false;
-      }
     }
-  
     // **********MODIFY THE CODE: END**********
   }
 
@@ -295,8 +253,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
       rf.check("jointDifferenceThreshold", yarp::os::Value(0.01)).asDouble();
   m_jointDiffThreshold = jointThreshold;
   m_CoMValues.resize(3, 0.0);
-  
-  // used for store foot wrenches values: 3D forces & 3D torques
+
   m_leftShoes.resize(6, 0.0);
   m_rightShoes.resize(6, 0.0);
 
@@ -308,7 +265,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
     wrenchSize += 6;
   */
   if (m_useFeetWrench)
-    wrenchSize += 12;
+    wrenchSize += 6;
 
   m_wrenchValues.resize(wrenchSize, 0.0);
 
@@ -325,7 +282,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
     kinDynSize += 6;
   */
   if (m_useFeetWrench)
-    kinDynSize += 12;
+    kinDynSize += 6;
 
   m_kinDynValues.resize(kinDynSize, 0.0);
   yInfo() << "wrenchSize: " << wrenchSize;
@@ -445,7 +402,6 @@ bool HumanDataAcquisitionModule::readDataFile(std::string fileName) {
   std::vector<std::string> columnTags;
   bool firstLine = true; // since the column tags are there
   std::ifstream file(fileName);
-
   if (file.is_open()) {
     std::string line;
 
@@ -527,7 +483,6 @@ bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
 
       for (unsigned j = 0; j < m_actuatedDOFs; j++) {
         // check for the spikes in joint values
-        // ask Kourosh why check the spikes here?
         if (std::abs(newHumanjointsValues[m_humanToRobotMap[j]] -
                      m_jointValues(j)) < m_jointDiffThreshold) {
           m_jointValues(j) = newHumanjointsValues[m_humanToRobotMap[j]];
@@ -606,7 +561,7 @@ bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
       m_CoMValues(i) =
           (m_readDataMapVector[m_DataLineIndex])[m_comFeatuersName[i]];
   }
-  // hints for data annotation
+
   if (m_firstIteration && m_useForAnnotation) {
     yInfo() << "\033[1;31m Module is Running ... \033[0m";
     yInfo()
@@ -734,9 +689,8 @@ bool HumanDataAcquisitionModule::getRightShoesWrenches() {
 }
 */
 bool HumanDataAcquisitionModule::getShoesWrenches() {
-  // read from yarp port
+
   if (!m_readDataFromFile) {
-    /*
     yarp::os::Bottle *myShoesWrench = m_bothShoesPort.read(false);
 
     if (myShoesWrench == NULL) {
@@ -759,54 +713,7 @@ bool HumanDataAcquisitionModule::getShoesWrenches() {
       m_rightShoes(i) = tmp4->get(i+2).asDouble();
     
     } 
-    */
-    // get the pointers to each shoe sensor from iWear
-    // maybe not use the sensor name directly,but like what be done in GloveWearable.cpp
-    /*
-    std::string sensorNameLeftShoe = "iFeelSuit::ft6D::Node#1";
-    std::string sensorNameRightShoe = "iFeelSuit::ft6D::Node#2";
-    */
-
-    auto m_leftShoeSensor = m_iWear->getForceTorque6DSensor(m_sensorNameLeftShoe); 
-    auto m_rightShoeSensor = m_iWear->getForceTorque6DSensor(m_sensorNameRightShoe);
-
-    if (!m_leftShoeSensor) {
-      yError() << "Failed to find sensor associated to link"
-               << m_sensorNameLeftShoe << "from the IWear interface";
-
-      return false;
-    }
-
-    if (!m_rightShoeSensor) {
-      yError() << "Failed to find sensor associated to link"
-               << m_sensorNameRightShoe << "from the IWear interface";
-
-      return false;
-    }
-    
-    /*
-    yInfo() << "Initialize the following sensor: " << m_leftShoeSensor->getSensorName();
-    yInfo() << "Initialize the following sensor: " << m_rightShoeSensor->getSensorName();
-    */
-
-    // access the sensor data of each shoe via the pointer
-    wearable::Vector6 forceTorque6DLeftShoe;
-    wearable::Vector6 forceTorque6DRightShoe;
-
-    m_leftShoeSensor->getForceTorque6D(forceTorque6DLeftShoe);
-    m_rightShoeSensor->getForceTorque6D(forceTorque6DRightShoe);
-    
-    for (size_t i = 0; i < 6; i++) {
-      m_leftShoes(i) = forceTorque6DLeftShoe[i];
-      m_rightShoes(i) = forceTorque6DRightShoe[i];
-    }
-    
-    /*
-    yInfo() << m_leftShoes.toString();
-    yInfo() << m_rightShoes.toString();
-    */
   } 
-  // otherwise read from file
   else {
       for (size_t i = 0; i < m_leftWrenchFeatuersName.size(); i++)
         m_leftShoes(i) = (m_readDataMapVector[m_DataLineIndex])[m_leftWrenchFeatuersName[i]];
@@ -881,7 +788,6 @@ bool HumanDataAcquisitionModule::updateModule() {
         }
       }
       */
-      /* since now not using port to retrieve data from port
       if (m_useFeetWrench) {
         if (m_bothShoesPort.isClosed()) {
           yError()
@@ -890,7 +796,6 @@ bool HumanDataAcquisitionModule::updateModule() {
           return false;
         }
       }
-      */
     }
 
     if (m_streamData) {
@@ -1040,8 +945,6 @@ bool HumanDataAcquisitionModule::updateModule() {
 void HumanDataAcquisitionModule::keyboardHandler() {
   constexpr std::chrono::microseconds keyboad_input_thread_period{10};
   std::string lastAnnotation;
-
-  // when detecting data annotation
   while (m_useForAnnotation) {
     auto start = std::chrono::steady_clock::now();
 
