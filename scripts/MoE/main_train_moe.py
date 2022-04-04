@@ -42,41 +42,40 @@ if __name__ == "__main__":
     # high level flags for training
     learn_moe_model = True
     learn_cnn_model = False
-    learn_lstm_model = True
+    learn_lstm_model = False
     do_performance_analysis = True
-    normalize_input = True
+    normalize_input = False
     output_categorical = True
     save_model = True
     verbose = False
 
     # configurations for the datasets
     model_name = 'model'
-    models_path = '__untrack/models/RAL/'+get_time_now()
-    data_path = '/home/kourosh/icub_ws/external/DataSet/' \
-                'HumanDataForActionMotionPrediction/ActionRecognition/' \
-                'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
+    # models_path = '__untrack/models/RAL/'+get_time_now()
+    models_path = 'NN_models/' +get_time_now() # save the trained NN model
+    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/ergonomic_lifting.txt' # read the dataset
+    
     user_mass = 79.0
     gravity = 9.81
-
     output_steps = 25  # ! at the moment only the value `1` is possible
     shift = output_steps  # ! offset, e.g., 10
-    input_width = 5  # ! default: 10
+    input_width = 10  # ! default: 10 
     max_subplots = 5
     train_percentage = 0.7  # ! the percentage of of the time series data from starting  for training
     val_percentage = 0.2  # ! the percentage of the time series data after training data for validation
     test_percentage = 1.0 - (train_percentage + val_percentage)  # ! the amount of data at end for testing
 
     # general configurations for the neural networks
-    regularization_l2_gate = 1.0e-2
-    regularization_l1_gate = 1.0e-2
-    regularization_l2_experts = 1.0e-2
-    regularization_l1_experts = 1.0e-2
+    regularization_l2_gate = 1.0e-3
+    regularization_l1_gate = 1.0e-3
+    regularization_l2_experts = 1.0e-3
+    regularization_l1_experts = 1.0e-3
 
     dropout_rate = 0.4
     max_epochs = 40  # Default: 20
     patience = 5  # ! default: 4
 
-    number_experts_outputs = 78  # to fix later
+    number_experts_outputs = 78  # to fix later (66 joint angles, 12 wrenches)
 
     # =====================
     # ====== DATASET ======
@@ -103,6 +102,7 @@ if __name__ == "__main__":
     if output_categorical:  # ! get the output label in case of categorical ouputs
         df_output = pd.get_dummies(df_output)
         output_labels = df_output.keys()
+        # number of categories should be equal to the size of annotation list
         number_categories = len(output_labels)  # ! the number of categories
         print('output labels : {}'.format(output_labels))
 
@@ -145,14 +145,14 @@ if __name__ == "__main__":
         test_input_df = (test_input_df - train_input_mean) / train_input_std
 
         # ! check: maybe I can delete it.
-        df_std = (df_input_weight_normalized - train_input_mean) / train_input_std
-        df_std = df_std.melt(var_name='Column', value_name='Normalized')
+        #df_std = (df_input_weight_normalized - train_input_mean) / train_input_std
+        #df_std = df_std.melt(var_name='Column', value_name='Normalized')
 
     # ! concatenate the two datasets to have one df
     gate_train_df = pd.concat([train_input_df, train_target_df].copy(), axis=1)
     gate_val_df = pd.concat([val_input_df, val_target_df].copy(), axis=1)
     gate_test_df = pd.concat([test_input_df, test_target_df].copy(), axis=1)
-
+    
     expert_train_df = train_input_df.copy()
     expert_val_df = val_input_df.copy()
     expert_test_df = test_input_df.copy()
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     #                                   train_target_df=train_target_df,
     #                                   val_target_df=val_target_df,
     #                                   test_target_df=test_target_df)
-    #
+    
     multi_window = WindowGenerator(input_width=input_width,
                                    label_width=output_steps,
                                    shift=shift,
@@ -197,7 +197,7 @@ if __name__ == "__main__":
                                                 reg_l2_experts=regularization_l2_experts,
                                                 dp_rate=dropout_rate)
         model_moe.summary()
-        print(asghar)
+        # print(asghar)
 
         model_moe = compile_model(model_moe)
 

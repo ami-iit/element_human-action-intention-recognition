@@ -71,17 +71,16 @@ if __name__ == "__main__":
     # parameters
     model_name = 'model_MoE_Best'
     # model_path = '__untrack/models/horizon_25steps_expert_66lstm'  # related to Neurisp paper
-    model_path = '__untrack/models/RAL/2022-02-23_16:32:42/'
+    model_path = 'NN_models/2022-04-01_14:22:15/'
 
-    data_path = '/home/kourosh/icub_ws/external/DataSet/' \
-                'HumanDataForActionMotionPrediction/ActionRecognition/' \
-                'carefulAnnotation/2/Dataset_2021_08_19_20_06_39.txt'
+    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/ergonomic_lifting.txt' 
+                
 
     pop_list = ['time', 'label']
     features_list = []
 
     plotting_features = ['l_shoe_fz', 'r_shoe_fz', 'jLeftKnee_roty_val', 'jRightKnee_roty_val']
-    labels = ['None', 'Rotating', 'Standing', 'Walking']
+    labels = ['None', 'Stooping', 'Standing_without_object']
 
     user_mass = 79.0
     gravity = 9.81

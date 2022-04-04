@@ -232,14 +232,15 @@ def get_lstm_expert_output(input_, number_outputs, output_steps, reg_l2, dp_rate
     return output_
 
 
-def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, number_categories,
                                          number_experts_outputs, output_steps):
 
     h_expert1 = Reshape([output_steps, number_experts_outputs, 1])(h_expert1)
     h_expert2 = Reshape([output_steps, number_experts_outputs, 1])(h_expert2)
     h_expert3 = Reshape([output_steps, number_experts_outputs, 1])(h_expert3)
-    h_expert4 = Reshape([output_steps, number_experts_outputs, 1])(h_expert4)
-    experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4])
+    #h_expert4 = Reshape([output_steps, number_experts_outputs, 1])(h_expert4)
+    #experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4])
+    experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3])
     print('experts shape: {}'.format(experts.shape))
 
     h_gate = Reshape([output_steps, 1, number_categories])(h_gate)
