@@ -95,14 +95,29 @@ def get_refined_moe_four_expert(number_categories, number_experts_outputs, outpu
                                                reg_l1_experts, reg_l2_experts, dp_rate, 2)
     h_expert3 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
                                                reg_l1_experts, reg_l2_experts, dp_rate, 3)
-    #h_expert4 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
-    #                                           reg_l1_experts, reg_l2_experts, dp_rate, 4)
+    h_expert4 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 4)
+    h_expert5 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 5)
+    h_expert6 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 6)
+    h_expert7 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 7)
+    h_expert8 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 8)  
+    h_expert9 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 9)     
+    h_expert10 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+                                               reg_l1_experts, reg_l2_experts, dp_rate, 10)
+    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, 
+                                                      h_expert5, h_expert6, h_expert7, h_expert8, h_expert9, h_expert10,
+                                                      number_categories, number_experts_outputs, output_steps)
 
     #moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
     #                                                  number_experts_outputs, output_steps)
     
-    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, number_categories,
-                                                      number_experts_outputs, output_steps)
+    #moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, number_categories,
+    #                                                  number_experts_outputs, output_steps)
     model = Model(inputs=inputs, outputs=[gate_output, moe_output])
 
     return model
@@ -202,6 +217,7 @@ def get_moe_model_one_expert(number_categories, number_experts_outputs, output_s
     return model
 
 
+# define loss function and optimization function
 def compile_model(model):
     model.compile(loss={'gate_output': CategoricalCrossentropy(from_logits=False),
                         'moe_output': tf.losses.MeanSquaredError()},
@@ -364,7 +380,7 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
    
         #if epoch == 0:
          #   return
-        while epoch < 20:
+        while epoch < 10:
             return
 
         # plot 1: losses

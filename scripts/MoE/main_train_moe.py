@@ -53,7 +53,8 @@ if __name__ == "__main__":
     model_name = 'model'
     # models_path = '__untrack/models/RAL/'+get_time_now()
     models_path = 'NN_models/' +get_time_now() # save the trained NN model
-    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/ergonomic_lifting.txt' # read the dataset
+    # data set for first 5 mins video
+    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/Dataset_2022_04_04_16_17_18.txt' # read the dataset
     
     user_mass = 79.0
     gravity = 9.81
