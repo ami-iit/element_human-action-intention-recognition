@@ -48,12 +48,23 @@ def get_moe_model_four_experts(number_categories, number_outputs, output_steps, 
     #############
     # expert 4
     # h_expert4 = get_lstm_expert_output(inputs, number_outputs, output_steps, reg_l2, dp_rate, expert_number=4)
-    h_expert4 = get_dense_expert_output(inputs, number_outputs, output_steps, reg_l2, dp_rate, expert_number=4)
+    #h_expert4 = get_dense_expert_output(inputs, number_outputs, output_steps, reg_l2, dp_rate, expert_number=4)
+
+    # expert 5
+    #h_expert5 = get_dense_expert_output(inputs, number_outputs, output_steps, reg_l2, dp_rate, expert_number=5)
+
+    # expert 6
+    #h_expert6 = get_dense_expert_output(inputs, number_outputs, output_steps, reg_l2, dp_rate, expert_number=6)
+
+    # expert 7
+    #h_expert7 = get_dense_expert_output(inputs, number_outputs, output_steps, reg_l2, dp_rate, expert_number=7)
 
     #############
     # Gate Layer
-    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
-                                                      number_outputs, output_steps)
+    #moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+    #                                                  number_outputs, output_steps)
+    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, number_categories,
+                                                      number_outputs, output_steps)                                                  
 
     # print('moe_output shape: {}'.format(moe_output.shape))
 
@@ -84,13 +95,14 @@ def get_refined_moe_four_expert(number_categories, number_experts_outputs, outpu
                                                reg_l1_experts, reg_l2_experts, dp_rate, 2)
     h_expert3 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
                                                reg_l1_experts, reg_l2_experts, dp_rate, 3)
-    h_expert4 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
-                                               reg_l1_experts, reg_l2_experts, dp_rate, 4)
+    #h_expert4 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+    #                                           reg_l1_experts, reg_l2_experts, dp_rate, 4)
 
-    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4,
-                                                      number_categories,
+    #moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+    #                                                  number_experts_outputs, output_steps)
+    
+    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, number_categories,
                                                       number_experts_outputs, output_steps)
-
     model = Model(inputs=inputs, outputs=[gate_output, moe_output])
 
     return model
@@ -306,19 +318,24 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         #     self.base_metrics = [metric for metric in self.params['metrics'] if not metric.startswith('val_')]
         self.losses = []
         self.val_losses = []
+        #self.test_losses = []
 
-        self.losses = []
-        self.val_losses = []
         self.gate_losses = []
         self.val_gate_losses = []
+        #self.test_gate_losses = []
+
         self.moe_losses = []
         self.val_moe_losses = []
+        #self.test_moe_losses = []
 
         self.gate_accuracy = []
         self.val_gate_accuracy = []
+        #self.test_gate_accuracy = []
 
         self.moe_mae = []
         self.val_moe_mae = []
+        #self.test_moe_mae = []
+
         self.font_size = 16
 
     def on_epoch_end(self, epoch, logs=None):
@@ -327,36 +344,53 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         # update log values
         self.losses.append(logs['loss'])
         self.val_losses.append(logs['val_loss'])
+        #self.test_losses.append(logs(['test_loss']))
+
         self.gate_losses.append(logs['gate_output_loss'])
         self.val_gate_losses.append(logs['val_gate_output_loss'])
+        #self.test_gate_losses.append(logs['test_gate_output_loss'])
+
         self.moe_losses.append(logs['moe_output_loss'])
         self.val_moe_losses.append(logs['val_moe_output_loss'])
+        #self.test_moe_losses.append(logs['test_moe_output_loss'])
 
         self.gate_accuracy.append(logs['gate_output_accuracy'])
         self.val_gate_accuracy.append(logs['val_gate_output_accuracy'])
+        #self.test_gate_accuracy.append(logs['test_gate_output_accuracy'])
+
         self.moe_mae.append(logs['moe_output_mae'])
         self.val_moe_mae.append(logs['val_moe_output_mae'])
-
-        if epoch == 0:
+        #self.test_moe_mae.append(logs['test_moe_output_mae'])
+   
+        #if epoch == 0:
+         #   return
+        while epoch < 20:
             return
 
         # plot 1: losses
         plt.figure(1, figsize=(6, 8))
         self.plot_loss.clf()
         self.axs_loss = self.plot_loss.subplots(3)
+
         self.axs_loss[0].plot(self.losses)
         self.axs_loss[0].plot(self.val_losses)
+        #self.axs_loss[0].plot(self.test_losses)
+
         self.axs_loss[0].set_title('model loss', fontsize=self.font_size)
         self.axs_loss[0].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
         self.axs_loss[0].set_ylim(0, 4.0)
 
         self.axs_loss[1].plot(self.gate_losses)
         self.axs_loss[1].plot(self.val_gate_losses)
+        #self.axs_loss[1].plot(self.test_gate_losses)
+
         self.axs_loss[1].set_title('gate loss', fontsize=self.font_size)
         self.axs_loss[1].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
 
         self.axs_loss[2].plot(self.moe_losses)
         self.axs_loss[2].plot(self.val_moe_losses)
+        #self.axs_loss[2].plot(self.test_moe_losses)
+
         self.axs_loss[2].set_title('moe loss', fontsize=self.font_size)
         self.axs_loss[2].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
 
@@ -369,22 +403,27 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         for ax in self.axs_loss.flat:
             ax.label_outer()
 
-        plt.show()
-        plt.pause(0.001)
-        plt.tight_layout()
+        #plt.show()
+        #plt.pause(0.001)
+        #plt.tight_layout()
 
         # plot 2: accuracy and mae
         plt.figure(2, figsize=(12, 8))
         self.plot_metrics.clf()
         self.axs_metrics = self.plot_metrics.subplots(2)
+
         self.axs_metrics[0].plot(self.gate_accuracy)
         self.axs_metrics[0].plot(self.val_gate_accuracy)
+        #self.axs_metrics[0].plot(self.test_gate_accuracy)
+
         self.axs_metrics[0].set_title('model accuracy', fontsize=self.font_size)
         self.axs_metrics[0].set_ylabel('accuracy', fontsize=self.font_size)
         self.axs_metrics[0].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
 
         self.axs_metrics[1].plot(self.moe_mae)
         self.axs_metrics[1].plot(self.val_moe_mae)
+        #self.axs_metrics[1].plot(self.test_moe_mae)
+
         self.axs_metrics[1].set_title('model mae', fontsize=self.font_size)
         self.axs_metrics[1].set_xlabel('epoch', fontsize=self.font_size)
         self.axs_metrics[1].set_ylabel('mae', fontsize=self.font_size)
