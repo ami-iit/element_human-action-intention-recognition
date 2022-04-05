@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import copy
+from sklearn import preprocessing
 
 # functions and classes to import
 from WindowGeneratorMoE import WindowGeneratorMoE
@@ -44,7 +45,7 @@ if __name__ == "__main__":
     learn_cnn_model = False
     learn_lstm_model = False
     do_performance_analysis = True
-    normalize_input = False
+    normalize_input = True
     output_categorical = True
     save_model = True
     verbose = False
@@ -138,8 +139,13 @@ if __name__ == "__main__":
 
     # ! normalize all the data based on the training data
     if normalize_input:
+        #scaler = RobustScaler() 
+        #train_input_df = preprocessing.normalize(train_input_df)
+        #val_input_df = preprocessing.normalize(val_input_df)
+        #test_input_df = preprocessing.normalize(test_input_df)
+
         train_input_mean = train_input_df.mean()
-        train_input_std = train_input_df.std()
+        train_input_std = train_input_df.std() + 0.000001
 
         train_input_df = (train_input_df - train_input_mean) / train_input_std
         val_input_df = (val_input_df - train_input_mean) / train_input_std
