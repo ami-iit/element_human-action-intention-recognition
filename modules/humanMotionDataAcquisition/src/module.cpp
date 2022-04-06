@@ -123,7 +123,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
   // when reading data from yarp port:
   if (!m_readDataFromFile) {
     portNameIn = rf.check("HDEJointsPortIn",
-                          yarp::os::Value("/HumanStateWrapper/state:i"))
+                          yarp::os::Value("/HDE/HumanStateWrapper/state:i"))
                      .asString();
 
     if (!m_wholeBodyHumanJointsPort.open("/" + getName() + portNameIn)) {
@@ -133,8 +133,8 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
     }
 
     portNameOut = rf.check("HDEJointsPortOut",
-                           yarp::os::Value("/HDE/HumanStateWrapper/state:o"))
-                      .asString();
+                         yarp::os::Value("/HDE/HumanStateWrapper/state:o"))
+                    .asString();
 
     yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
     
@@ -498,8 +498,12 @@ bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
 
     // get the new joint values
     std::vector<double> newHumanjointsValues = desiredHumanStates->positions;
-    std::vector<double> newHumanjointsVelocities =
-        desiredHumanStates->velocities;
+    // why is this pointer empty??
+    std::vector<double> newHumanjointsVelocities = desiredHumanStates->velocities;
+
+    if (!newHumanjointsVelocities.empty()) {
+      yInfo() << "Joint velocities are: " << newHumanjointsVelocities;
+    }
 
     // get the new CoM positions
     hde::msgs::Vector3 CoMValues = desiredHumanStates->CoMPositionWRTGlobal;

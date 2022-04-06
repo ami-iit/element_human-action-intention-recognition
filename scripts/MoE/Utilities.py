@@ -109,6 +109,7 @@ def get_refined_moe_four_expert(number_categories, number_experts_outputs, outpu
                                                reg_l1_experts, reg_l2_experts, dp_rate, 9)     
     h_expert10 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
                                                reg_l1_experts, reg_l2_experts, dp_rate, 10)
+                                               
     moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, 
                                                       h_expert5, h_expert6, h_expert7, h_expert8, h_expert9, h_expert10,
                                                       number_categories, number_experts_outputs, output_steps)
