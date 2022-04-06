@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import copy
 from sklearn import preprocessing
+from numpy import savetxt
 
 # functions and classes to import
 from WindowGeneratorMoE import WindowGeneratorMoE
@@ -22,16 +23,14 @@ from WindowGenerator import WindowGenerator
 #     compile_and_fit_regression,\
 #     get_moe_model_one_expert,\
 #     get_refined_moe_four_expert
-#
+
 # from Utilities import save_nn_model
 from Utilities import *
-
 
 def get_time_now():
     now = datetime.now()  # current date and time
     date_time = now.strftime("%Y-%m-%d_%H:%M:%S")
     return date_time
-
 
 # def main():
 if __name__ == "__main__":
@@ -57,26 +56,29 @@ if __name__ == "__main__":
     # data set for first 5 mins video
     data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/Dataset_2022_04_04_16_17_18.txt' # read the dataset
     
-    user_mass = 79.0
-    gravity = 9.81
-    output_steps = 25  # ! at the moment only the value `1` is possible
-    shift = output_steps  # ! offset, e.g., 10
-    input_width = 10  # ! default: 10 
-    max_subplots = 5
+    # data set division
     train_percentage = 0.7  # ! the percentage of of the time series data from starting  for training
     val_percentage = 0.2  # ! the percentage of the time series data after training data for validation
     test_percentage = 1.0 - (train_percentage + val_percentage)  # ! the amount of data at end for testing
 
-    # general configurations for the neural networks
+    # L1 and L2 regularization 
     regularization_l2_gate = 1.0e-3
     regularization_l1_gate = 1.0e-3
     regularization_l2_experts = 1.0e-3
     regularization_l1_experts = 1.0e-3
-
+    
+    # dropout rate
     dropout_rate = 0.4
+
+    user_mass = 79.0
+    gravity = 9.81
+
+    output_steps = 25  # ! at the moment only the value `1` is possible
+    shift = output_steps  # ! offset, e.g., 10
+    input_width = 10  # ! default: 10 
+    max_subplots = 5
     max_epochs = 40  # Default: 20
     patience = 5  # ! default: 4
-
     number_experts_outputs = 78  # to fix later (66 joint angles, 12 wrenches)
 
     # =====================
@@ -146,10 +148,18 @@ if __name__ == "__main__":
 
         train_input_mean = train_input_df.mean()
         train_input_std = train_input_df.std() + 0.000001
+        #savetxt('mean_data.csv', train_input_mean, delimiter=' ')
+        #savetxt('std_data.csv', train_input_std, delimiter=' ')
+
+        #print('NaN value in mean - :', np.any(np.all(train_input_mean)))
+        #print('NaN value in std - :', np.any(np.all(train_input_std)))
 
         train_input_df = (train_input_df - train_input_mean) / train_input_std
         val_input_df = (val_input_df - train_input_mean) / train_input_std
         test_input_df = (test_input_df - train_input_mean) / train_input_std
+        #savetxt('train_data.csv', train_input_df, delimiter=' ')
+        #savetxt('val_data.csv', val_input_df, delimiter=' ')
+        #savetxt('test_data.csv', test_input_df, delimiter=' ')
 
         # ! check: maybe I can delete it.
         #df_std = (df_input_weight_normalized - train_input_mean) / train_input_std
