@@ -500,6 +500,9 @@ bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
     std::vector<double> newHumanjointsValues = desiredHumanStates->positions;
     // why is this pointer empty??
     std::vector<double> newHumanjointsVelocities = desiredHumanStates->velocities;
+    if (!newHumanjointsValues.empty()) {
+      yInfo() << "Joint values are: " << newHumanjointsValues;
+    }
 
     if (!newHumanjointsVelocities.empty()) {
       yInfo() << "Joint velocities are: " << newHumanjointsVelocities;
