@@ -49,6 +49,8 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
 
   m_logData = rf.check("logData", yarp::os::Value(true)).asBool();
 
+  m_showAnnoData = rf.check("showAnnoData", yarp::os::Value(false)).asBool();
+
   m_readDataFromFile = rf.check("readFromFile", yarp::os::Value(true)).asBool();
 
   m_DataLineIndex = 0;
@@ -80,7 +82,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
       rf.check("sensorNameLeftShoe", yarp::os::Value("iFeelSuit::ft6D::Node#1")).asString();
 
   m_sensorNameRightShoe = 
-      rf.check("m_sensorNameRightShoe", yarp::os::Value("iFeelSuit::ft6D::Node#2")).asString();
+      rf.check("sensorNameRightShoe", yarp::os::Value("iFeelSuit::ft6D::Node#2")).asString();
 
   // the annotation list size
   m_annotationList.resize(0);
@@ -122,6 +124,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
 
   // when reading data from yarp port:
   if (!m_readDataFromFile) {
+    
     portNameIn = rf.check("HDEJointsPortIn",
                           yarp::os::Value("/HDE/HumanStateWrapper/state:i"))
                      .asString();
@@ -138,6 +141,30 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
 
     yarp::os::Network::connect(portNameOut, "/" + getName() + portNameIn);
     
+    /*
+    yarp::os::Property options;
+    options.put("device", "iwear_remapper");
+      
+    yarp::os::Value *humanStatesPort;
+
+    if (!rf.check("HDEJointsPortOut", humanStatesPort))
+    {
+      yError() << "Unable to find HDEJointsPortOut in configure file.";
+      return false;
+    }
+    
+    options.put("wearableDataPorts", humanStatesPort);
+    if (!m_wearableDevice.open(options)) {
+      yError() << "Failed to connect wearable Remapper device.";
+      return false;
+    }
+    
+    if (!m_wearableDevice.view(m_iWear) || !m_iWear) {
+      yError() << "Failed to view Xsens wearable interface.";
+      return false;
+    }
+    */
+
     // **********MODIFY THE CODE: START**********
     // open the input port for receiving the data of left shoe
     /*
@@ -217,13 +244,11 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf)
       
       if (!m_wearableDevice.open(options)) {
         yError() << "Failed to connect wearable Remapper Device";
-
         return false;
       }
       
       if (!m_wearableDevice.view(m_iWear) || !m_iWear) {
         yError() << "Failed to view FT Shoes Wearable Interface";
-
         return false;
       }
     }
@@ -486,20 +511,25 @@ bool HumanDataAcquisitionModule::readDataLineAtMoment() {
   // read data from the matrix
   return true;
 }
+
 bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
 
   if (!m_readDataFromFile) {
+    
     hde::msgs::HumanState *desiredHumanStates =
         m_wholeBodyHumanJointsPort.read(false);
 
     if (desiredHumanStates == nullptr) {
       return true;
-    }
+    } 
 
     // get the new joint values
     std::vector<double> newHumanjointsValues = desiredHumanStates->positions;
     // why is this pointer empty??
     std::vector<double> newHumanjointsVelocities = desiredHumanStates->velocities;
+    
+
+    /*
     if (!newHumanjointsValues.empty()) {
       yInfo() << "Joint values are: " << newHumanjointsValues;
     }
@@ -507,6 +537,7 @@ bool HumanDataAcquisitionModule::getVectorizeHumanStates() {
     if (!newHumanjointsVelocities.empty()) {
       yInfo() << "Joint velocities are: " << newHumanjointsVelocities;
     }
+    */
 
     // get the new CoM positions
     hde::msgs::Vector3 CoMValues = desiredHumanStates->CoMPositionWRTGlobal;
@@ -768,7 +799,7 @@ bool HumanDataAcquisitionModule::getShoesWrenches() {
     } 
     */
     // get the pointers to each shoe sensor from iWear
-    // maybe not use the sensor name directly,but like what be done in GloveWearable.cpp
+    // maybe not use the sensor name directly,but like what've been done in GloveWearable.cpp
     /*
     std::string sensorNameLeftShoe = "iFeelSuit::ft6D::Node#1";
     std::string sensorNameRightShoe = "iFeelSuit::ft6D::Node#2";
@@ -863,6 +894,11 @@ bool HumanDataAcquisitionModule::updateModule() {
 
     if (m_logData)
       logData();
+
+    /*
+    if (m_showAnnoData)
+      showAnnoData();
+    */
 
     if (!m_readDataFromFile) {
       if (m_wholeBodyHumanJointsPort.isClosed()) {
@@ -1020,6 +1056,10 @@ bool HumanDataAcquisitionModule::updateModule() {
 
     if (m_DataLineIndex % 100 == 0)
       yInfo() << "[update] index of the data: " << m_DataLineIndex;
+    
+    if (m_showAnnoData) {
+      yInfo() << "[update] annotation of the data: " << m_readDataMapVector[m_DataLineIndex];
+    }
 
     if (m_DataLineIndex == m_readDataMapVector.size() - 1) {
       yInfo() << "[update] all data in the file is read and streamed.";
@@ -1104,7 +1144,7 @@ void HumanDataAcquisitionModule::keyboardHandler() {
         }
         if (idx > 0 && idx <= m_annotationList.size()) {
           lastAnnotation =
-              m_annotationList[idx - 1]; // since the index is srating from 1
+              m_annotationList[idx - 1]; // since the index is starting from 1
         } else {
           lastAnnotation = "None";
         }
@@ -1221,6 +1261,18 @@ bool HumanDataAcquisitionModule::logData() {
   }
   return true;
 }
+
+/*
+bool HumanDataAcquisitionModule::showAnnoData() {
+  if (!m_readDataFromFile) {
+    yError() << "Check the file path of annotated data set." ;
+    return false;
+  } else {
+
+  }
+
+}
+*/
 
 bool HumanDataAcquisitionModule::close() {
   m_isClosed = true;

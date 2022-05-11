@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # models_path = '__untrack/models/RAL/'+get_time_now()
     models_path = 'NN_models/' +get_time_now() # save the trained NN model
     # data set for first 5 mins video
-    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/Dataset_2022_04_04_16_17_18.txt' # read the dataset
+    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/dummy_data_for_training.txt' # read the dataset
     
     # data set division
     train_percentage = 0.7  # ! the percentage of of the time series data from starting  for training
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         #test_input_df = preprocessing.normalize(test_input_df)
 
         train_input_mean = train_input_df.mean()
-        train_input_std = train_input_df.std() + 0.000001
+        train_input_std = train_input_df.std()
         #savetxt('mean_data.csv', train_input_mean, delimiter=' ')
         #savetxt('std_data.csv', train_input_std, delimiter=' ')
 

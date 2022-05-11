@@ -71,16 +71,16 @@ if __name__ == "__main__":
     # parameters
     model_name = 'model_MoE_Best'
     # model_path = '__untrack/models/horizon_25steps_expert_66lstm'  # related to Neurisp paper
-    model_path = 'NN_models/2022-04-01_14:22:15/'
+    model_path = '~/element_human-action-intention-recognition/NN_models/2022-05-11_16:33:54/'
 
-    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/ergonomic_lifting.txt' 
+    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/dummy_data_for_training.txt' 
                 
 
     pop_list = ['time', 'label']
     features_list = []
 
     plotting_features = ['l_shoe_fz', 'r_shoe_fz', 'jLeftKnee_roty_val', 'jRightKnee_roty_val']
-    labels = ['None', 'Stooping', 'Standing_without_object']
+    labels = ['None', 'standing', 'stooping']
 
     user_mass = 79.0
     gravity = 9.81

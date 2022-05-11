@@ -232,8 +232,8 @@ def get_lstm_expert_output(input_, number_outputs, output_steps, reg_l2, dp_rate
     return output_
 
 # currently used one
-def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, 
-                                         h_expert5, h_expert6, h_expert7, h_expert8, h_expert9, h_expert10,
+def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, h_expert5, h_expert6,
+                                         h_expert7, h_expert8, h_expert9, h_expert10, h_expert11, h_expert12,
                                          number_categories, number_experts_outputs, output_steps):
 
     h_expert1 = Reshape([output_steps, number_experts_outputs, 1])(h_expert1)
@@ -246,10 +246,12 @@ def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3
     h_expert8 = Reshape([output_steps, number_experts_outputs, 1])(h_expert8)
     h_expert9 = Reshape([output_steps, number_experts_outputs, 1])(h_expert9)
     h_expert10 = Reshape([output_steps, number_experts_outputs, 1])(h_expert10)
+    h_expert11 = Reshape([output_steps, number_experts_outputs, 1])(h_expert11)
+    h_expert12 = Reshape([output_steps, number_experts_outputs, 1])(h_expert12)
     #experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4])
     #experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3])
-    experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4,
-                                    h_expert5, h_expert6, h_expert7, h_expert8, h_expert9, h_expert10])
+    experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4, h_expert5, h_expert6,
+                                    h_expert7, h_expert8, h_expert9, h_expert10, h_expert11, h_expert12])
     print('experts shape: {}'.format(experts.shape))
 
     h_gate = Reshape([output_steps, 1, number_categories])(h_gate)

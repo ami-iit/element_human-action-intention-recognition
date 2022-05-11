@@ -78,10 +78,13 @@ class GetHumanData(threading.Thread):
 # def main():
 if __name__ == "__main__":
     ## parameters
-    model_name = 'myModel'
-    model_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition/scripts/' \
-                  'Sequential_API_Implementation/models'
-    data_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition/dataset/HumanActionIntentionPrediction/RawData/Dataset01/Dataset_2021_03_23_13_45_06.txt'
+    #model_name = 'myModel'
+    #model_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition/scripts/' \
+    #              'Sequential_API_Implementation/models'
+    #data_path = '/home/kourosh/icub_ws/external/element_human-action-intention-recognition/dataset/HumanActionIntentionPrediction/RawData/Dataset01/Dataset_2021_03_23_13_45_06.txt'
+    model_name = 'model_MoE_Best'
+    model_path = 'NN_models/2022-04-19_10:58:35'
+    data_path = 'lifting_test/ergonomic_lifting.txt'
 
     MAX_EPOCHS = 20
     OUT_STEPS = 240

@@ -21,7 +21,7 @@ def current_milli_time():
 number_motion_output = 66
 
 ##
-labels = ['None', 'Rotating', 'Standing', 'Walking']
+labels = ['None', 'standing', 'stooping', 'placing']
 number_categories = len(labels)
 
 # YARP related code
