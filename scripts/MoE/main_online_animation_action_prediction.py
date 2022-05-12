@@ -3,6 +3,7 @@ import os
 import datetime
 import numpy as np
 import copy
+import matplotlib
 import matplotlib.pyplot as plt
 import yarp
 import matplotlib.animation as animation
@@ -21,7 +22,9 @@ def current_milli_time():
 number_motion_output = 66
 
 ##
-labels = ['None', 'standing', 'stooping', 'placing']
+labels = ["None", "standing", "stooping", "bending", "straightening", "rising", 
+          "placing", "fetching", "stoop-lowering", "bend-lowering", "stoop-back", "bend-back"]
+
 number_categories = len(labels)
 
 # YARP related code

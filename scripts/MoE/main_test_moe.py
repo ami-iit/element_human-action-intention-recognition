@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # parameters
     model_name = 'model_MoE_Best'
     # model_path = '__untrack/models/horizon_25steps_expert_66lstm'  # related to Neurisp paper
-    model_path = '~/element_human-action-intention-recognition/NN_models/2022-05-11_16:33:54/'
+    model_path = 'NN_models/2022-05-11_16:33:54'
 
     data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/dummy_data_for_training.txt' 
                 
@@ -80,7 +80,8 @@ if __name__ == "__main__":
     features_list = []
 
     plotting_features = ['l_shoe_fz', 'r_shoe_fz', 'jLeftKnee_roty_val', 'jRightKnee_roty_val']
-    labels = ['None', 'standing', 'stooping']
+    labels = ["None", "standing", "stooping", "bending", "straightening", "rising", "placing", 
+              "fetching", "stoop-lowering", "bend-lowering", "stoop-back", "bend-back"]
 
     user_mass = 79.0
     gravity = 9.81
@@ -88,7 +89,7 @@ if __name__ == "__main__":
 
     output_steps = 25  # ! at the moment only the value `1` is possible
     shift = output_steps  # ! offset, e.g., 10
-    input_width = 5  # ! default: 10
+    input_width = 10  # ! default: 10
     max_subplots = 5
     train_percentage = 0.7  # ! the percentage of of the time series data from starting  for training
     val_percentage = 0.2  # ! the percentage of the time series data after training data for validation
@@ -194,6 +195,7 @@ if __name__ == "__main__":
             # output array size: (batch_size, Ty, nx) // batch_size=1
             tik = current_milli_time()
             # prediction = model.predict(human_data_Tx, workers=1, use_multiprocessing=True)
+            
             predictions = model(human_data_Tx, training=False)
 
             tok = current_milli_time()
