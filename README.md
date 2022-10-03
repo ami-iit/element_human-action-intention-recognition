@@ -36,15 +36,29 @@ In this element, at the first step, we will try to recognize the human action an
 ## Outcomes
 -  A repository for human action and intention recognition (Matlab, Python, or C++)
 
-## Milestones
-- [Test MoE on lifting risk assessment dataset](https://github.com/ami-iit/element_human-action-intention-recognition/issues/61)
-Objectives of this milestone are to perform human action reconition while performing lifting task, and predict human motion motion for the lifting task. 
+## Dependencies
 
-- [**Investigate and Implement of the Recurrent Neural Network (RNN) for human motion prediction**](https://github.com/dic-iit/element_human-action-intention-recognition/issues/5)
-   Objectives of this milestone are to perform a brief state of the art study on human motion prediction and activity recognition; implement an RNN architecture and test it with simple dataset; implement an architecture to estimate the uncertainty associated with the prediction.
-- [**Perform Human Motion Prediction on real Human Dataset**](https://github.com/dic-iit/element_human-action-intention-recognition/issues/16)
-  Objectives of this milestone are to collect a dataset of real human motion (here walking) including kinematic and external wrenches; use those dataset to predict human walking motion and visualize the data.
+- **IMPORTANT: To install properly `tensorflow 2.1` you should have python version `3.7`. Check [here](https://www.tensorflow.org/install/pip), [here](https://stackoverflow.com/questions/48720833/could-not-find-a-version-that-satisfies-the-requirement-tensorflow).** you can use the following command in macOS to install the required version of python: `brew install python@3.7`
+
+- I'll suggest you to install the repo inside a virtual environment to avoid clashing. To do so, you need to:
+  - if you do not have virtual environment, first install it `pip3 install virtualenv`
+  - Identify the directory of virtual environment: `virtualenv <Directory of virtual environment>`
+  - Activate the virtual environment: `source <Directory of virtual environment>/bin/activate`
+  - After finishing you work, you can `deactivate` the virtual environment
+
+- To install the dependencies, please run the following command:
+
+  `$pip3 install --user -r requirements.txt`
+
+  *Notes:* 
+
+  - If you want to install the code, you can use virtual environment, as mentioned before.
+
+  - if you want to install in system directoy, remove `--user` from the command line.
+
+  *Notes about compiling the code:*
+  - commenting the requirements of TensorflowCC in CMakelists.txt file in `modules.`
+  - commenting `numpy>=1.20.0` in requirements.txt file
+  - modifying `opt-einsum==3.1.0` to `opt-einsum>=3.1.0`
+
   
--  [**Use RNN for predicting human symbolic actions**](https://github.com/dic-iit/element_human-action-intention-recognition/issues/45)  Objective of this milestone is to recognize the human actions in the future. This can be used for example for the lifting task for ergonomy assessment.
-
--  [**Close the Pipeline between Human-Action Prediction and Motion Prediction**](https://github.com/dic-iit/element_human-action-intention-recognition/issues/46)  Objective of this milestone is to close the pipeline between the human action prediction and human motion prediction. The human predicted actions are used for predicting the human motion in the future.
