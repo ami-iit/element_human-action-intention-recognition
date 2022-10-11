@@ -1,0 +1,53 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Temporary Files
+*~
+*.asv
+
+# build folder
+build/
+
+# python folders
+.idea/
+dist/
+__pycache__/
+__untrack/
+
+# emacs
+\#*\#
+.\#*\#
+
+TAGS
+compile_commands.json
+CMakeLists.txt.user
