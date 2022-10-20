@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<portscope rows="1" columns="1" carrier="mcast">
+
+    <!-- The color scheme for the graphs is similar to>
+    <matlab plots color order-->
+    <plot gridx="0"
+          gridy="0"
+          title="Left FT Shoe"
+          size="60"
+          minval="-400"
+          maxval="400"
+          bgcolor="white">
+        <graph remote="/humanDataAcquisition/wrenchesVector:o"
+               index="0"
+               color="#0173BC"
+               title="Fx"
+               type="lines" />
+	      <graph remote="/humanDataAcquisition/wrenchesVector:o"
+               index="1"
+               color="#D95218"
+               title="Fy"
+               type="lines" />
+	      <graph remote="/humanDataAcquisition/wrenchesVector:o"
+               index="2"
+               color="#EDB022"
+               title="Fz"
+               type="lines" />
+	      <graph remote="/humanDataAcquisition/wrenchesVector:o"
+               index="3"
+               color="#7E2E8D"
+               title="Tx"
+               type="lines" />
+	      <graph remote="/humanDataAcquisition/wrenchesVector:o"
+               index="4"
+               color="#78AC30"
+               title="Ty"
+               type="lines" />
+	     <graph remote="/humanDataAcquisition/wrenchesVector:o"
+               index="5"
+               color="#4EBEEE"
+               title="Tz"
+               type="lines" />
+    </plot>
+
+</portscope>
