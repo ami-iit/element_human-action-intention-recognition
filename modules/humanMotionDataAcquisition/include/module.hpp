@@ -102,6 +102,7 @@ private:
   double m_dT;             /**< Module period. */
   bool m_useXsens;         /**< True if the Xsens is used in the retargeting */
   bool m_logData;          /**< True to log human data*/
+  bool m_showAnnoData;     /**< True to show previously annotated data set */
   bool m_streamData;       /**< True to stream human data */
   bool m_isClosed;         /**< True if the module is not closed*/
   bool m_readDataFromFile; /**< True if reading data from file and used for
@@ -187,6 +188,8 @@ public:
   bool getShoesWrenches();
 
   bool logData();
+
+  //bool showAnnoData();
 
   bool dataHandler();
 

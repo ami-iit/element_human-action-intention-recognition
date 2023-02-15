@@ -36,7 +36,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
   }
 
   // get the period
-  m_dT = rf.check("samplingTime", yarp::os::Value(0.1)).asDouble();
+  m_dT = rf.check("samplingTime", yarp::os::Value(0.1)).asFloat64();
 
   // set the module name
   std::string name;
@@ -250,7 +250,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
 
   double jointThreshold;
   jointThreshold =
-      rf.check("jointDifferenceThreshold", yarp::os::Value(0.01)).asDouble();
+      rf.check("jointDifferenceThreshold", yarp::os::Value(0.01)).asFloat64();
   m_jointDiffThreshold = jointThreshold;
   m_CoMValues.resize(3, 0.0);
 
@@ -346,7 +346,7 @@ bool HumanDataAcquisitionModule::configure(yarp::os::ResourceFinder &rf) {
     m_annotationBuffer.resize(0);
 
     m_fastBackwardSteps =
-        rf.check("FastBackwardsSteps", yarp::os::Value(1)).asInt();
+        rf.check("FastBackwardsSteps", yarp::os::Value(1)).asInt8();
 
     std::time_t t = std::time(nullptr);
     std::tm tm = *std::localtime(&t);
@@ -603,7 +603,7 @@ bool HumanDataAcquisitionModule::getLeftShoesWrenches() {
     yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
 
     for (size_t i = 0; i < 6; i++)
-      m_leftShoes(i) = tmp3->get(i + 2).asDouble();
+      m_leftShoes(i) = tmp3->get(i + 2).asFloat64();
 
     //    yInfo()<<"m_leftShoes: "<<m_leftShoes.toString();
   } else {
@@ -621,7 +621,7 @@ bool HumanDataAcquisitionModule::getLeftShoesWrenches() {
     yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
 
     for (size_t i = 0; i < 6; i++)
-      m_leftShoes(i) = tmp3->get(i+2).asDouble();
+      m_leftShoes(i) = tmp3->get(i+2).asFloat64();
 
   } else {
 
@@ -660,7 +660,7 @@ bool HumanDataAcquisitionModule::getRightShoesWrenches() {
     yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
 
     for (size_t i = 0; i < 6; i++)
-      m_rightShoes(i) = tmp3->get(i + 2).asDouble();
+      m_rightShoes(i) = tmp3->get(i + 2).asFloat64();
 
     //    yInfo()<<"m_rightShoes: "<<m_rightShoes.toString();
   } else {
@@ -677,7 +677,7 @@ bool HumanDataAcquisitionModule::getRightShoesWrenches() {
     yarp::os::Bottle *tmp3 = tmp2->get(1).asList();
 
     for (size_t i = 0; i < 6; i++)
-      m_rightShoes(i) = tmp3->get(i+2).asDouble();
+      m_rightShoes(i) = tmp3->get(i+2).asFloat64();
   } else {
 
     for (size_t i = 0; i < m_rightWrenchFeatuersName.size(); i++)
@@ -709,8 +709,8 @@ bool HumanDataAcquisitionModule::getShoesWrenches() {
     yarp::os::Bottle *tmp4 = tmp3->get(1).asList();
 
     for (size_t i = 0; i < 6; i++) {
-      m_leftShoes(i) = tmp2->get(i+2).asDouble();
-      m_rightShoes(i) = tmp4->get(i+2).asDouble();
+      m_leftShoes(i) = tmp2->get(i+2).asFloat64();
+      m_rightShoes(i) = tmp4->get(i+2).asFloat64();
     
     } 
   } 

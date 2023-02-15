@@ -112,13 +112,13 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
   for (size_t idx = 0; idx < 3; idx++) {
-    if (!(rf.find("cameraDeltaPosition").asList()->get(idx).isDouble())) {
+    if (!(rf.find("cameraDeltaPosition").asList()->get(idx).isFloat64())) {
       yError() << LogPrefix << "'cameraDeltaPosition' entry [ " << idx
                << " ] is not valid.";
       return EXIT_FAILURE;
     }
     cameraDeltaPosition.setVal(
-        idx, rf.find("cameraDeltaPosition").asList()->get(idx).asDouble());
+        idx, rf.find("cameraDeltaPosition").asList()->get(idx).asFloat64());
   }
 
   if (!(rf.check("useFixedCamera") && rf.find("useFixedCamera").isBool())) {
@@ -126,6 +126,15 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
   bool useFixedCamera = rf.find("useFixedCamera").asBool();
+
+  // define base link for human model
+  std::string baseLink;
+  if (!(rf.check("baseLink") && rf.find("baseLink").isString())) {
+    yError() << LogPrefix << "'baseLink' option not found or not valid.";
+    return EXIT_FAILURE;
+  }
+  baseLink = rf.find("baseLink").asString();
+
 
   iDynTree::Position fixedCameraTarget;
   if (useFixedCamera) {
@@ -137,24 +146,25 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
     }
     for (size_t idx = 0; idx < 3; idx++) {
-      if (!(rf.find("fixedCameraTarget").asList()->get(idx).isDouble())) {
+      if (!(rf.find("fixedCameraTarget").asList()->get(idx).isFloat64())) {
         yError() << LogPrefix << "'fixedCameraTarget' entry [ " << idx
                  << " ] is not valid.";
         return EXIT_FAILURE;
       }
       fixedCameraTarget.setVal(
-          idx, rf.find("fixedCameraTarget").asList()->get(idx).asDouble());
+          idx, rf.find("fixedCameraTarget").asList()->get(idx).asFloat64());
     }
   }
 
   if (!(rf.check("maxVisualizationFPS") &&
-        rf.find("maxVisualizationFPS").isInt() &&
-        rf.find("maxVisualizationFPS").asInt() > 0)) {
+        rf.find("maxVisualizationFPS").isInt32() &&
+        rf.find("maxVisualizationFPS").asInt32() > 0)) {
     yError() << LogPrefix
-             << "'maxVisualizationFPS' option not found or not valid.";
+             << "'maxVisualizationFPS' option not found or not valid...";
     return EXIT_FAILURE;
   }
-  unsigned int maxVisualizationFPS = rf.find("maxVisualizationFPS").asInt();
+  unsigned int maxVisualizationFPS = rf.find("maxVisualizationFPS").asInt32();
+  //unsigned int maxVisualizationFPS = 40;
 
   if (!(rf.check("models") && rf.find("models").isList())) {
     yError() << LogPrefix << "'models' option not found or not valid.";
@@ -222,7 +232,7 @@ int main(int argc, char *argv[]) {
         if (!(modelConfigurationGroup.find("modelColor")
                   .asList()
                   ->get(idx)
-                  .isDouble())) {
+                  .isFloat64())) {
           yError() << LogPrefix << "'modelColor' entry [ " << idx
                    << " ] is not valid.";
           return EXIT_FAILURE;
@@ -230,7 +240,7 @@ int main(int argc, char *argv[]) {
         modelColorVector.setVal(idx, modelConfigurationGroup.find("modelColor")
                                          .asList()
                                          ->get(idx)
-                                         .asDouble());
+                                         .asFloat64());
       }
       modelConfigurationMap[modelName].changeModelColor = true;
       modelConfigurationMap[modelName].modelColor =
@@ -250,14 +260,14 @@ int main(int argc, char *argv[]) {
 
     if (modelConfigurationMap[modelName].visualizeWrenches) {
       if (!(modelConfigurationGroup.check("forceScalingFactor") &&
-            modelConfigurationGroup.find("forceScalingFactor").isDouble())) {
+            modelConfigurationGroup.find("forceScalingFactor").isFloat64())) {
         yError() << LogPrefix
                  << "'forceScalingFactor' option not found or not valid in "
                  << modelName << ". Wrench Visualization will be disabled.";
         modelConfigurationMap[modelName].visualizeWrenches = false;
       } else {
         modelConfigurationMap[modelName].forceScalingFactor =
-            modelConfigurationGroup.find("forceScalingFactor").asDouble();
+            modelConfigurationGroup.find("forceScalingFactor").asFloat64();
       }
     }
 
@@ -372,6 +382,9 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
     }
     modelConfigurationMap[modelName].model = modelLoader.model();
+    // !!Here modified: determine base link in HumanPredictionVisualizer.ini file!!
+    int baseIndex = modelConfigurationMap[modelName].model.getLinkIndex(baseLink);
+    modelConfigurationMap[modelName].model.setDefaultBaseLink(baseIndex);
 
     // check if the selected joints exist in the model
     yInfo() << LogPrefix << "Selected [ "
@@ -575,6 +588,7 @@ int main(int argc, char *argv[]) {
       std::chrono::steady_clock::now();
 
   long minimumMicroSecViz = std::round(1e6 / (double)maxVisualizationFPS);
+  //long minimumMicroSecViz = std::round(1e6 / maxVisualizationFPS);
 
   while (viz.run() && !isClosing) {
     now = std::chrono::steady_clock::now();

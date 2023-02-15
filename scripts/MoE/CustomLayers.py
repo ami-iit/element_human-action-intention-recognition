@@ -74,10 +74,10 @@ class ProbabilisticSwitch(Layer):
 
 # models:
 def get_complex_gate_output(input_, number_categories, output_steps, reg_l1, reg_l2, dp_rate):
-    # output_ = Conv1D(filters=128, kernel_size=3, activation='relu', padding='same',
-    #                  kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
-    #                  bias_regularizer=regularizers.l1_l2(reg_l1, reg_l2))(input_)
-    #
+     #output_ = Conv1D(filters=128, kernel_size=3, activation='relu', padding='same',
+     #                 kernel_regularizer=regularizers.l1_l2(reg_l1, reg_l2),
+     #                 bias_regularizer=regularizers.l1_l2(reg_l1, reg_l2))(input_)
+    
     # output_ = LSTM(78,
     #                name='gate_lstm_nn',
     #                return_sequences=False,
@@ -188,6 +188,12 @@ def get_refined_lstm_expert_output(input_, number_experts_outputs, output_steps,
 
     h_expert = BatchNormalization()(h_expert)
 
+    h_expert = Dropout(dp_rate)(h_expert)
+
+    h_expert = Dense(output_steps * number_experts_outputs)(h_expert)
+
+    #h_expert = Dense(output_steps * number_experts_outputs)(h_expert)
+
     h_expert = Dense(output_steps * number_experts_outputs)(h_expert)
 
     h_expert = Reshape([output_steps, number_experts_outputs])(h_expert)
@@ -232,8 +238,8 @@ def get_lstm_expert_output(input_, number_outputs, output_steps, reg_l2, dp_rate
     return output_
 
 # currently used one
-def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, 
-                                         h_expert5, h_expert6, h_expert7, h_expert8, h_expert9, h_expert10,
+def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, h_expert5, h_expert6,
+                                         h_expert7, h_expert8,
                                          number_categories, number_experts_outputs, output_steps):
 
     h_expert1 = Reshape([output_steps, number_experts_outputs, 1])(h_expert1)
@@ -244,23 +250,30 @@ def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3
     h_expert6 = Reshape([output_steps, number_experts_outputs, 1])(h_expert6)
     h_expert7 = Reshape([output_steps, number_experts_outputs, 1])(h_expert7)
     h_expert8 = Reshape([output_steps, number_experts_outputs, 1])(h_expert8)
-    h_expert9 = Reshape([output_steps, number_experts_outputs, 1])(h_expert9)
-    h_expert10 = Reshape([output_steps, number_experts_outputs, 1])(h_expert10)
+    #h_expert9 = Reshape([output_steps, number_experts_outputs, 1])(h_expert9)
+    #h_expert10 = Reshape([output_steps, number_experts_outputs, 1])(h_expert10)
+    #h_expert11 = Reshape([output_steps, number_experts_outputs, 1])(h_expert11)
+    #h_expert12 = Reshape([output_steps, number_experts_outputs, 1])(h_expert12)
     #experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4])
     #experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3])
-    experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4,
-                                    h_expert5, h_expert6, h_expert7, h_expert8, h_expert9, h_expert10])
+    #experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4, h_expert5, h_expert6,
+    #                                h_expert7, h_expert8, h_expert9, h_expert10, h_expert11, h_expert12])
+    experts = Concatenate(axis=-1)([h_expert1, h_expert2, h_expert3, h_expert4, h_expert5, h_expert6,
+                                    h_expert7, h_expert8])
     print('experts shape: {}'.format(experts.shape))
 
     h_gate = Reshape([output_steps, 1, number_categories])(h_gate)
     print('h_gate shape: {}'.format(h_gate.shape))
+    
+    #weights = np.full((1, 200), 0.125, dtype=np.float64)
+    #weights = Reshape([output_steps, 1, number_categories])(weights)
+    reduced_sum_ = Multiply()([experts, h_gate])
+    #reduced_sum_ = Multiply()([experts, weights])
+    print('reduced_sum_ shape: {}'.format(reduced_sum_.shape))
+    reduced_sum = ReducedSum(name='reduced_sum', axis=3)(reduced_sum_)
+    print('reduced_sum shape: {}'.format(reduced_sum.shape))
 
-    moe_output_ = Multiply()([experts, h_gate])
-    print('moe_output_ shape: {}'.format(moe_output_.shape))
-    moe_output = ReducedSum(name='moe_output', axis=3)(moe_output_)
-    print('moe_output shape: {}'.format(moe_output.shape))
-
-    return moe_output
+    return reduced_sum
 
 
 def get_gate_selector_output_competitive(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
@@ -276,12 +289,12 @@ def get_gate_selector_output_competitive(h_gate, h_expert1, h_expert2, h_expert3
     # h_gate = Reshape([output_steps, 1, number_categories])(h_gate)
     print('competitive h_gate shape: {}'.format(h_gate.shape))
 
-    # moe_output_ = Multiply()([experts, h_gate])
-    # print('moe_output_ shape: {}'.format(moe_output_.shape))
-    # moe_output = ReducedSum(name='moe_output', axis=3)(moe_output_)
-    moe_output = ProbabilisticSwitch(name='moe_output')(experts, h_gate)
+    # reduced_sum_ = Multiply()([experts, h_gate])
+    # print('reduced_sum_ shape: {}'.format(reduced_sum_.shape))
+    # reduced_sum = ReducedSum(name='reduced_sum', axis=3)(reduced_sum_)
+    reduced_sum = ProbabilisticSwitch(name='reduced_sum')(experts, h_gate)
 
-    return moe_output
+    return reduced_sum
 
 ########################
 
@@ -476,6 +489,6 @@ def get_refined_lstm_expert_output_ablation(input_, number_experts_outputs, outp
     output_regression = Dense(output_steps * number_experts_outputs)(output_regression)
 
     output_regression = Reshape([output_steps, number_experts_outputs],
-                                name='moe_output_expert{}'.format(expert_number))(output_regression)
+                                name='reduced_sum_expert{}'.format(expert_number))(output_regression)
 
     return output_regression

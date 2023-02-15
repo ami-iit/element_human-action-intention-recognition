@@ -10,7 +10,7 @@ import time
 import math
 from matplotlib.pylab import *
 from mpl_toolkits.axes_grid1 import host_subplot
-
+import matplotlib
 
 # timing
 def current_milli_time():
@@ -42,7 +42,7 @@ is_connected_motion_prediction = yarp.Network.connect("/test_moe/dynamicPredicti
 print("human kindyn port is connected: {}".format(is_connected_human_kindyn))
 # print("action recognition port is connected: {}".format(is_connected_action_recognition))
 print("motion prediction port is connected: {}".format(is_connected_motion_prediction))
-yarp.delay(0.5)
+yarp.delay(0.01)
 
 # fig, ax = plt.subplots()
 # x = np.arange(0, 2 * np.pi, 0.01)
@@ -64,17 +64,17 @@ class PlotInferenceResults:
         self.xmax = 6.5
         self.plot_front_time = 1.2
 
-        self.f0 = figure(num=0, figsize=(8, 3.5))  # , dpi = 100)
+        self.f2 = figure(num=0, figsize=(8, 3.5))  # , dpi = 100)
         # self.f0.title("joint value vs time", fontsize=12)
-        self.ax01 = self.f0.subplots() # 2grid((1, 1), (0, 0))
+        self.ax01 = self.f2.subplots() # 2grid((1, 1), (0, 0))
         # self.ax02 = subplots()
-        # self.ax01.set_title('joint value vs time', fontsize=16)
+        self.ax01.set_title('Foot wrench vs time', fontsize=16)
         self.ax01.set_ylim(-100, 1000)
         self.ax01.set_xlim(self.xmin, self.xmax)
         self.t = np.zeros(0)
         self.t0 = current_milli_time() / 1000.0  # seconds
         self.joint_values = np.zeros(0)
-        self.p1, = self.ax01.plot(self.t, self.joint_values, 'b-', linewidth=5)
+        self.p1, = self.ax01.plot(self.t, self.joint_values, 'g-', linewidth=5)
         self.t_prediction = np.zeros(0)
         self.joint_predictions = np.zeros(0)
         # self.p2 = self.ax01.scatter(self.t_prediction, self.joint_predictions)
@@ -223,6 +223,6 @@ class PlotInferenceResults:
 
 plot_object = PlotInferenceResults()
 
-ani = animation.FuncAnimation(plot_object.f0, plot_object.animate,
+ani = animation.FuncAnimation(plot_object.f2, plot_object.animate,
                               interval=20, blit=False, repeat=False)
 plt.show()

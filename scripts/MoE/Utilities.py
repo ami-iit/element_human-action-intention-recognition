@@ -5,6 +5,7 @@ from tensorflow.keras.utils import plot_model
 from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
 from pathlib import Path
+import tensorflow.keras.optimizers as optimizers
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.losses import CategoricalCrossentropy
@@ -61,17 +62,17 @@ def get_moe_model_four_experts(number_categories, number_outputs, output_steps, 
 
     #############
     # Gate Layer
-    #moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+    #reduced_sum = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
     #                                                  number_outputs, output_steps)
-    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, number_categories,
+    reduced_sum = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, number_categories,
                                                       number_outputs, output_steps)                                                  
 
-    # print('moe_output shape: {}'.format(moe_output.shape))
+    # print('reduced_sum shape: {}'.format(reduced_sum.shape))
 
-    # moe_output = Layer(name='moe_output')(h_expert1)
-    # moe_output = GateLayer(name='moe_output')([h_gate, h_expert1, h_expert2, h_expert3, h_expert4])
+    # reduced_sum = Layer(name='reduced_sum')(h_expert1)
+    # reduced_sum = GateLayer(name='reduced_sum')([h_gate, h_expert1, h_expert2, h_expert3, h_expert4])
 
-    model = Model(inputs=inputs, outputs=[gate_output, moe_output])
+    model = Model(inputs=inputs, outputs=[gate_output, reduced_sum])
 
     return model
 
@@ -88,7 +89,8 @@ def get_refined_moe_four_expert(number_categories, number_experts_outputs, outpu
                                      reg_l1_gate, reg_l2_gate,
                                      dp_rate)
     gate_output = Layer(name='gate_output')(h_gate)
-
+    
+    # expert NN
     h_expert1 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
                                                reg_l1_experts, reg_l2_experts, dp_rate, 1)
     h_expert2 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
@@ -105,21 +107,28 @@ def get_refined_moe_four_expert(number_categories, number_experts_outputs, outpu
                                                reg_l1_experts, reg_l2_experts, dp_rate, 7)
     h_expert8 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
                                                reg_l1_experts, reg_l2_experts, dp_rate, 8)  
-    h_expert9 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
-                                               reg_l1_experts, reg_l2_experts, dp_rate, 9)     
-    h_expert10 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
-                                               reg_l1_experts, reg_l2_experts, dp_rate, 10)
-                                               
-    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, 
-                                                      h_expert5, h_expert6, h_expert7, h_expert8, h_expert9, h_expert10,
+    #h_expert9 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+    #                                           reg_l1_experts, reg_l2_experts, dp_rate, 9)     
+    #h_expert10 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+    #                                           reg_l1_experts, reg_l2_experts, dp_rate, 10)
+    #h_expert11 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+    #                                           reg_l1_experts, reg_l2_experts, dp_rate, 11)  
+    #h_expert12 = get_refined_lstm_expert_output(inputs, number_experts_outputs, output_steps,
+    #                                           reg_l1_experts, reg_l2_experts, dp_rate, 12)          
+    # call from CustomLayers.py
+    #reduced_sum = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, h_expert5, h_expert6, 
+    #                                                  h_expert7, h_expert8, h_expert9, h_expert10, h_expert11, h_expert12,
+    #                                                  number_categories, number_experts_outputs, output_steps)
+    
+    reduced_sum = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, h_expert5, h_expert6, 
+                                                      h_expert7, h_expert8,
                                                       number_categories, number_experts_outputs, output_steps)
-
-    #moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+    #reduced_sum = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
     #                                                  number_experts_outputs, output_steps)
     
-    #moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, number_categories,
+    #reduced_sum = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, number_categories,
     #                                                  number_experts_outputs, output_steps)
-    model = Model(inputs=inputs, outputs=[gate_output, moe_output])
+    model = Model(inputs=inputs, outputs=[gate_output, reduced_sum])
 
     return model
 
@@ -187,7 +196,7 @@ def get_moe_model_one_expert(number_categories, number_experts_outputs, output_s
     #
     # # h_expert = Dropout(dp_rate)(h_expert)
     #
-    # moe_output = Reshape([output_steps, number_experts_outputs], name='moe_output')(h_expert)
+    # reduced_sum = Reshape([output_steps, number_experts_outputs], name='reduced_sum')(h_expert)
 
     h_expert = Dense(output_steps * number_experts_outputs * number_categories)(h_expert)
 
@@ -209,11 +218,11 @@ def get_moe_model_one_expert(number_categories, number_experts_outputs, output_s
     h_gate = Reshape([output_steps, 1, number_categories])(h_gate)
     # print('h_gate shape: {}'.format(h_gate.shape))
     #
-    moe_output_ = Multiply()([h_expert, h_gate])
-    # print('moe_output_ shape: {}'.format(moe_output_.shape))
-    moe_output = ReducedSum(name='moe_output', axis=3)(moe_output_)
+    reduced_sum_ = Multiply()([h_expert, h_gate])
+    # print('reduced_sum_ shape: {}'.format(reduced_sum_.shape))
+    reduced_sum = ReducedSum(name='reduced_sum', axis=3)(reduced_sum_)
 
-    model = Model(inputs=inputs, outputs=[gate_output, moe_output])
+    model = Model(inputs=inputs, outputs=[gate_output, reduced_sum])
 
     return model
 
@@ -221,11 +230,11 @@ def get_moe_model_one_expert(number_categories, number_experts_outputs, output_s
 # define loss function and optimization function
 def compile_model(model):
     model.compile(loss={'gate_output': CategoricalCrossentropy(from_logits=False),
-                        'moe_output': tf.losses.MeanSquaredError()},
-                  optimizer=Adam(),
-                  loss_weights={'gate_output': 1.0, 'moe_output': 0.2},
+                        'reduced_sum': tf.losses.MeanSquaredError()},
+                  optimizer=Adam(epsilon=1e-05),
+                  loss_weights={'gate_output': 1.0, 'reduced_sum': 1.0},
                   metrics={'gate_output': ['accuracy'],
-                           'moe_output': ['mae']})
+                           'reduced_sum': ['mae']})
 
     # To help the numerical stability of the back propagation, I can remove the softmax from the last dense layer and
     # add from_logits=True to the loss function
@@ -305,8 +314,10 @@ def visualize_model(model, file_path='', file_name='myModel'):
 
 
 def load_model_from_file(file_path='', file_name='myModel'):
-    model = load_model('{}/{}.h5'.format(file_path, file_name), custom_objects={'ReducedSum': ReducedSum,
-                                                                                'LeakyReLU': LeakyReLU})
+    model = load_model('{}/{}.h5'.format(file_path, file_name), 
+                       compile=True,
+                       custom_objects={'ReducedSum': ReducedSum,
+                                       'LeakyReLU': LeakyReLU})
     return model
 
 
@@ -367,21 +378,21 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         self.val_gate_losses.append(logs['val_gate_output_loss'])
         #self.test_gate_losses.append(logs['test_gate_output_loss'])
 
-        self.moe_losses.append(logs['moe_output_loss'])
-        self.val_moe_losses.append(logs['val_moe_output_loss'])
-        #self.test_moe_losses.append(logs['test_moe_output_loss'])
+        self.moe_losses.append(logs['reduced_sum_loss'])
+        self.val_moe_losses.append(logs['val_reduced_sum_loss'])
+        #self.test_moe_losses.append(logs['test_reduced_sum_loss'])
 
         self.gate_accuracy.append(logs['gate_output_accuracy'])
         self.val_gate_accuracy.append(logs['val_gate_output_accuracy'])
         #self.test_gate_accuracy.append(logs['test_gate_output_accuracy'])
 
-        self.moe_mae.append(logs['moe_output_mae'])
-        self.val_moe_mae.append(logs['val_moe_output_mae'])
-        #self.test_moe_mae.append(logs['test_moe_output_mae'])
+        self.moe_mae.append(logs['reduced_sum_mae'])
+        self.val_moe_mae.append(logs['val_reduced_sum_mae'])
+        #self.test_moe_mae.append(logs['test_reduced_sum_mae'])
    
         #if epoch == 0:
          #   return
-        while epoch < 10:
+        while epoch < 40:
             return
 
         # plot 1: losses
@@ -464,12 +475,12 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         print('val_loss =', self.val_losses)
         print('gate_output_loss =', self.gate_losses)
         print('val_gate_output_loss =', self.val_gate_losses)
-        print('moe_output_loss =', self.moe_losses)
-        print('val_moe_output_loss =', self.val_moe_losses)
+        print('reduced_sum_loss =', self.moe_losses)
+        print('val_reduced_sum_loss =', self.val_moe_losses)
         print('gate_output_accuracy =', self.gate_accuracy)
         print('val_gate_output_accuracy =', self.val_gate_accuracy)
-        print('moe_output_mae =', self.moe_mae)
-        print('val_moe_output_mae =', self.val_moe_mae)
+        print('reduced_sum_mae =', self.moe_mae)
+        print('val_reduced_sum_mae =', self.val_moe_mae)
 
         return
 
@@ -616,7 +627,7 @@ def get_lstm_regression_classification_model_ablation(number_categories,
     # regression NN
     output_regression = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps,
                                                                 reg_l1_experts, reg_l2_experts, dp_rate, 1)
-    output_regression = Layer(name='moe_output')(output_regression)
+    output_regression = Layer(name='reduced_sum')(output_regression)
 
     model = Model(inputs=inputs, outputs=[output_classification, output_regression])
 
@@ -637,11 +648,11 @@ def get_refined_moe_four_expert_ablation(number_categories, number_experts_outpu
     h_expert3 = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 3)
     h_expert4 = get_refined_lstm_expert_output_ablation(inputs, number_experts_outputs, output_steps, reg_l1, reg_l2, dp_rate, 4)
 
-    # moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+    # reduced_sum = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
     #                                                   number_experts_outputs, output_steps)
-    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
+    reduced_sum = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
                                                       number_experts_outputs, output_steps)
 
-    model = Model(inputs=inputs, outputs=[gate_output, moe_output])
+    model = Model(inputs=inputs, outputs=[gate_output, reduced_sum])
 
     return model
