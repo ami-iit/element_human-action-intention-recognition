@@ -27,18 +27,18 @@ rf.setDefaultContext("myContext")
 rf.setDefaultConfigFile("default.ini")
 
 human_kin_dyn_port = yarp.BufferedPortBottle()
-human_kin_dyn_port.open("/test_visualization/humanDynamics:i")
+human_kin_dyn_port.open("/test_visualization/humanKinDyn:i")
 # action_prediction_port = yarp.BufferedPortVector()
 # action_prediction_port.open("/test_visualization/actionRecognition:i")
 motion_prediction_port = yarp.BufferedPortVector()
-motion_prediction_port.open("/test_visualization/dynamicsPredictionAll:i")
+motion_prediction_port.open("/test_visualization/motionPredictionAll:i")
 
 is_connected_human_kindyn = yarp.Network.connect("/humanDataAcquisition/humanKinDyn:o",
-                                                 "/test_visualization/humanDynamics:i")
+                                                 "/test_visualization/humanKinDyn:i")
 # is_connected_action_recognition = yarp.Network.connect("/test_moe/actionRecognition:o",
 #                                                        "/test_visualization/actionRecognition:i")
-is_connected_motion_prediction = yarp.Network.connect("/test_moe/dynamicPredictionAll:o",
-                                                      "/test_visualization/dynamicsPredictionAll:i")
+is_connected_motion_prediction = yarp.Network.connect("/test_moe/motionPredictionAll:o",
+                                                      "/test_visualization/motionPredictionAll:i")
 print("human kindyn port is connected: {}".format(is_connected_human_kindyn))
 # print("action recognition port is connected: {}".format(is_connected_action_recognition))
 print("motion prediction port is connected: {}".format(is_connected_motion_prediction))
@@ -55,35 +55,38 @@ class PlotInferenceResults:
         font = {'size': 15}
         matplotlib.rc('font', **font)
 
-        self.variable_idx_prediction = 2
-        self.variable_idx_ground_truth = 2 * 66 + 2
-
-        self.variableName = 'l_fz'
-
         self.xmin = 0.0
         self.xmax = 6.5
         self.plot_front_time = 1.2
 
-        self.f2 = figure(num=0, figsize=(8, 3.5))  # , dpi = 100)
+        self.f1 = figure(num=0, figsize=(8, 3.5))  # , dpi = 100)
         # self.f0.title("joint value vs time", fontsize=12)
-        self.ax01 = self.f2.subplots() # 2grid((1, 1), (0, 0))
+        self.ax01 = self.f1.subplots() # 2grid((1, 1), (0, 0))
+        self.ax01.set_title("Joint RightElbow_roty value", fontsize=16)
         # self.ax02 = subplots()
-        self.ax01.set_title('Foot wrench vs time', fontsize=16)
-        self.ax01.set_ylim(-100, 1000)
+        # self.ax01.set_title('joint value vs time', fontsize=16)
+        self.ax01.set_ylim(-20, 100)
         self.ax01.set_xlim(self.xmin, self.xmax)
+        self.ax01.grid(True)
+
         self.t = np.zeros(0)
         self.t0 = current_milli_time() / 1000.0  # seconds
         self.joint_values = np.zeros(0)
-        self.p1, = self.ax01.plot(self.t, self.joint_values, 'g-', linewidth=5)
+        self.p1, = self.ax01.plot(self.t, self.joint_values, 'b-', linewidth=5)
+
+        self.ax01.set_xlabel("Time[sec]")
+        self.ax01.set_ylabel("Joint angle")
+        self.ax01.legend(["jRightElbow_roty"])
+        self.ax01.grid(True)
+
         self.t_prediction = np.zeros(0)
         self.joint_predictions = np.zeros(0)
         # self.p2 = self.ax01.scatter(self.t_prediction, self.joint_predictions)
         self.p2, = self.ax01.plot(self.t_prediction, self.joint_predictions, 'o', color='k', markersize=4, alpha=0.1)
 
-        self.ax01.grid(True)
         # self.ax01.set_xlabel("time[sec]", fontsize=20)
-        # self.ax01.set_ylabel("{} [N]".format(self.variableName), fontsize=20)
-        #
+        # self.ax01.set_ylabel("right-knee-y [deg]", fontsize=20)
+
         # bar plot
         # prediction_time_idx = [0, 12, 24]
         # labels = ['None', 'Rotating', 'Standing', 'Walking']
@@ -125,9 +128,10 @@ class PlotInferenceResults:
         self.time_length = 100
         self.human_kin_dyn_data = []
 
-        self.prediction_horizon = 25
+        self.prediction_horizon = 10
         self.time_step = 0.04
-        self.output_size = 12
+        self.output_size = 31
+
 
         return
 
@@ -139,17 +143,19 @@ class PlotInferenceResults:
         time_now = (current_milli_time() / 1000.0) - self.t0  # seconds
 
         # set the human current joint values
+        self.joint_idx_full = 46
         human_kin_dyn = human_kin_dyn_port.read(False)
         if human_kin_dyn is not None:
-            tmp_joint = human_kin_dyn.get(self.variable_idx_ground_truth).asFloat64()
+            tmp_joint = human_kin_dyn.get(self.joint_idx_full).asFloat64()
         else:
             return self.p1, self.p2,
 
         # get all the prediction results
+        self.joint_idx_reduce = 6
         human_kin_dyn_prediction = motion_prediction_port.read(False)
         if human_kin_dyn_prediction is not None:
             human_kin_dyn_prediction_data = []
-            for i in range(self.variable_idx_prediction, human_kin_dyn_prediction.size(), self.output_size):
+            for i in range(self.joint_idx_reduce, human_kin_dyn_prediction.size(), self.output_size):
                 human_kin_dyn_prediction_data.append(human_kin_dyn_prediction.get(i))
 
             if len(human_kin_dyn_prediction_data) != self.prediction_horizon:
@@ -159,7 +165,7 @@ class PlotInferenceResults:
 
             new_time_prediction = [(time_now + i * self.time_step) for i in range(self.prediction_horizon)]
             self.t_prediction = append(self.t_prediction, new_time_prediction)
-            self.joint_predictions = append(self.joint_predictions, human_kin_dyn_prediction_data)
+            self.joint_predictions = append(self.joint_predictions, np.degrees(human_kin_dyn_prediction_data))
 
             # print('prediction shape: {}'.format(np.shape(human_kin_dyn_prediction_data)))
             #
@@ -169,7 +175,7 @@ class PlotInferenceResults:
             #                            zorder=2)
 
         # handle data to feed to plots
-        self.joint_values = append(self.joint_values, tmp_joint)
+        self.joint_values = append(self.joint_values, np.degrees(tmp_joint))
         self.t = append(self.t, time_now)
 
         self.x += 0.05
@@ -223,6 +229,6 @@ class PlotInferenceResults:
 
 plot_object = PlotInferenceResults()
 
-ani = animation.FuncAnimation(plot_object.f2, plot_object.animate,
+ani = animation.FuncAnimation(plot_object.f1, plot_object.animate,
                               interval=20, blit=False, repeat=False)
 plt.show()

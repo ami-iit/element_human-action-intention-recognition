@@ -20,7 +20,7 @@ def current_milli_time():
 
 #labels = ["None", "standing", "stooping", "straightening",
 #          "placing", "fetching", "stoop-lowering", "stoop-back"]
-labels = ["rising", "squatting", "standing"]
+labels = ["standing", "squatting", "rising"]
 number_categories = len(labels)
 
 # YARP related code
@@ -50,7 +50,7 @@ class PlotInferenceResults:
         self.xmin = 0.0
         self.xmax = 6.5
         self.plot_front_time = 1.2
-        self.f0 = figure(num=0, figsize=(8, 3.5))#, dpi=100)
+        self.f0 = figure(num=0, figsize=(24, 3.0))#, dpi=100)
 
         # self.f0.title("joint value vs time", fontsize=12)
         self.ax01 = self.f0.subplots()  # 2grid((1, 1), (0, 0))
@@ -66,26 +66,28 @@ class PlotInferenceResults:
         # action: standing
         self.prediction_now0 = np.zeros(0)
         self.action_predictions0 = np.zeros(0)
-        self.p1, = self.ax01.plot(self.t, self.prediction_now0, 'k-', linewidth=4, label='{}'.format(labels[0]))
+        self.p1, = self.ax01.plot(self.t, self.prediction_now0, 'k-', linewidth=5, label='{}'.format(labels[0]))
         self.p2, = self.ax01.plot(self.t_prediction, self.action_predictions0, 'o', color='k', markersize=4, alpha=0.05)
 
         # action: squatting
         self.prediction_now1 = np.zeros(0)
         self.action_predictions1 = np.zeros(0)
-        self.p3, = self.ax01.plot(self.t, self.prediction_now1, 'b-', linewidth=4, label='{}'.format(labels[1]))
+        self.p3, = self.ax01.plot(self.t, self.prediction_now1, 'b-', linewidth=5, label='{}'.format(labels[1]))
         self.p4, = self.ax01.plot(self.t_prediction, self.action_predictions1, 'o', color='b', markersize=4, alpha=0.05)
 
         # action: rising
         self.prediction_now2 = np.zeros(0)
         self.action_predictions2 = np.zeros(0)
-        self.p5, = self.ax01.plot(self.t, self.prediction_now2, 'r-', linewidth=4, label='{}'.format(labels[2]))
+        self.p5, = self.ax01.plot(self.t, self.prediction_now2, 'r-', linewidth=5, label='{}'.format(labels[2]))
         self.p6, = self.ax01.plot(self.t_prediction, self.action_predictions2, 'o', color='r', markersize=4, alpha=0.05)
+       
 
-        self.ax01.set_xlabel('Time[sec]')
-        self.ax01.set_ylabel('Action Probabilities')
-        self.ax01.legend(["Rising", "Rising-future", 
+        self.ax01.set_xlabel("Time[sec]")
+        self.ax01.set_ylabel("Action Probabilities")
+        self.ax01.legend(["Standing", "Standing-future", 
                           "Squatting", "Squatting-future",
-                          "Standing", "Standing-future"])
+                          "Rising", "Rising-future"])
+
         # bar plot
         # prediction_time_idx = [0, 12, 24]
         # labels = ['None', 'Rotating', 'Standing', 'Walking']
@@ -231,5 +233,5 @@ class PlotInferenceResults:
 plot_object = PlotInferenceResults()
 
 ani = animation.FuncAnimation(plot_object.f0, plot_object.animate,
-                              interval=20, blit=False, repeat=False, cache_frame_data=False, save_count=0)
+                              interval=20, blit=True, repeat=False, cache_frame_data=False, save_count=0)
 plt.show()

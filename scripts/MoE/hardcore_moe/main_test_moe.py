@@ -1,4 +1,7 @@
 import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
 from Utilities import load_model_from_file
 from DatasetUtility import dataset_utility
 from DatasetUtility import PlotInferenceResults
@@ -53,22 +56,24 @@ def get_denormalized_features_all_predictions(normalized_data, denormalizing_mea
     shape_ = np.shape(normalized_data)
     denormalized_data = np.reshape(normalized_data, (shape_[1], shape_[2]))
     #denormalized_data = denormalized_data * denormalizing_std + denormalizing_mean
-    denormalized_data = denormalized_data * denormalizing_weight
+    #denormalized_data = denormalized_data * denormalizing_weight
     return denormalized_data
 
 
 # def main():
 if __name__ == "__main__":
     # parameters
-    model_name = 'model_MoE_BestPlus'
-    model_path = 'NN_models/2023-02-15 16:45:23'
+    model_name = 'model_MoE_Best'
+    # model_path = '__untrack/models/horizon_25steps_expert_66lstm'  # related to Neurisp paper
+    model_path = 'NN_models/2022-07-26 17:06:06'
     # used for data normalization
-    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/cheng1_labeled.txt' 
+    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/new_data_31dofs.txt' 
                 
+
     pop_list = cfg.pop_list
     features_list = []
 
-    #plotting_features = ['l_shoe_fz', 'r_shoe_fz', 'jLeftKnee_roty_val', 'jRightKnee_roty_val']
+    plotting_features = ['l_shoe_fz', 'r_shoe_fz', 'jLeftKnee_roty_val', 'jRightKnee_roty_val']
     
     labels = cfg.full_labels
     input_feature_list = []
@@ -77,11 +82,11 @@ if __name__ == "__main__":
     reduced_input_indices = cfg.reduced_input_indices
     reduce_joints = False
 
-    user_mass = 75.0
+    user_mass = 79.0
     gravity = 9.81
     user_weight_ = user_mass * gravity
 
-    output_steps = 100  # ! at the moment only the value `1` is possible
+    output_steps = 25  # ! at the moment only the value `1` is possible
     shift = output_steps  # ! offset, e.g., 10
     input_width = 10  # ! default: 10
     max_subplots = 5
@@ -92,10 +97,9 @@ if __name__ == "__main__":
     # visualization information
     plot_prediction = False
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
-    motion_prediction_time_idx = 39  # ! indexes that have been used for the prediction timings
+    motion_prediction_time_idx = 5  # ! indexes that have been used for the prediction timings
                                     # (index+1) * 0.04 in the future
                                     # (index+1) * 0.1 in the future
-                                    # (index+1) * 0.01 in the future
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
     plot_indices = np.array([])
 
@@ -216,7 +220,9 @@ if __name__ == "__main__":
             t2 = current_milli_time()
 
             predicted_actions = np.float64(np.array(predictions[0]))
+            #print("[info] type of predicted actions: ", type(predicted_actions))
             #print("[INFO] size is: ", np.size(predicted_actions.shape))
+            print(predicted_actions)
 
             t3 = current_milli_time()
 
@@ -225,7 +231,9 @@ if __name__ == "__main__":
                 denormalizing_mean=denormalize_mean,
                 denormalizing_std=denormalize_std,
                 denormalizing_weight=denormalize_weight)
+            #print("[info] type of predicted actions: ", type(predicted_motion_all))
             #print("[INFO] size is: ", predicted_motion_all.shape)
+            print(predicted_motion_all)
             t4 = current_milli_time()
 
             # predicted_motion = predicted_motion[0:66]
@@ -245,6 +253,7 @@ if __name__ == "__main__":
                                                (predicted_actions.shape[0], predicted_actions.shape[1]))
             t5 = current_milli_time()
 
+            # print("pred[0]: ", pred[0])
             for i in range(predicted_actions.shape[0]):
                 for j in range(predicted_actions.shape[1]):
                     action_recognition_bottle.push_back(predicted_actions[i, j])

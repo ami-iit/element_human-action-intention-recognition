@@ -314,10 +314,8 @@ def visualize_model(model, file_path='', file_name='myModel'):
 
 
 def load_model_from_file(file_path='', file_name='myModel'):
-    model = load_model('{}/{}.h5'.format(file_path, file_name), 
-                       compile=True,
-                       custom_objects={'ReducedSum': ReducedSum,
-                                       'LeakyReLU': LeakyReLU})
+    model = load_model('{}/{}.h5'.format(file_path, file_name), custom_objects={'ReducedSum': ReducedSum,
+                                                                                'LeakyReLU': LeakyReLU})
     return model
 
 

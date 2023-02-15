@@ -125,7 +125,7 @@ class PlotInferenceResults:
         self.time_length = 100
         self.human_kin_dyn_data = []
 
-        self.prediction_horizon = 25
+        self.prediction_horizon = 10
         self.time_step = 0.04
         self.output_size = 12
 

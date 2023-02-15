@@ -29,7 +29,7 @@ def visualize_human():
 
     model = mdlLoader.model()
     dofs = model.getNrOfDOFs()
-    base_link = 'Pelvis'
+    base_link = 'RightFoot'
     joints_positions = np.zeros((dofs, 1))
 
     model.setDefaultBaseLink(model.getLinkIndex(base_link))

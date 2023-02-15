@@ -1,9 +1,10 @@
+###########################
+##### WindowGenerator #####
+###########################
 import numpy as np
 import tensorflow as tf
-from copy import deepcopy
 import matplotlib.pyplot as plt
-import random
-
+import dataConfig as cfg
 
 class WindowGenerator:
     def __init__(self,
@@ -66,9 +67,9 @@ class WindowGenerator:
                 self.input_label_slice = slice(0, first_idx)
                 self.gate_output_label_slice = slice(first_idx, None)
                 # exp_output_idx= first_idx
-                exp_output_idx = 66
-                self.experts_output_label_slice = slice(0, exp_output_idx)  # ! currently all features : to update later
-                self.experts_output_label_slices = [slice(0, exp_output_idx), slice(132, 144)]  # ! currently all features : to update later
+                #exp_output_idx = 31
+                self.experts_output_label_slice = slice(0, cfg.exp_output_idx)  # ! currently all features : to update later
+                self.experts_output_label_slices = [slice(0, cfg.exp_output_idx), slice(62, 74)]  # ! currently all features : to update later
                 for i in self.experts_output_label_slices:
                     print('target features for the {}\'th slice are: {}'.format(i, df_keys[i]))
 
@@ -163,42 +164,8 @@ class WindowGenerator:
         print('ds: {}'.format(ds))
         print('type(ds): {}'.format(type(ds)))
 
-        # ds = ds.shuffle(1000000, reshuffle_each_iteration=False)
         ds = ds.map(self.split_window)
-        # ds.shuffle(32, reshuffle_each_iteration=False)
-        # ds.batch(32)
-        #
-        # validation_split = 5
-        # test_split = 10
-        #
-        # test_ds = ds.enumerate().filter(lambda x, y: x % test_split == 0).map(lambda x, y: y)
-        # train_ds_tmp = ds.enumerate().filter(lambda x, y: x % test_split != 0).map(lambda x, y: y)
-        #
-        # val_ds = train_ds_tmp.enumerate().filter(lambda x, y: x % validation_split == 0).map(lambda x, y: y)
-        # train_ds = train_ds_tmp.enumerate().filter(lambda x, y: x % validation_split != 0).map(lambda x, y: y)
-
-        #
-        # def is_test(data_):
-        #     return random.random() < test_split
-        #
-        # is_test = lambda x: random.random() < test_split
-        # is_validation = lambda x: (not is_test(x)) and (random.random() < validation_split)
-        # is_train = lambda x: (not is_validation(x)) and (not is_test(x))
-        #
-        # test_ds = ds.filter(is_test)
-        # val_ds = ds.filter(is_validation)
-        # train_ds = ds.filter(is_train)
-        #
-        # val_ds = val_ds.map(self.split_window)
-        # train_ds = train_ds.map(self.split_window)
-        #
-        # val_ds = val_ds.shuffle(100000)
-        # test_ds = test_ds.shuffle(100000)
-
-        # self.train_ds = train_ds
-        # self.val_ds = val_ds
-        # self.test_ds = test_ds
-
+   
         return ds
 
     @property
