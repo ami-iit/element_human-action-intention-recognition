@@ -5,6 +5,32 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import dataConfig as cfg
+import pandas as pd
+
+def makeLargeDataSet():
+    ## concatate all 6 data sets
+    data_path01 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/01_cheng_labeled.txt'  
+    data_path02 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/02_cheng_labeled.txt'
+    data_path03 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/03_cheng_labeled.txt'
+    data_path04 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/01_lorenzo_labeled.txt'
+    data_path05 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/02_lorenzo_labeled.txt'
+    data_path06 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/03_lorenzo_labeled.txt'
+
+    df_raw01 = pd.read_csv(data_path01, sep=' ')
+    df_raw02 = pd.read_csv(data_path02, sep=' ')
+    #df_raw02_nohead = df_raw02.iloc()
+    df_raw03 = pd.read_csv(data_path03, sep=' ')
+    df_raw04 = pd.read_csv(data_path04, sep=' ')
+    df_raw05 = pd.read_csv(data_path05, sep=' ')
+    df_raw06 = pd.read_csv(data_path06, sep=' ')
+
+    rows = df_raw01.shape[0]+df_raw02.shape[0]+df_raw03.shape[0]+df_raw04.shape[0]+df_raw05.shape[0]+df_raw06.shape[0]
+
+    df_combined = pd.concat([df_raw01, df_raw02, df_raw03, df_raw04, df_raw05, df_raw06].copy(), axis=0)
+    print(df_combined)
+    print('rows are: ', rows)
+
+    return df_combined
 
 class WindowGenerator:
     def __init__(self,
@@ -131,9 +157,6 @@ class WindowGenerator:
         experts_labels = tf.concat(experts_labels_check, -1) # to check
 
         print('type(experts_labels): {}, shape: {}'.format(type(experts_labels), tf.shape(experts_labels)))
-        print('type(experts_labels): {}, shape: {}'.format(type(experts_labels),
-                                                                   tf.shape(experts_labels)))
-
 
         if self.label_columns is not None:
             gate_labels = tf.stack([gate_labels[:, :, self.column_indices[name]] for name in self.label_columns],
@@ -149,7 +172,7 @@ class WindowGenerator:
 
         self._example = inputs, gate_labels
 
-        return inputs, {"gate_output": gate_labels, "reduced_sum": experts_labels}
+        return inputs, {"gate_output": gate_labels, "moe_output": experts_labels}
 
     def make_dataset(self, data):
         data = np.array(data, dtype=np.float32)
@@ -157,9 +180,9 @@ class WindowGenerator:
             data=data,
             targets=None,
             sequence_length=self.total_window_size,
-            sequence_stride=1,
+            sequence_stride=5,
             shuffle=True,
-            batch_size=32
+            batch_size=64
         )
         print('ds: {}'.format(ds))
         print('type(ds): {}'.format(type(ds)))

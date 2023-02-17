@@ -67,25 +67,28 @@ class PlotInferenceResults:
         self.prediction_now0 = np.zeros(0)
         self.action_predictions0 = np.zeros(0)
         self.p1, = self.ax01.plot(self.t, self.prediction_now0, 'k-', linewidth=4, label='{}'.format(labels[0]))
-        self.p2, = self.ax01.plot(self.t_prediction, self.action_predictions0, 'o', color='k', markersize=4, alpha=0.05)
+        #self.p2, = self.ax01.plot(self.t_prediction, self.action_predictions0, 'o', color='k', markersize=4, alpha=0.05)
 
         # action: squatting
         self.prediction_now1 = np.zeros(0)
         self.action_predictions1 = np.zeros(0)
         self.p3, = self.ax01.plot(self.t, self.prediction_now1, 'b-', linewidth=4, label='{}'.format(labels[1]))
-        self.p4, = self.ax01.plot(self.t_prediction, self.action_predictions1, 'o', color='b', markersize=4, alpha=0.05)
+        #self.p4, = self.ax01.plot(self.t_prediction, self.action_predictions1, 'o', color='b', markersize=4, alpha=0.05)
 
         # action: rising
         self.prediction_now2 = np.zeros(0)
         self.action_predictions2 = np.zeros(0)
         self.p5, = self.ax01.plot(self.t, self.prediction_now2, 'r-', linewidth=4, label='{}'.format(labels[2]))
-        self.p6, = self.ax01.plot(self.t_prediction, self.action_predictions2, 'o', color='r', markersize=4, alpha=0.05)
+        #self.p6, = self.ax01.plot(self.t_prediction, self.action_predictions2, 'o', color='r', markersize=4, alpha=0.05)
 
         self.ax01.set_xlabel('Time[sec]')
         self.ax01.set_ylabel('Action Probabilities')
-        self.ax01.legend(["Rising", "Rising-future", 
-                          "Squatting", "Squatting-future",
-                          "Standing", "Standing-future"])
+        # self.ax01.legend(["Rising", "Rising-future", 
+        #                   "Squatting", "Squatting-future",
+        #                   "Standing", "Standing-future"])
+        self.ax01.legend(["Rising", 
+                          "Squatting", 
+                          "Standing"])
         # bar plot
         # prediction_time_idx = [0, 12, 24]
         # labels = ['None', 'Rotating', 'Standing', 'Walking']
@@ -127,8 +130,8 @@ class PlotInferenceResults:
         self.time_length = 100
         self.human_kin_dyn_data = []
 
-        self.prediction_horizon = 25
-        self.time_step = 0.04
+        self.prediction_horizon = 100
+        self.time_step = 0.02
         self.output_size = 3
 
         return
@@ -179,26 +182,27 @@ class PlotInferenceResults:
            
     
         self.p1.set_data(self.t, self.prediction_now0)
-        self.p2.set_data(self.t_prediction, self.action_predictions0)
+        #self.p2.set_data(self.t_prediction, self.action_predictions0)
 
         self.p3.set_data(self.t, self.prediction_now1)
-        self.p4.set_data(self.t_prediction, self.action_predictions1)
+        #self.p4.set_data(self.t_prediction, self.action_predictions1)
 
         self.p5.set_data(self.t, self.prediction_now2)
-        self.p6.set_data(self.t_prediction, self.action_predictions2)
+        #self.p6.set_data(self.t_prediction, self.action_predictions2)
 
         
 
 
         if time_now >= self.xmax - self.plot_front_time:
+            #self.p1.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
             self.p1.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
-            self.p2.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+            #self.p2.axes.set_xlim(self.xmin, time_now + self.plot_front_time)
 
             self.p3.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
-            self.p4.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+            #self.p4.axes.set_xlim(self.xmin, time_now + self.plot_front_time)
 
             self.p5.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
-            self.p6.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)
+            #self.p6.axes.set_xlim(self.xmin, time_now + self.plot_front_time)
 
 
             # pop the data to have faster visualization iff new data arrives
@@ -216,7 +220,7 @@ class PlotInferenceResults:
                 self.prediction_now2 = self.prediction_now2[1:]
                
      
-        return self.p1, self.p2, self.p3, self.p4, self.p5, self.p6
+        return self.p1, self.p3, self.p5
 
     # Init only required for blitting to give a clean slate.
     def init(self):
@@ -225,7 +229,7 @@ class PlotInferenceResults:
         # line.set_ydata(np.ma.array(x, mask=True))
         # line.set_xdata(np.ma.array(z, mask=True))
         self.p1.set_data([], [])
-        return self.p1, self.p2, self.p3, self.p4, self.p5, self.p6
+        return self.p1, self.p3, self.p5
 
 
 plot_object = PlotInferenceResults()

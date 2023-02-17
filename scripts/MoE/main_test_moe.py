@@ -60,10 +60,10 @@ def get_denormalized_features_all_predictions(normalized_data, denormalizing_mea
 # def main():
 if __name__ == "__main__":
     # parameters
-    model_name = 'model_MoE_BestPlus'
-    model_path = 'NN_models/2023-02-15 16:45:23'
+    model_name = 'model_MoE_Best'
+    model_path = 'NN_models/2023-02-17 17:53:01'
     # used for data normalization
-    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/cheng1_labeled.txt' 
+    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/01_cheng_labeled.txt' 
                 
     pop_list = cfg.pop_list
     features_list = []
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     # visualization information
     plot_prediction = False
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
-    motion_prediction_time_idx = 39  # ! indexes that have been used for the prediction timings
+    motion_prediction_time_idx = 89  # ! indexes that have been used for the prediction timings
                                     # (index+1) * 0.04 in the future
                                     # (index+1) * 0.1 in the future
                                     # (index+1) * 0.01 in the future
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     human_kin_dyn_port.open("/test_moe/humanKinDyn:i")
     is_connected = yarp.Network.connect("/humanDataAcquisition/humanKinDyn:o", "/test_moe/humanKinDyn:i")
     print("port is connected: {}".format(is_connected))
-    yarp.delay(0.5)
+    yarp.delay(0.01)
 
     action_prediction_port = yarp.BufferedPortVector()
     action_prediction_port.open("/test_moe/actionRecognition:o")

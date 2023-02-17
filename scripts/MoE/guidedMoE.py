@@ -18,7 +18,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 import math
 from datetime import datetime
 
-max_epochs = 30
+max_epochs = 20
 
 # gate nn architecture
 def get_gate_nn_output(input_, number_categories, output_steps, reg_l1, reg_l2, dp_rate):
@@ -112,18 +112,19 @@ def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3
     
     #weights = np.full((1, 200), 0.125, dtype=np.float64)
     #weights = Reshape([output_steps, 1, number_categories])(weights)
-    reduced_sum_ = Multiply()([experts, h_gate])
-    #reduced_sum_ = Multiply()([experts, weights])
-    print('reduced_sum_ shape: {}'.format(reduced_sum_.shape))
-    reduced_sum = ReducedSum(name='reduced_sum', axis=3)(reduced_sum_)
-    print('reduced_sum shape: {}'.format(reduced_sum.shape))
+    moe_output_ = Multiply()([experts, h_gate])
+    #moe_output_ = Multiply()([experts, weights])
+    print('moe_output_ shape: {}'.format(moe_output_.shape))
+    moe_output = ReducedSumLayer(name='moe_output', axis=3)(moe_output_)
+    print('moe_output shape: {}'.format(moe_output.shape))
 
-    return reduced_sum
+    return moe_output
 
-class ReducedSum(Layer):
+# create a layer for multiple experts
+class ReducedSumLayer(Layer):
 
     def __init__(self, axis=None, **kwargs):
-        super(ReducedSum, self).__init__(**kwargs)
+        super(ReducedSumLayer, self).__init__(**kwargs)
         self.axis = axis
 
     def build(self, input_shape):
@@ -163,21 +164,22 @@ def get_moe_nn_model(number_categories, number_experts_outputs, output_steps, in
     h_expert3 = get_expert_nn_output(inputs, number_experts_outputs, output_steps,
                                      reg_l1_experts, reg_l2_experts, dp_rate, 3)
           
-    reduced_sum = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, 
+    moe_output = get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3, 
                                                       number_categories, number_experts_outputs, output_steps)
 
-    model = Model(inputs=inputs, outputs=[gate_output, reduced_sum])
+    #model = Model(inputs=inputs, outputs=[gate_output, moe_output])
+    model = Model(inputs=inputs, outputs=[gate_output, moe_output])
 
     return model
 
 # loss function/optimizer/loss weights/metrics
 def compile_model(model):
     model.compile(loss={'gate_output': CategoricalCrossentropy(from_logits=False),
-                        'reduced_sum': tf.losses.MeanSquaredError()},
+                        'moe_output': tf.losses.MeanSquaredError()},
                   optimizer=Adam(epsilon=1e-06),
-                  loss_weights={'gate_output': 1.0, 'reduced_sum': 1.0},
+                  loss_weights={'gate_output': 1.0, 'moe_output': 0.2},
                   metrics={'gate_output': ['accuracy'],
-                           'reduced_sum': ['mae']})
+                           'moe_output': ['mae']})
     return model
 
 # early stopping/save best nn model/plot train&validation results
@@ -226,49 +228,41 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         
         self.losses = []
         self.val_losses = []
-        #self.test_losses = []
 
         self.gate_losses = []
         self.val_gate_losses = []
-        #self.test_gate_losses = []
 
         self.moe_losses = []
         self.val_moe_losses = []
-        #self.test_moe_losses = []
 
         self.gate_accuracy = []
         self.val_gate_accuracy = []
-        #self.test_gate_accuracy = []
 
         self.moe_mae = []
         self.val_moe_mae = []
-        #self.test_moe_mae = []
 
         self.font_size = 16
 
     def on_epoch_end(self, epoch, logs=None):
         print('[on_epoch_end] epoch: {} , loss: {} , val_loss : {}'.format(epoch, logs['loss'], logs['val_loss']))
 
+        ## loss ##
         # update log values
         self.losses.append(logs['loss'])
         self.val_losses.append(logs['val_loss'])
-        #self.test_losses.append(logs(['test_loss']))
 
         self.gate_losses.append(logs['gate_output_loss'])
         self.val_gate_losses.append(logs['val_gate_output_loss'])
-        #self.test_gate_losses.append(logs['test_gate_output_loss'])
 
-        self.moe_losses.append(logs['reduced_sum_loss'])
-        self.val_moe_losses.append(logs['val_reduced_sum_loss'])
-        #self.test_moe_losses.append(logs['test_reduced_sum_loss'])
+        self.moe_losses.append(logs['moe_output_loss'])
+        self.val_moe_losses.append(logs['val_moe_output_loss'])
 
+        ## metrics ##
         self.gate_accuracy.append(logs['gate_output_accuracy'])
         self.val_gate_accuracy.append(logs['val_gate_output_accuracy'])
-        #self.test_gate_accuracy.append(logs['test_gate_output_accuracy'])
 
-        self.moe_mae.append(logs['reduced_sum_mae'])
-        self.val_moe_mae.append(logs['val_reduced_sum_mae'])
-        #self.test_moe_mae.append(logs['test_reduced_sum_mae'])
+        self.moe_mae.append(logs['moe_output_mae'])
+        self.val_moe_mae.append(logs['val_moe_output_mae'])
    
         while epoch < max_epochs-2:
             return
@@ -280,7 +274,6 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
 
         self.axs_loss[0].plot(self.losses)
         self.axs_loss[0].plot(self.val_losses)
-        #self.axs_loss[0].plot(self.test_losses)
 
         self.axs_loss[0].set_title('model loss', fontsize=self.font_size)
         self.axs_loss[0].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
@@ -288,14 +281,12 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
 
         self.axs_loss[1].plot(self.gate_losses)
         self.axs_loss[1].plot(self.val_gate_losses)
-        #self.axs_loss[1].plot(self.test_gate_losses)
 
         self.axs_loss[1].set_title('gate loss', fontsize=self.font_size)
         self.axs_loss[1].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
 
         self.axs_loss[2].plot(self.moe_losses)
         self.axs_loss[2].plot(self.val_moe_losses)
-        #self.axs_loss[2].plot(self.test_moe_losses)
 
         self.axs_loss[2].set_title('moe loss', fontsize=self.font_size)
         self.axs_loss[2].legend(['train', 'validation'], loc='upper left', fontsize=self.font_size)
@@ -316,7 +307,6 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
 
         self.axs_metrics[0].plot(self.gate_accuracy)
         self.axs_metrics[0].plot(self.val_gate_accuracy)
-        #self.axs_metrics[0].plot(self.test_gate_accuracy)
 
         self.axs_metrics[0].set_title('model accuracy', fontsize=self.font_size)
         self.axs_metrics[0].set_ylabel('accuracy', fontsize=self.font_size)
@@ -324,7 +314,6 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
 
         self.axs_metrics[1].plot(self.moe_mae)
         self.axs_metrics[1].plot(self.val_moe_mae)
-        #self.axs_metrics[1].plot(self.test_moe_mae)
 
         self.axs_metrics[1].set_title('model mae', fontsize=self.font_size)
         self.axs_metrics[1].set_xlabel('epoch', fontsize=self.font_size)
@@ -349,12 +338,12 @@ class CallbackPlotLossesAccuracy(tf.keras.callbacks.Callback):
         print('val_loss =', self.val_losses)
         print('gate_output_loss =', self.gate_losses)
         print('val_gate_output_loss =', self.val_gate_losses)
-        print('reduced_sum_loss =', self.moe_losses)
-        print('val_reduced_sum_loss =', self.val_moe_losses)
+        print('moe_output_loss =', self.moe_losses)
+        print('val_moe_output_loss =', self.val_moe_losses)
         print('gate_output_accuracy =', self.gate_accuracy)
         print('val_gate_output_accuracy =', self.val_gate_accuracy)
-        print('reduced_sum_mae =', self.moe_mae)
-        print('val_reduced_sum_mae =', self.val_moe_mae)
+        print('moe_output_mae =', self.moe_mae)
+        print('val_moe_output_mae =', self.val_moe_mae)
 
         return
 

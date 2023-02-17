@@ -26,18 +26,19 @@ if __name__ == "__main__":
     output_feature_list = cfg.output_feature_list
     pop_list = cfg.pop_list
 
-    data_path = cfg.data_path02
-    df_raw_action01 = pd.read_csv(data_path, sep=' ')
+    # data_path = cfg.data_path01
+    # df_raw = pd.read_csv(data_path, sep=' ')
+    df_raw = dp.makeLargeDataSet()
 
     if input_feature_list:
-        df_input_action01 = df_raw_action01[input_feature_list].copy()
+        df_input_action01 = df_raw[input_feature_list].copy()
     else:
-        df_input_action01 = df_raw_action01.copy()
+        df_input_action01 = df_raw.copy()
     
     if output_feature_list:  # ! define the output feature list
-        df_output01 = df_raw_action01[output_feature_list].copy()
+        df_output01 = df_raw[output_feature_list].copy()
     else:
-        df_output01 = df_raw_action01.copy()
+        df_output01 = df_raw.copy()
     
     if cfg.output_categorical:  # ! get the output label in case of categorical ouputs
         df_output01 = pd.get_dummies(df_output01)
@@ -48,8 +49,8 @@ if __name__ == "__main__":
         print('total output labels: {}'.format(output_labels))
 
     # ! start the time from the zero, depends on the application
-    if 'time' in df_raw_action01:
-        df_time = df_raw_action01['time'] - df_raw_action01['time'][0]
+    if 'time' in df_raw:
+        df_time = df_raw['time'] - df_raw['time'][0]
 
     # test if the object has the right type of data
     df_input_action01.head()
@@ -84,15 +85,26 @@ if __name__ == "__main__":
     if cfg.normalize_input:
         train_input_mean01 = train_input_df01.mean()
         train_input_std01 = train_input_df01.std()
+    
         #savetxt('mean_data.csv', train_input_mean, delimiter=' ')
         #savetxt('std_data.csv', train_input_std, delimiter=' ')
-
-        # print('NaN value in mean - :', np.any(np.all(train_input_mean01)))
-        # print('NaN value in std - :', np.any(np.all(train_input_std01)))
+        # np.any(np.all(train_input_df01))
+        print('NaN value in mean - :', train_input_df01.isnull().values.any())
+        print('NaN value in mean - :', train_input_mean01.isnull().values.any())
+        print('NaN value in std - :', train_input_std01.isnull().values.any())
 
         train_input_df01 = (train_input_df01 - train_input_mean01) / train_input_std01
         val_input_df01 = (val_input_df01 - train_input_mean01) / train_input_std01
         test_input_df01 = (test_input_df01 - train_input_mean01) / train_input_std01
+        # train_input_df01 = train_input_df01.apply(lambda x: (x-x.mean())/ x.std(), axis=0)
+        # val_input_df01 = val_input_df01.apply(lambda x: (x-x.mean())/ x.std(), axis=0)
+        # test_input_df01 = test_input_df01.apply(lambda x: (x-x.mean())/ x.std(), axis=0)
+        print('NaN value in train - :', train_input_df01['jLeftBallFoot_roty_val'].isnull().values.any())
+        print(train_input_df01['jLeftBallFoot_roty_val'].isnull().sum(axis = 0))
+        print('NaN value in val - :', val_input_df01['jLeftBallFoot_roty_val'].isnull().values.any())
+        print(val_input_df01['jLeftBallFoot_roty_val'].isnull().sum(axis = 0))
+        print('NaN value in test - :', test_input_df01['jLeftBallFoot_roty_val'].isnull().values.any())
+        print(test_input_df01['jLeftBallFoot_roty_val'].isnull().sum(axis = 0))
     
     # merge the inputs and targets
     train_input_df = train_input_df01
@@ -141,6 +153,7 @@ if __name__ == "__main__":
                                      reg_l1_experts=cfg.regularization_l1_experts,
                                      reg_l2_experts=cfg.regularization_l2_experts,
                                      dp_rate=cfg.dropout_rate)
+        #model_moe.layers[-1]._name = 'moe_output'
         model_moe.summary()
 
         model_moe = GMoE.compile_model(model_moe)
@@ -151,16 +164,17 @@ if __name__ == "__main__":
                                 max_epochs=cfg.max_epochs,
                                 model_path=cfg.models_path,
                                 model_name=cfg.model_name + '_MoE_Best') 
-
+        
         multi_val_performance['MoE'] = model_moe.evaluate(multi_window.val)
         multi_test_performance['MoE'] = model_moe.evaluate(multi_window.test, verbose=0)   
     elif cfg.relearn_moe_model:
         # load pre-trained model
-        file_path = 'NN_models/2023-02-15 16:41:22'
-        file_name = 'model_MoE_Best'
+        load_model_path = cfg.load_model_path
+        load_model_name = cfg.load_model_name
         #file_name = 'model_MoE_Best'
         #model_moe = keras.models.load_model(file_path)
-        model_moe = load_model_from_file(file_path=file_path, file_name=file_name)
+        model_moe = load_model_from_file(file_path=load_model_path, file_name=load_model_name)
+        #model_moe.layers[-1]._name = 'moe_output'
         model_moe.summary()
         model_moe = GMoE.compile_model(model_moe)
         history_moe = GMoE.fit_model(model=model_moe,
@@ -168,7 +182,7 @@ if __name__ == "__main__":
                                 patience=cfg.patience,
                                 max_epochs=cfg.max_epochs,
                                 model_path=cfg.models_path,
-                                model_name=cfg.model_name + '_MoE_BestPlus') 
+                                model_name=cfg.model_name + '_MoE_Best_v1') 
         multi_val_performance['MoE'] = model_moe.evaluate(multi_window.val)
         multi_test_performance['MoE'] = model_moe.evaluate(multi_window.test, verbose=0)
     # ============================
@@ -178,7 +192,7 @@ if __name__ == "__main__":
         x = np.arange(len(multi_test_performance))
         width = 0.3
 
-        metrics_list = ['gate_output_accuracy', 'reduced_sum_mae']
+        metrics_list = ['gate_output_accuracy', 'moe_output_mae']
         metrics_names = []
         for metrics_name in metrics_list:
             if cfg.learn_moe_model:

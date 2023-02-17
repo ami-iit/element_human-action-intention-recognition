@@ -24,23 +24,23 @@ if __name__ == "__main__":
     output_feature_list = cfg.output_feature_list
     pop_list = cfg.pop_list
 
-    df_raw_action01 = pd.read_csv(cfg.data_path01, sep=' ')
-    #print("[INFO] show raw input data: ", df_raw_action01)
+    df_raw = pd.read_csv(cfg.data_path01, sep=' ')
+    #print("[INFO] show raw input data: ", df_raw)
     #df_raw_action02 = pd.read_csv(data_path02, sep=' ')
 
     if input_feature_list:
-        df_input_action01 = df_raw_action01[input_feature_list].copy()
+        df_input_action01 = df_raw[input_feature_list].copy()
         #print("[INFO] show input data: ", df_input_action01)
         #df_input_action02 = df_raw_action02[input_feature_list].copy()
     else:
-        df_input_action01 = df_raw_action01.copy()
+        df_input_action01 = df_raw.copy()
         #df_input_action02 = df_raw_action02.copy()
     
     if output_feature_list:  # ! define the output feature list
-        df_output01 = df_raw_action01[output_feature_list].copy()
+        df_output01 = df_raw[output_feature_list].copy()
         #df_output02 = df_raw_action02[output_feature_list].copy()
     else:
-        df_output01 = df_raw_action01.copy()
+        df_output01 = df_raw.copy()
         #df_output02 = df_raw_action02.copy()
     
     if cfg.output_categorical:  # ! get the output label in case of categorical ouputs
@@ -59,9 +59,9 @@ if __name__ == "__main__":
         print('total output labels: {}'.format(output_labels))
 
     # ! start the time from the zero, depends on the application
-    if 'time' in df_raw_action01:
-        #print("[INFO] show time: ", df_raw_action01['time'])
-        df_time = df_raw_action01['time'] - df_raw_action01['time'][0]
+    if 'time' in df_raw:
+        #print("[INFO] show time: ", df_raw['time'])
+        df_time = df_raw['time'] - df_raw['time'][0]
         #print("[INFO] show reduced time: ", df_time)
     # test if the object has the right type of data
     df_input_action01.head()
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         x = np.arange(len(multi_test_performance))
         width = 0.3
 
-        metrics_list = ['gate_output_accuracy', 'reduced_sum_mae']
+        metrics_list = ['gate_output_accuracy', 'moe_output_mae']
         metrics_names = []
         for metrics_name in metrics_list:
             if cfg.learn_moe_model:

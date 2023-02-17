@@ -16,10 +16,10 @@ from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import ModelCheckpoint
 
 
-class ReducedSum(Layer):
+class ReducedSumLayer(Layer):
 
     def __init__(self, axis=None, **kwargs):
-        super(ReducedSum, self).__init__(**kwargs)
+        super(ReducedSumLayer, self).__init__(**kwargs)
         self.axis = axis
 
     def build(self, input_shape):
@@ -267,13 +267,13 @@ def get_gate_selector_output_associative(h_gate, h_expert1, h_expert2, h_expert3
     
     #weights = np.full((1, 200), 0.125, dtype=np.float64)
     #weights = Reshape([output_steps, 1, number_categories])(weights)
-    reduced_sum_ = Multiply()([experts, h_gate])
-    #reduced_sum_ = Multiply()([experts, weights])
-    print('reduced_sum_ shape: {}'.format(reduced_sum_.shape))
-    reduced_sum = ReducedSum(name='reduced_sum', axis=3)(reduced_sum_)
-    print('reduced_sum shape: {}'.format(reduced_sum.shape))
+    moe_output_ = Multiply()([experts, h_gate])
+    #moe_output_ = Multiply()([experts, weights])
+    print('moe_output_ shape: {}'.format(moe_output_.shape))
+    moe_output = ReducedSumLayer(name='moe_output', axis=3)(moe_output_)
+    print('moe_output shape: {}'.format(moe_output.shape))
 
-    return reduced_sum
+    return moe_output
 
 
 def get_gate_selector_output_competitive(h_gate, h_expert1, h_expert2, h_expert3, h_expert4, number_categories,
@@ -289,12 +289,12 @@ def get_gate_selector_output_competitive(h_gate, h_expert1, h_expert2, h_expert3
     # h_gate = Reshape([output_steps, 1, number_categories])(h_gate)
     print('competitive h_gate shape: {}'.format(h_gate.shape))
 
-    # reduced_sum_ = Multiply()([experts, h_gate])
-    # print('reduced_sum_ shape: {}'.format(reduced_sum_.shape))
-    # reduced_sum = ReducedSum(name='reduced_sum', axis=3)(reduced_sum_)
-    reduced_sum = ProbabilisticSwitch(name='reduced_sum')(experts, h_gate)
+    # moe_output_ = Multiply()([experts, h_gate])
+    # print('moe_output_ shape: {}'.format(moe_output_.shape))
+    # moe_output = ReducedSumLayer(name='moe_output', axis=3)(moe_output_)
+    moe_output = ProbabilisticSwitch(name='moe_output')(experts, h_gate)
 
-    return reduced_sum
+    return moe_output
 
 ########################
 
@@ -489,6 +489,6 @@ def get_refined_lstm_expert_output_ablation(input_, number_experts_outputs, outp
     output_regression = Dense(output_steps * number_experts_outputs)(output_regression)
 
     output_regression = Reshape([output_steps, number_experts_outputs],
-                                name='reduced_sum_expert{}'.format(expert_number))(output_regression)
+                                name='moe_output_expert{}'.format(expert_number))(output_regression)
 
     return output_regression

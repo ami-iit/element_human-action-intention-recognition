@@ -17,7 +17,6 @@ def current_milli_time():
     return round(time.time() * 1000)
 
 
-
 # YARP related code
 if not yarp.Network.checkNetwork():
     print("[main] Unable to find YARP network")

@@ -149,7 +149,7 @@ class WindowGenerator:
 
         self._example = inputs, gate_labels
 
-        return inputs, {"gate_output": gate_labels, "reduced_sum": experts_labels}
+        return inputs, {"gate_output": gate_labels, "moe_output": experts_labels}
 
     def make_dataset(self, data):
         data = np.array(data, dtype=np.float32)

@@ -405,7 +405,7 @@ if __name__ == "__main__":
         x = np.arange(len(multi_test_performance))
         width = 0.3
 
-        metrics_list = ['gate_output_accuracy', 'reduced_sum_mae']
+        metrics_list = ['gate_output_accuracy', 'moe_output_mae']
         metrics_names = []
         for metrics_name in metrics_list:
             if learn_lstm_model:

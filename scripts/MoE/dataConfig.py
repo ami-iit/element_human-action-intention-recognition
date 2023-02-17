@@ -4,8 +4,8 @@
 import guidedMoE as GMoE
 
 # high level flags for training
-learn_moe_model = False
-relearn_moe_model = True
+learn_moe_model = True
+relearn_moe_model = False
 learn_cnn_model = False
 learn_lstm_model = False
 do_performance_analysis = True
@@ -20,9 +20,15 @@ model_name = 'model'
 models_path = 'NN_models/' + GMoE.get_time_now()
     
 # read data path
-data_path01 = '~/element_human-action-intention-recognition/dataset/lifting_test/cheng1_labeled.txt'
-data_path02 = '~/element_human-action-intention-recognition/dataset/lifting_test/cheng2_labeled.txt'
+data_path01 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/01_cheng_labeled.txt'
+data_path02 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/02_cheng_labeled.txt'
+data_path03 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/03_cheng_labeled.txt'
+data_path04 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/01_lorenzo_labeled.txt'
+data_path05 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/02_lorenzo_labeled.txt'
+data_path06 = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/03_lorenzo_labeled.txt'
 
+# load_model_path = 'NN_models/2023-02-17 11:08:18'
+# load_model_name = 'model_MoE_Best'
 # split data for training/validation/test
 train_percentage = 0.7
 val_percentage = 0.2
@@ -44,9 +50,9 @@ gravity = 9.81
 # NN setup
 output_steps = 100 # prediction horizon 1s (1/0.04=25, 1/0.1=10, 1/0.01=100)
 shift = output_steps
-input_width = 10 # previous data used during prediction
+input_width = 10 # previous data used during prediction 20*0.01=0.2s
 max_subplots = 5
-max_epochs = 30
+max_epochs = 20
 patience = 10 # used for eary stopping
 number_experts_outputs = 43 # 31 joint valuse + 12 feet wrenches
 
