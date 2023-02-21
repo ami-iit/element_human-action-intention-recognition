@@ -61,7 +61,7 @@ def get_denormalized_features_all_predictions(normalized_data, denormalizing_mea
 if __name__ == "__main__":
     # parameters
     model_name = 'model_MoE_Best'
-    model_path = 'NN_models/2023-02-17 17:53:01'
+    model_path = 'NN_models/2023-02-21 13:42:03'
     # used for data normalization
     data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/01_cheng_labeled.txt' 
                 
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     gravity = 9.81
     user_weight_ = user_mass * gravity
 
-    output_steps = 100  # ! at the moment only the value `1` is possible
+    output_steps = 200  # ! at the moment only the value `1` is possible
     shift = output_steps  # ! offset, e.g., 10
     input_width = 10  # ! default: 10
     max_subplots = 5
@@ -92,10 +92,10 @@ if __name__ == "__main__":
     # visualization information
     plot_prediction = False
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
-    motion_prediction_time_idx = 89  # ! indexes that have been used for the prediction timings
+    motion_prediction_time_idx = 179  # ! indexes that have been used for the prediction timings
                                     # (index+1) * 0.04 in the future
                                     # (index+1) * 0.1 in the future
-                                    # (index+1) * 0.01 in the future
+                                    # (index+1) * 0.01 in the future (1s, 2s)
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
     plot_indices = np.array([])
 
@@ -228,9 +228,9 @@ if __name__ == "__main__":
             #print("[INFO] size is: ", predicted_motion_all.shape)
             t4 = current_milli_time()
 
-            # predicted_motion = predicted_motion[0:66]
-            motion_prediction_all = predicted_motion_all[:, motion_prediction_slice]
-            dynamic_prediction_all = predicted_motion_all[:, dynamic_prediction_slice]
+            # all future 100 dfs (1s/0.01)
+            motion_prediction_all = predicted_motion_all[:, motion_prediction_slice] # 31 poses
+            dynamic_prediction_all = predicted_motion_all[:, dynamic_prediction_slice] # 12 wrenches
 
             # the number of future data frame
             predicted_motion = motion_prediction_all[motion_prediction_time_idx]

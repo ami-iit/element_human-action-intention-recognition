@@ -130,7 +130,7 @@ class PlotInferenceResults:
         self.time_length = 100
         self.human_kin_dyn_data = []
 
-        self.prediction_horizon = 100
+        self.prediction_horizon = 200
         self.time_step = 0.02
         self.output_size = 3
 
@@ -159,14 +159,14 @@ class PlotInferenceResults:
             for i in range(predicted_human_actions.size()):
                 predicted_human_actions_data.append(predicted_human_actions.get(i))
 
-
             predicted_actions_reshaped = np.reshape(predicted_human_actions_data, (-1, number_categories))
-
 
             if len(predicted_actions_reshaped) != self.prediction_horizon:
                 print('prediction values size {} and prediction horizon size {} are not equal'.format(
                     len(predicted_actions_reshaped), self.prediction_horizon))
                 return self.p1,
+            else:
+                print("[INFO] Length is: ", len(predicted_actions_reshaped))
 
             new_time_prediction = [(time_now + i * self.time_step) for i in range(self.prediction_horizon)]
             self.t_prediction = append(self.t_prediction, new_time_prediction)
