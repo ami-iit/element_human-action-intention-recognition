@@ -61,7 +61,7 @@ def get_denormalized_features_all_predictions(normalized_data, denormalizing_mea
 if __name__ == "__main__":
     # parameters
     model_name = 'model_MoE_Best'
-    model_path = 'NN_models/2023-02-21 13:42:03'
+    model_path = 'NN_models/2023-02-23 14:30:03'
     # used for data normalization
     data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/01_cheng_labeled.txt' 
                 
@@ -81,7 +81,8 @@ if __name__ == "__main__":
     gravity = 9.81
     user_weight_ = user_mass * gravity
 
-    output_steps = 200  # ! at the moment only the value `1` is possible
+    output_steps = 50  # ! at the moment only the value `1` is possible
+                       # 50*0.03=1.5s (every 30ms take a df)
     shift = output_steps  # ! offset, e.g., 10
     input_width = 10  # ! default: 10
     max_subplots = 5
@@ -92,10 +93,11 @@ if __name__ == "__main__":
     # visualization information
     plot_prediction = False
     action_prediction_time_idx = [0, 10, 20]  # ! indexes that have been used for plotting the prediction timings
-    motion_prediction_time_idx = 179  # ! indexes that have been used for the prediction timings
+    motion_prediction_time_idx = 19  # ! indexes that have been used for the prediction timings
                                     # (index+1) * 0.04 in the future
                                     # (index+1) * 0.1 in the future
                                     # (index+1) * 0.01 in the future (1s, 2s)
+                                    # (index+1) * 0.03, now: 0.6s
     plot_keys = ['jRightKnee_roty_val', 'jLeftKnee_roty_val']
     plot_indices = np.array([])
 
@@ -115,7 +117,7 @@ if __name__ == "__main__":
     human_kin_dyn_port.open("/test_moe/humanKinDyn:i")
     is_connected = yarp.Network.connect("/humanDataAcquisition/humanKinDyn:o", "/test_moe/humanKinDyn:i")
     print("port is connected: {}".format(is_connected))
-    yarp.delay(0.01)
+    yarp.delay(0.001)
 
     action_prediction_port = yarp.BufferedPortVector()
     action_prediction_port.open("/test_moe/actionRecognition:o")
@@ -282,9 +284,9 @@ if __name__ == "__main__":
                 pass
 
             tok_total = current_milli_time()
-            max_idx = np.argmax(predicted_actions[0, :])
+            max_idx = np.argmax(predicted_actions[5, :])
             action_ = labels[max_idx]
-            action_prob_ = predicted_actions[0, max_idx]
+            action_prob_ = predicted_actions[5, max_idx]
             print('inference time[ms]: {} , total time[ms]: {},     == action: {},  probability: {}'.format(
                 (tok - tik),
                 (tok_total - tik_total),

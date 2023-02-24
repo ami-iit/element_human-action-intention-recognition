@@ -48,13 +48,14 @@ user_mass = 75.0
 gravity = 9.81
 
 # NN setup
-output_steps = 100 # prediction horizon 1s (1/0.04=25, 1/0.1=10, 1/0.01=100)
+output_steps = 50 # prediction horizon 1s (1/0.04=25, 1/0.1=10, 1/0.01=100)
 shift = output_steps
-input_width = 10 # previous data used during prediction 20*0.01=0.2s
+input_width = 10 # previous data used during prediction 10*0.01=0.1s
 max_subplots = 5
-max_epochs = 20
+max_epochs = 40
 patience = 10 # used for eary stopping
 number_experts_outputs = 43 # 31 joint valuse + 12 feet wrenches
+exp_output_idx = 31
 
 #input_feature_list = ['jT9T8_rotx_val', 'jT9T8_roty_val', 'jT9T8_rotz_val',
 #                      'jRightShoulder_rotx_val', 'jRightShoulder_roty_val', 'jRightShoulder_rotz_val',
@@ -117,4 +118,3 @@ reduced_input_indices = [34, 35, 36,
                          133, 134, 135, 136, 137, 138, 
                          139, 140, 141, 142, 143, 144]
 
-exp_output_idx = 31

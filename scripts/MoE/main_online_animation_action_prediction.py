@@ -38,7 +38,7 @@ is_connected_human_action_prediction = yarp.Network.connect("/test_moe/actionRec
                                                             "/onlineAnimation/actionRecognition:i")
 
 print("action prediction port is connected: {}".format(is_connected_human_action_prediction))
-yarp.delay(0.5)
+yarp.delay(0.001)
 
 
 class PlotInferenceResults:
@@ -49,7 +49,7 @@ class PlotInferenceResults:
 
         self.xmin = 0.0
         self.xmax = 6.5
-        self.plot_front_time = 1.2
+        self.plot_front_time = 1.7
         self.f0 = figure(num=0, figsize=(8, 3.5))#, dpi=100)
 
         # self.f0.title("joint value vs time", fontsize=12)
@@ -130,8 +130,8 @@ class PlotInferenceResults:
         self.time_length = 100
         self.human_kin_dyn_data = []
 
-        self.prediction_horizon = 200
-        self.time_step = 0.02
+        self.prediction_horizon = 50
+        self.time_step = 0.03
         self.output_size = 3
 
         return

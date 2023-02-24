@@ -18,7 +18,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 import math
 from datetime import datetime
 
-max_epochs = 20
+max_epochs = 40
 
 # gate nn architecture
 def get_gate_nn_output(input_, number_categories, output_steps, reg_l1, reg_l2, dp_rate):
@@ -177,7 +177,7 @@ def compile_model(model):
     model.compile(loss={'gate_output': CategoricalCrossentropy(from_logits=False),
                         'moe_output': tf.losses.MeanSquaredError()},
                   optimizer=Adam(epsilon=1e-06),
-                  loss_weights={'gate_output': 1.0, 'moe_output': 0.2},
+                  loss_weights={'gate_output': 1.0, 'moe_output': 0.5},
                   metrics={'gate_output': ['accuracy'],
                            'moe_output': ['mae']})
     return model

@@ -42,7 +42,7 @@ is_connected_motion_prediction = yarp.Network.connect("/test_moe/dynamicPredicti
 print("human kindyn port is connected: {}".format(is_connected_human_kindyn))
 # print("action recognition port is connected: {}".format(is_connected_action_recognition))
 print("motion prediction port is connected: {}".format(is_connected_motion_prediction))
-yarp.delay(0.01)
+yarp.delay(0.001)
 
 # fig, ax = plt.subplots()
 # x = np.arange(0, 2 * np.pi, 0.01)
@@ -56,9 +56,9 @@ class PlotInferenceResults:
         matplotlib.rc('font', **font)
 
         self.variable_idx_prediction = 2
-        self.variable_idx_ground_truth = 2 * 66 + 2
+        self.variable_idx_ground_truth = 2 * 31 + 2
 
-        self.variableName = 'l_fz'
+        self.variableName = 'l_shoe_fz'
 
         self.xmin = 0.0
         self.xmax = 6.5
@@ -71,10 +71,12 @@ class PlotInferenceResults:
         self.ax01.set_title('Foot wrench vs time', fontsize=16)
         self.ax01.set_ylim(-100, 1000)
         self.ax01.set_xlim(self.xmin, self.xmax)
+
         self.t = np.zeros(0)
         self.t0 = current_milli_time() / 1000.0  # seconds
         self.joint_values = np.zeros(0)
         self.p1, = self.ax01.plot(self.t, self.joint_values, 'g-', linewidth=5)
+
         self.t_prediction = np.zeros(0)
         self.joint_predictions = np.zeros(0)
         # self.p2 = self.ax01.scatter(self.t_prediction, self.joint_predictions)
@@ -125,8 +127,8 @@ class PlotInferenceResults:
         self.time_length = 100
         self.human_kin_dyn_data = []
 
-        self.prediction_horizon = 25
-        self.time_step = 0.04
+        self.prediction_horizon = 50
+        self.time_step = 0.03
         self.output_size = 12
 
         return
@@ -144,6 +146,10 @@ class PlotInferenceResults:
             tmp_joint = human_kin_dyn.get(self.variable_idx_ground_truth).asFloat64()
         else:
             return self.p1, self.p2,
+
+        # handle data to feed to plots
+        self.joint_values = append(self.joint_values, tmp_joint)
+        self.t = append(self.t, time_now)
 
         # get all the prediction results
         human_kin_dyn_prediction = motion_prediction_port.read(False)
@@ -168,14 +174,10 @@ class PlotInferenceResults:
             #                            color=(alpha, 0.2, 0.2, alpha),
             #                            zorder=2)
 
-        # handle data to feed to plots
-        self.joint_values = append(self.joint_values, tmp_joint)
-        self.t = append(self.t, time_now)
-
         self.x += 0.05
         # handling figure
-        self.p2.set_data(self.t_prediction, self.joint_predictions)
         self.p1.set_data(self.t, self.joint_values)
+        self.p2.set_data(self.t_prediction, self.joint_predictions)
 
         if time_now >= self.xmax - self.plot_front_time:
             self.p1.axes.set_xlim(time_now - self.xmax + self.plot_front_time, time_now + self.plot_front_time)

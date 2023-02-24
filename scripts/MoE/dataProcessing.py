@@ -147,8 +147,8 @@ class WindowGenerator:
         print('type(input_data): {}, shape: {}'.format(type(input_data), tf.shape(input_data)))
 
         # input_data.set_shape([None, 30, 148]): (None, time, features)
-        inputs = input_data[:, self.input_slice, self.input_label_slice]
-        gate_labels = input_data[:, self.labels_slice, self.gate_output_label_slice]
+        inputs = input_data[:, self.input_slice, self.input_label_slice] # [(0, 10)), (0, 74)]
+        gate_labels = input_data[:, self.labels_slice, self.gate_output_label_slice] #[(10, end), (75, end)]
         # experts_labels = input_data[:, self.labels_slice, self.experts_output_label_slice]
 
         experts_labels_check = [input_data[:, self.labels_slice, data_slice] for data_slice in
@@ -176,17 +176,22 @@ class WindowGenerator:
 
     def make_dataset(self, data):
         data = np.array(data, dtype=np.float32)
+        # !preprocessing APIs are not recommended now
+        # !check tf.keras.utils APIs
         ds = tf.keras.preprocessing.timeseries_dataset_from_array(
             data=data,
             targets=None,
             sequence_length=self.total_window_size,
-            sequence_stride=1,
+            sequence_stride=4,
             shuffle=True,
+            sampling_rate=4,
             batch_size=64
         )
         print('ds: {}'.format(ds))
         print('type(ds): {}'.format(type(ds)))
 
+        # ?why can use map() here?
+        # ds should include inputs and outputs from split_window()
         ds = ds.map(self.split_window)
    
         return ds
