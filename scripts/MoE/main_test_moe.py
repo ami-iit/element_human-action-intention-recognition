@@ -284,9 +284,9 @@ if __name__ == "__main__":
                 pass
 
             tok_total = current_milli_time()
-            max_idx = np.argmax(predicted_actions[5, :])
+            max_idx = np.argmax(predicted_actions[0, :])
             action_ = labels[max_idx]
-            action_prob_ = predicted_actions[5, max_idx]
+            action_prob_ = predicted_actions[0, max_idx]
             print('inference time[ms]: {} , total time[ms]: {},     == action: {},  probability: {}'.format(
                 (tok - tik),
                 (tok_total - tik_total),

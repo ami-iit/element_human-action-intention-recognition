@@ -48,8 +48,8 @@ class PlotInferenceResults:
         matplotlib.rc('font', **font)
 
         self.xmin = 0.0
-        self.xmax = 6.5
-        self.plot_front_time = 1.7
+        self.xmax = 10.0
+        self.plot_front_time = 1.2
         self.f0 = figure(num=0, figsize=(8, 3.5))#, dpi=100)
 
         # self.f0.title("joint value vs time", fontsize=12)

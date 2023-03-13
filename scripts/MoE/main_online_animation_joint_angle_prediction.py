@@ -75,7 +75,7 @@ class PlotInferenceResults:
 
         self.ax01.set_xlabel("Time[sec]")
         self.ax01.set_ylabel("Joint angle")
-        self.ax01.legend(["jRightElbow_roty"])
+        self.ax01.legend(["jLeftKnee_roty"])
         self.ax01.grid(True)
 
         self.t_prediction = np.zeros(0)
