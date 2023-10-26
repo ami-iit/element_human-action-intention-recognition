@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import numpy as np
 from Utilities import load_model_from_file
 from DatasetUtility import dataset_utility
@@ -5,6 +7,7 @@ from DatasetUtility import PlotInferenceResults
 from DatasetUtility import current_milli_time
 import yarp
 import dataConfig as cfg
+import os
 
 def get_normalized_features(data, wrench_indices, user_weight, data_mean, data_std):
     data_length = len(data_mean)
@@ -59,11 +62,14 @@ def get_denormalized_features_all_predictions(normalized_data, denormalizing_mea
 
 # def main():
 if __name__ == "__main__":
+
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
     # parameters
     model_name = 'model_MoE_Best'
-    model_path = 'NN_models/2023-02-23 14:30:03'
+    model_path = os.path.join(script_directory, 'NN_models/2023-02-23_14_30_03') 
     # used for data normalization
-    data_path = '~/element_human-action-intention-recognition/dataset/lifting_test/2023_02_09_lifitng_data_labeled/01_cheng_labeled.txt' 
+    data_path = os.path.join(script_directory, '../../dataset/lifting_test/2023_02_09_lifitng_data_labeled/01_cheng_labeled.txt') 
                 
     pop_list = cfg.pop_list
     features_list = []
